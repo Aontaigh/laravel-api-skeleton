@@ -1,0 +1,338 @@
+# Laravel API Starter
+
+A production-ready Laravel 13 API starter with [Sanctum](https://laravel.com/docs/sanctum)
+bearer authentication, [Spatie roles and permissions](https://spatie.be/docs/laravel-permission),
+and a query-driven resource pattern you can copy for every new endpoint.
+
+Ships with three fully wired resources — **Users**, **Roles**, and **API tokens** — each
+implementing the same index contract (`sort`, `fields`, `include`, `filter`, pagination).
+Clone, run Sail, issue a token, open **[http://localhost/api/docs](http://localhost/api/docs)**
+(Scalar try-it UI), or import [docs/openapi.yaml](docs/openapi.yaml) into Postman.
+
+## Table of Contents
+
+- [About](#about)
+- [Quick Start](#quick-start)
+- [How the Query-Driven API Works](#how-the-query-driven-api-works)
+- [Documentation](#documentation)
+- [Stack](#stack)
+- [Requirements](#requirements)
+- [API](#api)
+- [API Reference](#api-reference)
+- [Security](#security)
+- [Architecture](#architecture)
+- [File Structure](#file-structure)
+- [Quality Gates](#quality-gates)
+- [Testing](#testing)
+- [What's Not Included](#whats-not-included)
+- [License](#license)
+
+## About
+
+This repo is a **starter template**, not a finished product. It demonstrates patterns
+from [ai-rules](https://github.com/kaxmedia/ai-rules) — invokable controllers,
+FormRequest validation, query classes, API Resources, and server-side Policies.
+
+**What you get:**
+
+- Paginated, filterable **user** index with team row scoping and permission-gated fields
+- **Role** index with permission includes for management UIs
+- Self-service and admin-issued **API tokens** via Sanctum
+- Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with hosted [Scalar](https://scalar.com) docs at `/api/docs` (local and production)
+- Dockerised local dev via [Laravel Sail](https://laravel.com/docs/sail)
+- 90% line-coverage CI gate
+
+**Who it's for:** teams bootstrapping a JSON API, architects evaluating a consistent
+resource layer, or agents mapping a predictable Laravel layout.
+
+## Quick Start
+
+```bash
+composer install
+cp .env.example .env
+php artisan key:generate
+
+./vendor/bin/sail up -d
+./vendor/bin/sail artisan migrate:fresh --seed
+```
+
+Seeding creates one team ("Acme Corp") and one user per role. See
+[docs/permissions.md](docs/permissions.md) for the full permission matrix.
+
+| Email | Role |
+| --- | --- |
+| `admin@example.com` | Admin |
+| `manager@example.com` | Manager |
+| `test@example.com` | User |
+
+Issue a bearer token:
+
+```bash
+./vendor/bin/sail artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('local')->plainTextToken;"
+```
+
+**Interactive docs** — open [http://localhost/api/docs](http://localhost/api/docs), click
+**Authentication** in Scalar, and paste `Bearer {token}`. Try-it requests run against the
+same host (no CORS setup). Details: [docs/api.md](docs/api.md#interactive-docs-scalar).
+
+**Try it (curl)** — list users with team and role includes:
+
+```bash
+curl -s -H "Authorization: Bearer YOUR_TOKEN" \
+  "http://localhost/api/users?fields[users]=id,name&include=team,role&per_page=5" | jq
+```
+
+All routes below require `Authorization: Bearer {token}` unless noted.
+
+## How the Query-Driven API Works
+
+Every list endpoint follows the same request pipeline. Allow-lists live in code, not
+convention — unknown params return `422`.
+
+```
+HTTP request (query params)
+      |
+      v
+FormRequest — authorize() via Policy; parse sort/fields/include/filter
+      |
+      v
+*Query classes — apply allow-listed sort, sparse columns, eager loads, filters
+      |
+      v
+API Resource — shape JSON; permission-gated fields (e.g. email)
+      |
+      v
+ApiResponse Envelope — data + pagination meta
+```
+
+**Source of truth:** allow-lists in [`app/Queries/*/*QueryConstraints.php`](app/Queries/),
+authorisation in [`app/Policies/`](app/Policies/), machine-readable contract in
+[docs/openapi.yaml](docs/openapi.yaml).
+
+## Documentation
+
+| Doc | Purpose |
+| --- | --- |
+| [README.md](README.md) | Orientation, quick start, architecture summary |
+| [/api/docs](http://localhost/api/docs) | Scalar interactive reference — try endpoints in the browser |
+| [docs/openapi.yaml](docs/openapi.yaml) | OpenAPI 3.1 source file (also at `/api/openapi.yaml`) |
+| [docs/api.md](docs/api.md) | Scalar setup, preview, import, and sync checklist |
+| [docs/permissions.md](docs/permissions.md) | Permission strings, role matrix, Policy links |
+| [docs/performance.md](docs/performance.md) | Pagination and search trade-offs at scale |
+
+## Stack
+
+| Package | Purpose | Docs |
+| --- | --- | --- |
+| [Laravel 13](https://laravel.com/docs) | API framework | [laravel.com/docs](https://laravel.com/docs) |
+| [Laravel Sanctum](https://laravel.com/docs/sanctum) | Bearer token authentication | [Sanctum](https://laravel.com/docs/sanctum) |
+| [Spatie Laravel Permission](https://github.com/spatie/laravel-permission) | Roles (`Admin`, `Manager`, `User`) and fine-grained permissions | [Package docs](https://spatie.be/docs/laravel-permission) |
+| Larastan + Pint | Static analysis (level 9) and formatting | [Larastan](https://github.com/larastan/larastan) |
+| PHPUnit | Unit and feature tests with a 90% line-coverage gate | [PHPUnit](https://phpunit.de) |
+| [Laravel Sail](https://laravel.com/docs/sail) | Dockerised local development | [Sail](https://laravel.com/docs/sail) |
+| [Laravel Telescope](https://laravel.com/docs/telescope) | Request debugging (admin-only gate, local only) | [Telescope](https://laravel.com/docs/telescope) |
+| [Scalar](https://scalar.com) | Hosted interactive API reference at `/api/docs` | [Scalar docs](https://scalar.com/products/api-references/integrations/html-js) |
+
+## Requirements
+
+| Dependency | Version |
+| --- | --- |
+| PHP | ^8.5 |
+| Laravel | ^13.8 |
+| Docker (for Sail) | any recent version |
+
+## API
+
+Every list endpoint shares this query contract:
+
+| Param | Purpose |
+| --- | --- |
+| `sort` | Whitelisted column; prefix `-` for descending (default `id` ascending) |
+| `fields[{resource}]` | Sparse fieldset — only requested columns are selected and returned |
+| `include` | Whitelisted eager loads for nested relations |
+| `filter[{key}]` | Resource-specific filters (search, booleans, etc.) |
+| `page`, `per_page` | Pagination (`per_page` capped at 100) |
+
+Unknown sort columns, filter keys, field names, or include relations return `422`.
+Full allow-lists: [docs/openapi.yaml](docs/openapi.yaml) and `*QueryConstraints` classes.
+
+### Users
+
+```http
+GET /api/users?filter[search]=acme&fields[users]=id,name,email&include=team,role&sort=-created_at&page=1&per_page=25
+```
+
+**Row Scoping:** Managers and Users see their own team only; Admins see all teams
+(`users.list-all`). Details: [docs/permissions.md](docs/permissions.md#userslist-vs-userslist-all).
+
+**Field Visibility:** `email` is omitted unless the viewer holds `users.view-email` —
+enforced in [UserResource](app/Http/Resources/UserResource.php), not only the query.
+
+**Source of Truth:** [UserQueryConstraints](app/Queries/Users/UserQueryConstraints.php),
+[UserPolicy](app/Policies/UserPolicy.php).
+
+| Method | Path | Notes |
+| --- | --- | --- |
+| `GET` | `/api/users` | Paginated index |
+| `GET` | `/api/users/{user}` | Show — same `fields`/`include` as index |
+| `PATCH` | `/api/users/{user}` | Update `name`; Admins may reassign `team_id` |
+| `DELETE` | `/api/users/{user}` | Soft-delete; cannot delete own account |
+
+### Roles
+
+```http
+GET /api/roles?filter[search]=admin&fields[roles]=id,name&include=permissions&sort=name
+GET /api/roles/{role}?fields[roles]=id,name&include=permissions
+```
+
+Requires `roles.list` (Admin and Manager). Scoped to the `web` guard Spatie stores on role rows.
+
+**Source of Truth:** [RoleQueryConstraints](app/Queries/Roles/RoleQueryConstraints.php),
+[RolePolicy](app/Policies/RolePolicy.php).
+
+### Tokens
+
+```http
+GET    /api/tokens
+POST   /api/tokens                       # {"name": "...", "abilities": ["*"]}
+DELETE /api/tokens/{token}
+POST   /api/users/{user}/tokens          # Admin only
+```
+
+`GET /api/tokens` lists only the caller's tokens. Abilities default to `['*']` and are
+validated against registered Spatie permissions via
+[PermissionAbilityCatalog](app/Services/PermissionAbilityCatalog.php). The plaintext
+token is returned once on `POST` and never stored.
+
+**Source of Truth:** [TokenQueryConstraints](app/Queries/Tokens/TokenQueryConstraints.php),
+[PersonalAccessTokenPolicy](app/Policies/PersonalAccessTokenPolicy.php).
+
+## API Reference
+
+**Interactive docs (Scalar):** [http://localhost/api/docs](http://localhost/api/docs) — try
+endpoints in the browser. Paste a Sanctum bearer token via **Authentication** in the
+Scalar UI; `persistAuth` keeps it across reloads. Works in production at
+`{APP_URL}/api/docs`.
+
+OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
+`/api/openapi.yaml`). Import into Postman or preview offline — see
+[docs/api.md](docs/api.md).
+
+## Security
+
+| Area | Implementation | Where |
+| --- | --- | --- |
+| Authentication | Sanctum bearer tokens | [routes/api.php](routes/api.php) (`auth:sanctum`) |
+| Authorisation | Spatie permissions + Policies | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/) |
+| Rate limiting | 500 req/min API; 10 req/min token creation | `config/api.php`, `bootstrap/app.php` |
+| Input validation | FormRequests; `422` envelope via `ApiResponse` | [app/Support/ApiResponse.php](app/Support/ApiResponse.php) |
+| XSS hardening | Plain-text attribute sanitisation on name updates and token names | [SanitisesPlainTextAttributes](app/Http/Requests/Concerns/SanitisesPlainTextAttributes.php) |
+| API documentation | Scalar UI at `/api/docs`; optional HTTP Basic Auth | [routes/web.php](routes/web.php), [EnsureCanViewApiDocs](app/Http/Middleware/EnsureCanViewApiDocs.php) |
+| Debug tooling | Telescope behind `viewTelescope` gate (Admin only, local only) | [AppServiceProvider](app/Providers/AppServiceProvider.php) |
+
+Report vulnerabilities privately before opening a public issue.
+
+## Architecture
+
+| Layer | Pattern | Where in This Repo |
+| --- | --- | --- |
+| Controllers | Single-action invokable (`__invoke`) | [app/Http/Controllers/](app/Http/Controllers/) |
+| Form requests | `authorize()` → Policy; allow-lists in `rules()` | [app/Http/Requests/](app/Http/Requests/) |
+| DTOs | `final readonly` value objects (`UserFilters`, `ListSort`) | [app/DataTransferObjects/](app/DataTransferObjects/) |
+| Query classes | Sort, filter, include, sparse fieldsets | [app/Queries/](app/Queries/) |
+| Actions | Single `execute()` for business operations | [app/Actions/](app/Actions/) |
+| Services | Stateless utilities used by Actions | [app/Services/](app/Services/) |
+| API resources | Shape every response; sparse-fieldset aware | [app/Http/Resources/](app/Http/Resources/) |
+| Policies | Server-side authorisation | [app/Policies/](app/Policies/) |
+
+Shared helpers: [app/Support/](app/Support/) (`ApiResponse`, `ApiDateTime`,
+`CommaSeparatedList`, `LikePattern`, `QualifiedColumn`). Request concerns:
+[app/Http/Requests/Concerns/](app/Http/Requests/Concerns/) (`Parses*QueryParam`,
+`ReadsRequestInput`, `ResolvesAuthenticatedViewer`).
+
+### Adding a New Resource
+
+1. Define allow-lists in `app/Queries/{Resource}/{Resource}QueryConstraints.php`
+2. Add filter/include query classes and a `{Resource}Filters` DTO
+3. Create an `Applies{Resource}Filters` request concern
+4. Wire an invokable controller: build DTOs → apply queries → paginate → Resource collection
+5. Register the route in [routes/api.php](routes/api.php)
+6. Extend [docs/openapi.yaml](docs/openapi.yaml) and verify at [http://localhost/api/docs](http://localhost/api/docs)
+7. Update [docs/permissions.md](docs/permissions.md) when a new permission is introduced
+8. Cover with unit tests (query builder state) and feature tests (HTTP + database)
+
+Copy [UserIndexController](app/Http/Controllers/Users/UserIndexController.php) as a
+template — only allow-lists and filter logic change per resource.
+
+## File Structure
+
+```
+app/
+├── Actions/              # CreatePersonalAccessTokenAction, SoftDeleteUserAction, …
+├── DataTransferObjects/  # UserFilters, TokenFilters, ListSort
+├── Http/
+│   ├── Controllers/
+│   │   ├── Api/          # ShowApiDocsController, ShowOpenApiSpecController
+│   │   └── …             # Invokable controllers per API endpoint
+│   ├── Middleware/       # EnsureCanViewApiDocs (optional Basic Auth on docs)
+│   ├── Requests/         # FormRequests + Parses* concerns
+│   └── Resources/        # API Resources (sparse fieldsets)
+├── Policies/             # UserPolicy, RolePolicy, PersonalAccessTokenPolicy
+├── Queries/              # *QueryConstraints, *FilterQuery, *IncludeQuery
+├── Services/             # PermissionAbilityCatalog
+└── Support/              # ApiResponse, LikePattern, …
+docs/
+├── openapi.yaml          # OpenAPI 3.1 — source of truth (served at /api/openapi.yaml)
+├── api.md                # Scalar, preview, import, and sync guide
+├── permissions.md        # Permission matrix
+└── performance.md        # Scale trade-offs
+resources/views/
+└── api-docs.blade.php    # Scalar embed for /api/docs
+routes/
+├── api.php               # JSON API routes (Sanctum)
+└── web.php               # /api/docs and /api/openapi.yaml
+tests/
+├── Feature/              # HTTP + database (RefreshDatabase); ApiDocsTest for Scalar routes
+└── Unit/                 # Query builder assertions (no DB)
+```
+
+## Quality Gates
+
+```bash
+./vendor/bin/sail composer lint          # Pint (--test)
+./vendor/bin/sail composer lint:fix      # Pint, auto-fix
+./vendor/bin/sail composer analyse       # Larastan, level 9
+./vendor/bin/sail composer test          # PHPUnit
+./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
+./vendor/bin/sail composer ci            # All gates + composer audit
+```
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs the same gates on every pull
+request and push to `main`. Require the **All Quality Gates** check for branch protection.
+
+## Testing
+
+**Unit tests** ([tests/Unit/](tests/Unit/)) assert query builder state (`columns`,
+`orders`, `wheres`) with no database.
+
+**Feature tests** ([tests/Feature/](tests/Feature/)) run against a real test database via
+`RefreshDatabase` with `Model::preventLazyLoading()` enabled. Sparse-fieldset tests prove
+resources never read unselected columns; include tests prove eager loading happened.
+[ApiDocsTest](tests/Feature/Http/ApiDocsTest.php) covers `/api/docs`, `/api/openapi.yaml`,
+and optional HTTP Basic Auth.
+
+## What's Not Included
+
+This starter deliberately omits features you would add per product:
+
+- User registration, password reset, and email verification
+- OAuth / social login
+- Multi-tenancy beyond team row scoping
+- File uploads, queues, or real-time broadcasting
+
+Set `API_DOCS_BASIC_AUTH_USER` and `API_DOCS_BASIC_AUTH_PASSWORD` in production
+if you want `/api/docs` behind HTTP Basic Auth instead of public.
+
+## License
+
+MIT — see [LICENSE](LICENSE).

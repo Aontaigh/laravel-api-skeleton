@@ -1,0 +1,201 @@
+name: CI
+
+# Runs every quality gate from the project rules in parallel:
+#
+#   - Pint (Format)  ·  Larastan Level 9 + Strict + Deprecation Rules (Static)
+#   - PHPUnit + Coverage Gate (>= 90% line coverage on `app/`)
+#   - composer audit (any advisory in production deps = fail)
+#
+# Each gate is its own job so a failure in one (e.g. a Pint nit) does not
+# mask failures in another (e.g. a Larastan regression). All jobs are
+# read-only against the repository.
+
+on:
+    pull_request:
+    push:
+        branches: [main]
+
+# Cancel an in-flight CI run for a branch when a newer commit lands —
+# only the freshest result matters.
+concurrency:
+    group: ci-${{ github.workflow }}-${{ github.ref }}
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+    actions: read
+
+env:
+    PHP_VERSION: '8.5'
+    # Human-readable tool output in Actions logs (not agent JSON from laravel/pao).
+    PAO_DISABLE: 'true'
+
+jobs:
+    # ---------------------------------------------------------------------
+    # Formatting (Pint)
+    # ---------------------------------------------------------------------
+    format:
+        name: Pint
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  coverage: none
+                  tools: composer:v2
+
+            - name: Install Composer Dependencies
+              uses: ramsey/composer-install@v4
+              with:
+                  composer-options: '--prefer-dist --no-progress'
+
+            - name: Run Pint
+              run: composer lint
+
+    # ---------------------------------------------------------------------
+    # Static Analysis (Larastan, PHPStan Level 9 + Strict + Deprecation)
+    # ---------------------------------------------------------------------
+    static-analysis:
+        name: Larastan (Level 9)
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  coverage: none
+                  tools: composer:v2
+
+            - name: Install Composer Dependencies
+              uses: ramsey/composer-install@v4
+              with:
+                  composer-options: '--prefer-dist --no-progress'
+
+            - name: Run Larastan
+              run: ./vendor/bin/phpstan analyse --memory-limit=512M --error-format=github
+
+    # ---------------------------------------------------------------------
+    # Tests (PHPUnit, Against a Real MySQL Service) + Coverage
+    #
+    # Runs the full PHPUnit suite with pcov enabled and writes a Clover
+    # XML report under `storage/coverage/`, then fails the job if the
+    # overall line coverage of `app/` drops below the project floor
+    # (90%, enforced by `scripts/check-coverage-threshold.php`).
+    # ---------------------------------------------------------------------
+    tests:
+        name: PHPUnit + Coverage
+        runs-on: ubuntu-latest
+
+        services:
+            mysql:
+                image: mysql:8.4
+                env:
+                    MYSQL_ROOT_PASSWORD: password
+                    MYSQL_USER: sail
+                    MYSQL_PASSWORD: password
+                    MYSQL_DATABASE: testing
+                ports:
+                    - 3306:3306
+                options: >-
+                    --health-cmd "mysqladmin ping -h 127.0.0.1 -u root -ppassword"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif
+                  coverage: pcov
+                  tools: composer:v2
+
+            - name: Install Composer Dependencies
+              uses: ramsey/composer-install@v4
+              with:
+                  composer-options: '--prefer-dist --no-progress'
+
+            # `.env.ci` is the single source of truth for CI environment
+            # configuration. Values needed for the MySQL service exposed
+            # by this workflow (DB_HOST=127.0.0.1, etc.) live there, not
+            # inline in this YAML.
+            - name: Prepare .env
+              run: |
+                  cp .env.ci .env
+                  php artisan key:generate --force
+
+            - name: Run PHPUnit With Coverage Gate
+              run: composer test:coverage:check
+
+            - name: Upload Clover Report
+              if: always()
+              uses: actions/upload-artifact@v7
+              with:
+                  name: php-coverage-clover
+                  path: storage/coverage/clover.xml
+                  if-no-files-found: warn
+                  retention-days: 14
+
+    # ---------------------------------------------------------------------
+    # Security Audit (composer audit)
+    #
+    # Fails the job if any advisory is found for a production dependency.
+    # ---------------------------------------------------------------------
+    audit:
+        name: Security Audit
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Setup PHP
+              uses: shivammathur/setup-php@v2
+              with:
+                  php-version: ${{ env.PHP_VERSION }}
+                  coverage: none
+                  tools: composer:v2
+
+            - name: Install Composer Dependencies
+              uses: ramsey/composer-install@v4
+              with:
+                  composer-options: '--prefer-dist --no-progress'
+
+            - name: Run Composer Audit
+              run: composer audit --locked --no-ansi
+
+    # ---------------------------------------------------------------------
+    # Summary Gate
+    #
+    # Single required check for branch protection — fails when any job above
+    # fails, is cancelled, or is skipped.
+    # ---------------------------------------------------------------------
+    ci:
+        name: All Quality Gates
+        runs-on: ubuntu-latest
+        needs: [format, static-analysis, tests, audit]
+        if: always()
+        steps:
+            - name: Require Every Gate to Pass
+              run: |
+                  failed=0
+                  check() {
+                      if [ "$2" != "success" ]; then
+                          echo "::error::Quality Gate Did Not Succeed: $1 (result: $2)"
+                          failed=1
+                      fi
+                  }
+                  check "Pint" "${{ needs.format.result }}"
+                  check "Larastan" "${{ needs.static-analysis.result }}"
+                  check "PHPUnit + Coverage" "${{ needs.tests.result }}"
+                  check "Security Audit" "${{ needs.audit.result }}"
+                  if [ "$failed" -ne 0 ]; then
+                      exit 1
+                  fi
+                  echo "All Quality Gates Passed"

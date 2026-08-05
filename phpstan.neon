@@ -1,0 +1,48 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/phpstan/phpstan-deprecation-rules/rules.neon
+
+parameters:
+    level: 9
+    paths:
+        - app
+        - bootstrap
+        - config
+        - database
+        - routes
+        - tests
+    excludePaths:
+        # Framework and package scaffolding published as-is by
+        # `artisan vendor:publish` / `laravel new` — not hand-written
+        # business logic, so PHPStan noise here is framework internals
+        # rather than a defect in this application's code.
+        - config/app.php
+        - config/auth.php
+        - config/cache.php
+        - config/database.php
+        - config/filesystems.php
+        - config/logging.php
+        - config/mail.php
+        - config/permission.php
+        - config/queue.php
+        - config/sanctum.php
+        - config/services.php
+        - config/session.php
+        - config/telescope.php
+        - database/migrations/0001_01_01_000000_create_users_table.php
+        - database/migrations/0001_01_01_000001_create_cache_table.php
+        - database/migrations/0001_01_01_000002_create_jobs_table.php
+        - database/migrations/*_create_permission_tables.php
+        - database/migrations/*_create_personal_access_tokens_table.php
+        - database/migrations/*_create_telescope_entries_table.php
+        - app/Providers/TelescopeServiceProvider.php
+    tmpDir: storage/framework/cache/phpstan
+    strictRules:
+        # Eloquent's Builder forwards column/query methods (`select()`,
+        # `orderBy()`, ...) onto the underlying query builder through
+        # `Model::__call()`, which this rule cannot distinguish from a
+        # genuine dynamic call to a static method — a documented false
+        # positive when a shared `{...}Query` class accepts a generic
+        # `Builder<TModel of Model>` rather than one concrete model.
+        dynamicCallOnStaticMethod: false

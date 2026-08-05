@@ -1,0 +1,1314 @@
+openapi: 3.1.0
+
+info:
+  title: Laravel API Starter
+  version: 1.0.0
+  description: |
+    Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
+    roles and permissions, and a consistent query-driven index pattern.
+
+    ## Authentication
+
+    Every route requires `Authorization: Bearer {token}` unless noted. Issue a
+    token via `POST /tokens` or use a seeded account (see README).
+
+    ## Response Envelope
+
+    All JSON responses use the same shape:
+
+    ```json
+    {
+      "status": "success | error",
+      "status_code": 200,
+      "message": "Title Case Message With No Trailing Period",
+      "data": {},
+      "meta": {}
+    }
+    ```
+
+    - **Success** — `data` holds the payload; list endpoints add `meta.pagination`
+    - **Validation Error (422)** — `meta.errors` is a field → messages map; allow-list
+      failures also include `meta.allowed` with the supported values for that key
+    - **Invalid Token Abilities (422)** — `meta.invalid_abilities` lists unknown ability strings
+
+    ## Index Query Contract
+
+    `GET /users`, `GET /roles`, and `GET /tokens` share the same query-param
+    vocabulary. Unknown sort columns, filter keys, field names, or include
+    relations return `422`.
+
+    | Param | Format | Notes |
+    | --- | --- | --- |
+    | `sort` | `{column}` or `-{column}` | Single column; prefix `-` for descending. Whitelist is resource-specific (see each operation). Default sort is documented per resource. |
+    | `fields[{resource}]` | comma-separated columns | Sparse fieldset — only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. |
+    | `include` | comma-separated relations | Whitelisted eager loads. Singular keys may load plural relations (e.g. `include=role` eager-loads `roles`). |
+    | `filter[search]` | string (max 255) | Partial match on name (and email for users). Only `search` is supported; other `filter[…]` keys are rejected. |
+    | `page` | integer ≥ 1 | Offset pagination page (default `1`). |
+    | `per_page` | integer 1–100 | Page size (default `25`). |
+
+    ### Sparse Fieldsets and Includes
+
+    Request nested shapes with **both** `include` and the matching `fields[…]` key:
+
+    ```
+    ?include=team,role&fields[users]=id,name&fields[teams]=id,name&fields[roles]=id,name
+    ```
+
+    Omitted `fields[…]` means all allowed columns for that resource are selected.
+    Response keys are omitted when the column was not selected.
+
+    ### Show Endpoints
+
+    `GET /users/{user}` and `GET /roles/{role}` support `include` and `fields[…]`
+    only — no `sort`, `filter`, or pagination.
+
+    ## Rate Limits
+
+    | Scope | Default limit |
+    | --- | --- |
+    | General API (`throttle:api`) | 500 requests / minute / user (or IP when unauthenticated) |
+    | Token creation (`POST /tokens`, `POST /users/{user}/tokens`) | 10 requests / minute / user |
+
+    Exceeded limits return `429` with message `Too Many Requests`.
+
+    ## Permissions
+
+    See [docs/permissions.md](permissions.md) for the full role matrix. Policies
+    enforce permissions server-side; holding a wildcard (`*`) token ability does
+    **not** bypass Spatie role permissions.
+
+  license:
+    name: MIT
+    identifier: MIT
+
+servers:
+  - url: /api
+    description: Current Host (Local or Production)
+  - url: http://localhost/api
+    description: Local Development (Sail / `php artisan serve`)
+
+security:
+  - bearerAuth: []
+
+tags:
+  - name: Users
+    description: User Index, Show, Update, Soft-Delete, and Admin-Issued Tokens
+  - name: Tokens
+    description: Self-Service Personal Access Token Management
+  - name: Roles
+    description: Role Index and Show (Read-Only)
+
+paths:
+  /users:
+    get:
+      tags: [Users]
+      summary: List Users
+      description: |
+        Paginated, filterable user list. Requires `users.list`.
+
+        **Row Scoping:** Managers and Users see only their own team. Admins
+        (`users.list-all`) see every team.
+
+        **Sort Whitelist:** `id`, `name`, `email`, `created_at` (default `id` ascending).
+
+        **Include Whitelist:** `team`, `role`.
+
+        **Fields Keys:** `fields[users]`, `fields[teams]`, `fields[roles]`.
+
+        **User Columns:** `id`, `name`, `created_at`; plus `email` when the viewer
+        holds `users.view-email`. `email` is also stripped at serialisation time
+        without that permission, even when `fields[users]` is omitted.
+      operationId: listUsers
+      parameters:
+        - $ref: '#/components/parameters/QuerySortUsers'
+        - $ref: '#/components/parameters/QueryIncludeUsers'
+        - $ref: '#/components/parameters/QueryFieldsUsers'
+        - $ref: '#/components/parameters/QueryFieldsTeams'
+        - $ref: '#/components/parameters/QueryFieldsRoles'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated User Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Users Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/User'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/UsersIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /users/{user}:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+
+    get:
+      tags: [Users]
+      summary: Show User
+      description: |
+        Single user. Requires `users.list`. Row Scoping matches the index.
+
+        Supports `include` and `fields[…]` (same allow-lists as `GET /users`).
+        No `sort`, `filter`, or pagination.
+      operationId: showUser
+      parameters:
+        - $ref: '#/components/parameters/QueryIncludeUsers'
+        - $ref: '#/components/parameters/QueryFieldsUsers'
+        - $ref: '#/components/parameters/QueryFieldsTeams'
+        - $ref: '#/components/parameters/QueryFieldsRoles'
+      responses:
+        '200':
+          description: User Resource
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: User Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/User'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    patch:
+      tags: [Users]
+      summary: Update User
+      description: |
+        Update `name` and optionally `team_id`. Requires `users.update`.
+
+        - At least one of `name` or `team_id` is required
+        - `email` and `password` are **prohibited**
+        - `team_id` requires `users.reassign-team` (Admin only)
+        - Plain-text markup in `name` is stripped before validation
+
+        Managers may update users on their own team (including themselves).
+        Regular Users cannot update any account.
+      operationId: updateUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateUserRequest'
+      responses:
+        '200':
+          description: Updated User
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: User Updated Successfully
+                      data:
+                        $ref: '#/components/schemas/User'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserUpdateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    delete:
+      tags: [Users]
+      summary: Soft-Delete User
+      description: |
+        Soft-deletes the user (`deleted_at` set). Requires `users.delete`.
+        Callers cannot delete their own account. Soft-deleted users disappear
+        from the index and return `404` on show.
+      operationId: deleteUser
+      responses:
+        '200':
+          description: User Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: User Deleted Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserDeleteSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{user}/tokens:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+
+    post:
+      tags: [Users]
+      summary: Create Token for User (Admin)
+      description: |
+        Issue a personal access token for another user. Requires
+        `tokens.create-for-user` (Admin only). Rate-limited to 10/minute.
+
+        The plaintext token is returned **once** in `data.plain_text_token` and
+        is never stored or returned again.
+      operationId: createUserToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTokenRequest'
+      responses:
+        '201':
+          description: Token Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      status_code:
+                        example: 201
+                      message:
+                        example: Token Created Successfully
+                      data:
+                        $ref: '#/components/schemas/TokenCreatedData'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserTokenCreateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422':
+          description: Validation Failed or Invalid Abilities
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationErrorEnvelope'
+                  - $ref: '#/components/schemas/InvalidAbilitiesEnvelope'
+              examples:
+                validation:
+                  $ref: '#/components/examples/ValidationErrorExample'
+                invalidAbilities:
+                  $ref: '#/components/examples/InvalidAbilitiesError'
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /tokens:
+    get:
+      tags: [Tokens]
+      summary: List Own Tokens
+      description: |
+        Paginated list of the authenticated caller's tokens only. Requires
+        `tokens.list-own`. No `include` keys are supported.
+
+        **Sort Whitelist:** `id`, `name`, `created_at`, `last_used_at`,
+        `expires_at` (default `id` ascending).
+
+        **Fields Keys:** `fields[tokens]` only.
+      operationId: listTokens
+      parameters:
+        - $ref: '#/components/parameters/QuerySortTokens'
+        - $ref: '#/components/parameters/QueryFieldsTokens'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Token Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Tokens Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/PersonalAccessToken'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/TokensIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+    post:
+      tags: [Tokens]
+      summary: Create Own Token
+      description: |
+        Issue a personal access token for the authenticated caller. Requires
+        `tokens.create-own`. Rate-limited to 10/minute.
+
+        `abilities` defaults to `["*"]` when omitted. Each ability must be a
+        registered Spatie permission name.
+      operationId: createToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTokenRequest'
+      responses:
+        '201':
+          description: Token Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      status_code:
+                        example: 201
+                      message:
+                        example: Token Created Successfully
+                      data:
+                        $ref: '#/components/schemas/TokenCreatedData'
+              examples:
+                default:
+                  $ref: '#/components/examples/TokenCreateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          description: Validation Failed or Invalid Abilities
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/ValidationErrorEnvelope'
+                  - $ref: '#/components/schemas/InvalidAbilitiesEnvelope'
+              examples:
+                validation:
+                  $ref: '#/components/examples/ValidationErrorExample'
+                invalidAbilities:
+                  $ref: '#/components/examples/InvalidAbilitiesError'
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /tokens/{token}:
+    parameters:
+      - $ref: '#/components/parameters/TokenId'
+
+    delete:
+      tags: [Tokens]
+      summary: Revoke Own Token
+      description: |
+        Revoke a personal access token belonging to the authenticated caller.
+        Requires `tokens.revoke-own`.
+      operationId: revokeToken
+      responses:
+        '200':
+          description: Token Revoked
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Token Revoked Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/TokenRevokeSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /roles:
+    get:
+      tags: [Roles]
+      summary: List Roles
+      description: |
+        Paginated role list. Requires `roles.list` (Admin and Manager).
+
+        Results are scoped to the `web` guard Spatie stores on role rows.
+
+        **Sort Whitelist:** `id`, `name`, `created_at` (default `id` ascending).
+
+        **Include Whitelist:** `permissions`.
+
+        **Fields Keys:** `fields[roles]`, `fields[permissions]`.
+      operationId: listRoles
+      parameters:
+        - $ref: '#/components/parameters/QuerySortRoles'
+        - $ref: '#/components/parameters/QueryIncludeRoles'
+        - $ref: '#/components/parameters/QueryFieldsRoles'
+        - $ref: '#/components/parameters/QueryFieldsPermissions'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Role Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Roles Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Role'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/RolesIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /roles/{role}:
+    parameters:
+      - $ref: '#/components/parameters/RoleId'
+
+    get:
+      tags: [Roles]
+      summary: Show Role
+      description: |
+        Single role. Requires `roles.list`. Supports `include` and `fields[…]`
+        (same allow-lists as `GET /roles`). No `sort`, `filter`, or pagination.
+      operationId: showRole
+      parameters:
+        - $ref: '#/components/parameters/QueryIncludeRoles'
+        - $ref: '#/components/parameters/QueryFieldsRoles'
+        - $ref: '#/components/parameters/QueryFieldsPermissions'
+      responses:
+        '200':
+          description: Role Resource
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Role Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/Role'
+              examples:
+                default:
+                  $ref: '#/components/examples/RoleShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+components:
+  examples:
+    UsersIndexSuccess:
+      summary: Paginated User Collection
+      value:
+        status: success
+        status_code: 200
+        message: Users Retrieved Successfully
+        data:
+          - id: 1
+            name: Admin User
+            team:
+              id: 1
+              name: Acme Corp
+            role:
+              id: 1
+              name: Admin
+          - id: 2
+            name: Manager User
+            team:
+              id: 1
+              name: Acme Corp
+            role:
+              id: 2
+              name: Manager
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 2
+            total: 3
+            last_page: 2
+
+    UserShowSuccess:
+      summary: User Resource
+      value:
+        status: success
+        status_code: 200
+        message: User Retrieved Successfully
+        data:
+          id: 1
+          name: Admin User
+          email: admin@example.com
+          created_at: '2026-08-05T22:18:42+00:00'
+          team:
+            id: 1
+            name: Acme Corp
+          role:
+            id: 1
+            name: Admin
+            created_at: '2026-08-05T22:18:41+00:00'
+        meta: {}
+
+    UserUpdateSuccess:
+      summary: Updated User
+      value:
+        status: success
+        status_code: 200
+        message: User Updated Successfully
+        data:
+          id: 2
+          name: Manager User
+          email: manager@example.com
+          created_at: '2026-08-05T22:18:42+00:00'
+        meta: {}
+
+    UserDeleteSuccess:
+      summary: User Deleted
+      value:
+        status: success
+        status_code: 200
+        message: User Deleted Successfully
+        data: null
+        meta: {}
+
+    UserTokenCreateSuccess:
+      summary: Token Created for User
+      value:
+        status: success
+        status_code: 201
+        message: Token Created Successfully
+        data:
+          token:
+            id: 6
+            name: admin-issued
+            abilities:
+              - tokens.list-own
+            expires_at: null
+            created_at: '2026-08-05T23:15:04+00:00'
+          plain_text_token: '6|example-plaintext-token-value'
+        meta: {}
+
+    TokensIndexSuccess:
+      summary: Paginated Token Collection
+      value:
+        status: success
+        status_code: 200
+        message: Tokens Retrieved Successfully
+        data:
+          - id: 3
+            name: scalar-docs
+            abilities:
+              - '*'
+            last_used_at: '2026-08-05T23:19:05+00:00'
+            expires_at: null
+            created_at: '2026-08-05T23:14:13+00:00'
+          - id: 4
+            name: curl-verify
+            abilities:
+              - '*'
+            last_used_at: '2026-08-05T23:16:49+00:00'
+            expires_at: null
+            created_at: '2026-08-05T23:14:42+00:00'
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 2
+            total: 6
+            last_page: 3
+
+    TokenCreateSuccess:
+      summary: Token Created
+      value:
+        status: success
+        status_code: 201
+        message: Token Created Successfully
+        data:
+          token:
+            id: 9
+            name: openapi-example
+            abilities:
+              - tokens.list-own
+            expires_at: null
+            created_at: '2026-08-05T23:16:26+00:00'
+          plain_text_token: '9|example-plaintext-token-value'
+        meta: {}
+
+    TokenRevokeSuccess:
+      summary: Token Revoked
+      value:
+        status: success
+        status_code: 200
+        message: Token Revoked Successfully
+        data: null
+        meta: {}
+
+    RolesIndexSuccess:
+      summary: Paginated Role Collection
+      value:
+        status: success
+        status_code: 200
+        message: Roles Retrieved Successfully
+        data:
+          - id: 1
+            name: Admin
+            permissions:
+              - id: 7
+                name: roles.list
+              - id: 11
+                name: tokens.create-for-user
+              - id: 9
+                name: tokens.create-own
+              - id: 8
+                name: tokens.list-own
+              - id: 10
+                name: tokens.revoke-own
+              - id: 6
+                name: users.delete
+              - id: 1
+                name: users.list
+              - id: 2
+                name: users.list-all
+              - id: 5
+                name: users.reassign-team
+              - id: 4
+                name: users.update
+              - id: 3
+                name: users.view-email
+          - id: 2
+            name: Manager
+            permissions:
+              - id: 7
+                name: roles.list
+              - id: 9
+                name: tokens.create-own
+              - id: 8
+                name: tokens.list-own
+              - id: 10
+                name: tokens.revoke-own
+              - id: 6
+                name: users.delete
+              - id: 1
+                name: users.list
+              - id: 4
+                name: users.update
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 2
+            total: 3
+            last_page: 2
+
+    RoleShowSuccess:
+      summary: Role Resource
+      value:
+        status: success
+        status_code: 200
+        message: Role Retrieved Successfully
+        data:
+          id: 1
+          name: Admin
+          permissions:
+            - id: 7
+              name: roles.list
+            - id: 11
+              name: tokens.create-for-user
+            - id: 9
+              name: tokens.create-own
+            - id: 8
+              name: tokens.list-own
+            - id: 10
+              name: tokens.revoke-own
+            - id: 6
+              name: users.delete
+            - id: 1
+              name: users.list
+            - id: 2
+              name: users.list-all
+            - id: 5
+              name: users.reassign-team
+            - id: 4
+              name: users.update
+            - id: 3
+              name: users.view-email
+        meta: {}
+
+    UnauthorizedError:
+      summary: Missing or Invalid Bearer Token
+      value:
+        status: error
+        status_code: 401
+        message: Unauthenticated
+        data: null
+        meta: {}
+
+    ForbiddenError:
+      summary: Authenticated but Not Permitted
+      value:
+        status: error
+        status_code: 403
+        message: Forbidden
+        data: null
+        meta: {}
+
+    NotFoundError:
+      summary: Resource Not Found or Not Visible
+      value:
+        status: error
+        status_code: 404
+        message: Resource Not Found
+        data: null
+        meta: {}
+
+    ValidationErrorExample:
+      summary: Allow-List or Payload Validation Failed
+      value:
+        status: error
+        status_code: 422
+        message: Validation Failed
+        data: null
+        meta:
+          errors:
+            include:
+              - 'Unsupported Include: roles (Supported: role, team)'
+          allowed:
+            include:
+              - role
+              - team
+
+    InvalidAbilitiesError:
+      summary: Invalid Token Abilities
+      value:
+        status: error
+        status_code: 422
+        message: Invalid Token Abilities
+        data: null
+        meta:
+          invalid_abilities:
+            - not.real
+          allowed:
+            abilities:
+              - '*'
+              - roles.list
+              - tokens.create-for-user
+              - tokens.create-own
+              - tokens.list-own
+              - tokens.revoke-own
+              - users.delete
+              - users.list
+              - users.list-all
+              - users.reassign-team
+              - users.update
+              - users.view-email
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: Sanctum Personal Access Token
+
+  parameters:
+    UserId:
+      name: user
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: User Primary Key
+
+    TokenId:
+      name: token
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: Personal Access Token Primary Key (`personal_access_tokens.id`)
+
+    RoleId:
+      name: role
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: Role Primary Key
+
+    QueryPage:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Pagination Page (Offset Pagination)
+
+    QueryPerPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 25
+      description: Page Size (Hard Maximum 100)
+
+    QueryFilterSearch:
+      name: filter[search]
+      in: query
+      schema:
+        type: string
+        maxLength: 255
+      description: |
+        Partial Match on `name`. For Users, Also Matches `email`. Only `search` Is
+        Allowed Under `filter[…]`; Other Keys Return `422`.
+
+    QuerySortUsers:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - name
+          - -name
+          - email
+          - -email
+          - created_at
+          - -created_at
+        default: id
+      description: Sort Column; Prefix Hyphen for Descending. Default `id` Ascending.
+
+    QuerySortRoles:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - name
+          - -name
+          - created_at
+          - -created_at
+        default: id
+
+    QuerySortTokens:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - name
+          - -name
+          - created_at
+          - -created_at
+          - last_used_at
+          - -last_used_at
+          - expires_at
+          - -expires_at
+        default: id
+
+    QueryIncludeUsers:
+      name: include
+      in: query
+      schema:
+        type: string
+        example: team,role
+      description: |
+        Comma-Separated Eager Loads. Allowed: `team`, `role`. Spaces After Commas
+        Are Trimmed.
+
+    QueryIncludeRoles:
+      name: include
+      in: query
+      schema:
+        type: string
+        example: permissions
+      description: Comma-Separated Eager Loads. Allowed Permissions.
+
+    QueryFieldsUsers:
+      name: fields[users]
+      in: query
+      schema:
+        type: string
+        example: id,name,created_at
+      description: |
+        Sparse Fieldset for User Columns. Allowed: `id`, `name`, `created_at`;
+        Plus `email` When the Viewer Holds `users.view-email`.
+
+    QueryFieldsTeams:
+      name: fields[teams]
+      in: query
+      schema:
+        type: string
+        example: id,name
+      description: Sparse Fieldset for Nested Team When `include=team`. Allowed Columns `id`, `name`.
+
+    QueryFieldsRoles:
+      name: fields[roles]
+      in: query
+      schema:
+        type: string
+        example: id,name
+      description: |
+        Sparse Fieldset for Role Columns (User `role` Include or Role Index/Show).
+        Allowed: `id`, `name`, `created_at`.
+
+    QueryFieldsPermissions:
+      name: fields[permissions]
+      in: query
+      schema:
+        type: string
+        example: id,name
+      description: |
+        Sparse Fieldset for Nested `permissions` When `include=permissions`.
+        Allowed: `id`, `name`.
+
+    QueryFieldsTokens:
+      name: fields[tokens]
+      in: query
+      schema:
+        type: string
+        example: id,name,abilities,created_at
+      description: |
+        Sparse Fieldset for Token Columns. Allowed: `id`, `name`, `abilities`,
+        `last_used_at`, `expires_at`, `created_at`.
+
+  schemas:
+    SuccessEnvelope:
+      type: object
+      required: [status, status_code, message, data, meta]
+      properties:
+        status:
+          type: string
+          const: success
+          example: success
+        status_code:
+          type: integer
+          example: 200
+        message:
+          type: string
+          description: Title Case With No Trailing Period
+        data: {}
+        meta:
+          type: object
+          additionalProperties: true
+          example: {}
+
+    ErrorEnvelope:
+      type: object
+      required: [status, status_code, message, data, meta]
+      properties:
+        status:
+          type: string
+          const: error
+          example: error
+        status_code:
+          type: integer
+        message:
+          type: string
+        data:
+          type: 'null'
+          example: null
+        meta:
+          type: object
+          additionalProperties: true
+          example: {}
+
+    ValidationErrorEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ErrorEnvelope'
+        - type: object
+          properties:
+            status_code:
+              example: 422
+            message:
+              example: Validation Failed
+            meta:
+              type: object
+              required: [errors]
+              properties:
+                errors:
+                  type: object
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+                allowed:
+                  type: object
+                  description: Present on allow-list failures — supported values keyed to the matching error field
+                  additionalProperties:
+                    type: array
+                    items:
+                      type: string
+
+    InvalidAbilitiesEnvelope:
+      allOf:
+        - $ref: '#/components/schemas/ErrorEnvelope'
+        - type: object
+          properties:
+            status_code:
+              example: 422
+            message:
+              example: Invalid Token Abilities
+            meta:
+              type: object
+              required: [invalid_abilities]
+              properties:
+                invalid_abilities:
+                  type: array
+                  items:
+                    type: string
+                allowed:
+                  type: object
+                  properties:
+                    abilities:
+                      type: array
+                      items:
+                        type: string
+                      description: Registered permission names plus the unrestricted `*` wildcard
+
+    PaginationMeta:
+      type: object
+      required: [current_page, per_page, total, last_page]
+      properties:
+        current_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        last_page:
+          type: integer
+
+    PaginationMetaWrapper:
+      type: object
+      properties:
+        pagination:
+          $ref: '#/components/schemas/PaginationMeta'
+
+    ApiDateTime:
+      type: string
+      format: date-time
+      description: ISO 8601 UTC Serialisation via `ApiDateTime`
+
+    Team:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    Permission:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        created_at:
+          $ref: '#/components/schemas/ApiDateTime'
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Permission'
+          description: Present Only When `include=permissions` Was Requested
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+          description: Omitted Unless the Viewer Holds `users.view-email`
+        created_at:
+          $ref: '#/components/schemas/ApiDateTime'
+        team:
+          $ref: '#/components/schemas/Team'
+        role:
+          $ref: '#/components/schemas/Role'
+
+    PersonalAccessToken:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        abilities:
+          type: array
+          items:
+            type: string
+        last_used_at:
+          oneOf:
+            - $ref: '#/components/schemas/ApiDateTime'
+            - type: 'null'
+        expires_at:
+          oneOf:
+            - $ref: '#/components/schemas/ApiDateTime'
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/ApiDateTime'
+
+    TokenCreatedData:
+      type: object
+      required: [token, plain_text_token]
+      properties:
+        token:
+          $ref: '#/components/schemas/PersonalAccessToken'
+        plain_text_token:
+          type: string
+          description: Plaintext Bearer Value; Returned Once at Creation Only
+
+    CreateTokenRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Display Label; HTML Markup Is Stripped
+        abilities:
+          type: array
+          items:
+            type: string
+          description: Registered Spatie Permission Names; Defaults to `["*"]`
+
+    UpdateUserRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: HTML Markup Is Stripped
+        team_id:
+          type: integer
+          description: Requires `users.reassign-team` (Admin Only)
+        email:
+          type: string
+          description: Prohibited
+          not: {}
+        password:
+          type: string
+          description: Prohibited
+          not: {}
+
+  responses:
+    Unauthorized:
+      description: Missing or Invalid Bearer Token
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorEnvelope'
+              - type: object
+                properties:
+                  status_code:
+                    example: 401
+                  message:
+                    example: Unauthenticated
+          examples:
+            default:
+              $ref: '#/components/examples/UnauthorizedError'
+
+    Forbidden:
+      description: Authenticated but Not Permitted
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            default:
+              $ref: '#/components/examples/ForbiddenError'
+
+    NotFound:
+      description: Resource Not Found (or Not Visible to the Caller)
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+          examples:
+            default:
+              $ref: '#/components/examples/NotFoundError'
+
+    ValidationError:
+      description: Allow-List or Payload Validation Failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrorEnvelope'
+          examples:
+            default:
+              $ref: '#/components/examples/ValidationErrorExample'
+
+    TooManyRequests:
+      description: Rate Limit Exceeded
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: '#/components/schemas/ErrorEnvelope'
+              - type: object
+                properties:
+                  status_code:
+                    example: 429
+                  message:
+                    example: Too Many Requests

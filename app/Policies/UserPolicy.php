@@ -1,0 +1,121 @@
+<?php
+
+declare(strict_types=1);
+
+namespace App\Policies;
+
+use App\Models\User;
+
+/**
+ * Authorisation rules for User list, show, update, and delete endpoints.
+ */
+final class UserPolicy
+{
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Whether the User may list Users.
+     *
+     * Row scoping (own Team vs every Team) is a separate decision — see
+     * `AppliesUserFilters::listsAllTeams()` and `UserFilterQuery`.
+     *
+     * @param  User $user the authenticated User
+     * @return bool true when the User may view the User Index
+     */
+    public function viewAny(User $user): bool
+    {
+        return $user->can('users.list');
+    }
+
+    /**
+     * Whether the User may view a single User record.
+     *
+     * Requires `users.list`. Row scope matches the index: callers without
+     * `users.list-all` may only view Users on their own Team.
+     *
+     * @param  User $user  the authenticated User
+     * @param  User $model the User being viewed
+     * @return bool true when the User may view that record
+     */
+    public function view(User $user, User $model): bool
+    {
+        if (! $user->can('users.list')) {
+            return false;
+        }
+
+        if ($user->can('users.list-all')) {
+            return true;
+        }
+
+        return $user->team_id === $model->team_id;
+    }
+
+    /**
+     * Whether the User may update a User record.
+     *
+     * Requires `users.update`. Row scope matches show: callers without
+     * `users.list-all` may only update Users on their own Team, including
+     * their own account.
+     *
+     * @param  User $user  the authenticated User
+     * @param  User $model the User being updated
+     * @return bool true when the User may update that record
+     */
+    public function update(User $user, User $model): bool
+    {
+        if (! $user->can('users.update')) {
+            return false;
+        }
+
+        if ($user->can('users.list-all')) {
+            return true;
+        }
+
+        return $user->team_id === $model->team_id;
+    }
+
+    /**
+     * Whether the User may reassign another User to a different Team.
+     *
+     * Requires `users.reassign-team`. Only Admins hold this permission.
+     *
+     * @param  User $user the authenticated User
+     * @return bool true when the User may change a User's `team_id`
+     */
+    public function reassignTeam(User $user): bool
+    {
+        return $user->can('users.reassign-team');
+    }
+
+    /**
+     * Whether the User may soft-delete a User record.
+     *
+     * Requires `users.delete`. Row scope matches show: callers without
+     * `users.list-all` may only delete Users on their own Team. Callers
+     * may never delete their own account through this endpoint.
+     *
+     * @param  User $user  the authenticated User
+     * @param  User $model the User being deleted
+     * @return bool true when the User may delete that record
+     */
+    public function delete(User $user, User $model): bool
+    {
+        if (! $user->can('users.delete')) {
+            return false;
+        }
+
+        if ($user->id === $model->id) {
+            return false;
+        }
+
+        if ($user->can('users.list-all')) {
+            return true;
+        }
+
+        return $user->team_id === $model->team_id;
+    }
+}
