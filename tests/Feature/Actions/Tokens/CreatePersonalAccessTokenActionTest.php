@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\Permissions\PermissionAbilityCatalog;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -60,6 +61,8 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
     {
         // Arrange
 
+        Carbon::setTestNow('2026-01-15 10:00:00');
+
         /** @var User $user */
         $user = User::factory()->user()->create();
 
@@ -77,10 +80,17 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
 
         $this->assertSame('CLI Token', $issued->accessToken->name);
         $this->assertSame(['tokens.list-own'], $issued->accessToken->abilities);
+        $this->assertNotNull($issued->accessToken->expires_at);
+        $this->assertSame(
+            '2026-04-15 10:00:00',
+            $issued->accessToken->expires_at->toDateTimeString(),
+        );
         $this->assertDatabaseHas('personal_access_tokens', [
             'name' => 'CLI Token',
             'tokenable_id' => $user->id,
         ]);
+
+        Carbon::setTestNow();
     }
 
     /**

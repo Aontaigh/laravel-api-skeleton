@@ -20,6 +20,19 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Personal Access Token Lifetime
+    |--------------------------------------------------------------------------
+    |
+    | Number of days until a newly issued Sanctum token expires. Set to 0 to
+    | disable expiration (local development only — not recommended in production).
+    | Synced to config/sanctum.php for authentication enforcement.
+    |
+    */
+
+    'token_expiration_days' => (int) env('API_TOKEN_EXPIRATION_DAYS', 90),
+
+    /*
+    |--------------------------------------------------------------------------
     | API Documentation
     |--------------------------------------------------------------------------
     |

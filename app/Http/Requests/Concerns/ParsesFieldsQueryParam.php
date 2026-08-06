@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Support\AllowList;
 use App\Support\AllowListValidation;
 use App\Support\CommaSeparatedList;
 use Illuminate\Contracts\Validation\Validator;
@@ -43,10 +44,10 @@ trait ParsesFieldsQueryParam
             return null;
         }
 
-        return array_values(array_intersect(
+        return AllowList::supported(
             $requested,
             $this->allowedFieldsFor($resourceKey),
-        ));
+        );
     }
 
     /*
@@ -84,7 +85,7 @@ trait ParsesFieldsQueryParam
                 return;
             }
 
-            $unknown = array_diff(
+            $unknown = AllowList::unsupported(
                 CommaSeparatedList::parse($raw),
                 $this->allowedFieldsFor($resourceKey),
             );
@@ -117,7 +118,10 @@ trait ParsesFieldsQueryParam
                 return;
             }
 
-            $unknown = array_diff(array_keys($fields), $this->allowedFieldsResourceKeys());
+            $unknown = AllowList::unsupported(
+                array_keys($fields),
+                $this->allowedFieldsResourceKeys(),
+            );
 
             if ($unknown !== []) {
                 $this->recordAllowListHint('fields', $this->allowedFieldsResourceKeys());

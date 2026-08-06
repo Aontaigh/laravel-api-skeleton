@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Support\AllowList;
 use App\Support\AllowListValidation;
 use App\Support\CommaSeparatedList;
 use Illuminate\Contracts\Validation\Validator;
@@ -30,10 +31,10 @@ trait ParsesIncludeQueryParam
      */
     public function includes(): array
     {
-        return array_values(array_intersect(
+        return AllowList::supported(
             CommaSeparatedList::parse($this->safe()->string('include')->toString()),
             $this->allowedIncludeKeys(),
-        ));
+        );
     }
 
     /*
@@ -69,7 +70,7 @@ trait ParsesIncludeQueryParam
                 return;
             }
 
-            $unknown = array_diff(
+            $unknown = AllowList::unsupported(
                 CommaSeparatedList::parse($raw),
                 $this->allowedIncludeKeys(),
             );

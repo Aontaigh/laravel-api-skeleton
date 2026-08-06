@@ -18,6 +18,8 @@ use App\Support\ApiResponse;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -90,6 +92,7 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertJsonPath('message', 'Token Created Successfully');
         $response->assertJsonPath('data.token.name', 'CLI Token');
         $this->assertNotEmpty($response->json('data.plain_text_token'));
+        $this->assertNotNull($response->json('data.token.expires_at'));
         $this->assertDatabaseHas('personal_access_tokens', [
             'name' => 'CLI Token',
             'tokenable_id' => $viewer->id,
@@ -282,5 +285,54 @@ final class StoreTokenControllerTest extends TestCase
         // Assert
 
         $response->assertUnauthorized();
+    }
+
+    /**
+     * Reject API requests once the issued Token has expired.
+     */
+    #[Test]
+    public function it_rejects_requests_after_the_token_expires(): void
+    {
+        // Arrange
+
+        Carbon::setTestNow('2026-01-01 12:00:00');
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        /** @var TestResponse<JsonResponse> $createResponse */
+        $createResponse = $this->actingAs($viewer)->postJson('/api/tokens', ['name' => 'Expiring Token']);
+
+        $createResponse->assertCreated();
+        $plainTextToken = $createResponse->json('data.plain_text_token');
+        $this->assertIsString($plainTextToken);
+        $this->assertNotEmpty($plainTextToken);
+
+        $expiresAt = $createResponse->json('data.token.expires_at');
+        $this->assertIsString($expiresAt);
+        $this->assertSame(
+            '2026-04-01 12:00:00',
+            Carbon::parse($expiresAt)->toDateTimeString(),
+        );
+
+        $this->withToken($plainTextToken)->getJson('/api/tokens')->assertOk();
+
+        Carbon::setTestNow('2026-04-02 12:00:00');
+
+        Auth::forgetGuards();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->withToken($plainTextToken)->getJson('/api/tokens');
+
+        // Assert
+
+        $response->assertUnauthorized();
+        $response->assertJsonPath('status', 'error');
+        $response->assertJsonPath('status_code', 401);
+        $response->assertJsonPath('message', 'Unauthenticated');
+
+        Carbon::setTestNow();
     }
 }

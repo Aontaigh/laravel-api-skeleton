@@ -202,7 +202,8 @@ POST   /api/users/{user}/tokens          # Admin only
 `GET /api/tokens` lists only the caller's tokens. Abilities default to `['*']` and are
 validated against registered Spatie permissions via
 [PermissionAbilityCatalog](app/Services/PermissionAbilityCatalog.php). The plaintext
-token is returned once on `POST` and never stored.
+token is returned once on `POST` and never stored. New tokens expire after
+`API_TOKEN_EXPIRATION_DAYS` (default **90**); set to `0` to disable expiration locally.
 
 **Source of Truth:** [TokenQueryConstraints](app/Queries/Tokens/TokenQueryConstraints.php),
 [PersonalAccessTokenPolicy](app/Policies/PersonalAccessTokenPolicy.php).
@@ -222,9 +223,10 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
 
 | Area | Implementation | Where |
 | --- | --- | --- |
-| Authentication | Sanctum bearer tokens | [routes/api.php](routes/api.php) (`auth:sanctum`) |
+| Authentication | Sanctum bearer tokens (90-day default expiry) | [routes/api.php](routes/api.php) (`auth:sanctum`), `config/api.php` |
 | Authorisation | Spatie permissions + Policies | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/) |
 | Rate limiting | 500 req/min API; 10 req/min token creation | `config/api.php`, `bootstrap/app.php` |
+| CORS | Env-driven allowed origins; local dev-server defaults | `config/cors.php` |
 | Input validation | FormRequests; `422` envelope via `ApiResponse` | [app/Support/ApiResponse.php](app/Support/ApiResponse.php) |
 | XSS hardening | Plain-text attribute sanitisation on name updates and token names | [SanitisesPlainTextAttributes](app/Http/Requests/Concerns/SanitisesPlainTextAttributes.php) |
 | API documentation | Scalar UI at `/api/docs`; optional HTTP Basic Auth | [routes/web.php](routes/web.php), [EnsureCanViewApiDocs](app/Http/Middleware/EnsureCanViewApiDocs.php) |

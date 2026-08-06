@@ -9,6 +9,7 @@ use App\Support\ApiResponse;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -152,5 +153,42 @@ final class ApiSanctumAuthenticationTest extends TestCase
         // Assert
 
         $response->assertForbidden();
+    }
+
+    /**
+     * Reject requests when a Token has expired.
+     */
+    #[Test]
+    public function it_rejects_requests_when_a_token_has_expired(): void
+    {
+        // Arrange
+
+        Carbon::setTestNow('2026-01-01 12:00:00');
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+        $plainTextToken = $viewer->createToken(
+            'expires-soon',
+            ['tokens.list-own'],
+            now()->addDays(config()->integer('api.token_expiration_days')),
+        )->plainTextToken;
+
+        Carbon::setTestNow('2026-04-02 12:00:00');
+
+        Auth::forgetGuards();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->withToken($plainTextToken)->getJson('/api/tokens');
+
+        // Assert
+
+        $response->assertUnauthorized();
+        $response->assertJsonPath('status', 'error');
+        $response->assertJsonPath('status_code', 401);
+        $response->assertJsonPath('message', 'Unauthenticated');
+
+        Carbon::setTestNow();
     }
 }

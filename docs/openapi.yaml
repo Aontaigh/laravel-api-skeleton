@@ -276,6 +276,8 @@ paths:
         Issue a personal access token for another user. Requires
         `tokens.create-for-user` (Admin only). Rate-limited to 10/minute.
 
+        Tokens expire after `API_TOKEN_EXPIRATION_DAYS` (default 90).
+
         The plaintext token is returned **once** in `data.plain_text_token` and
         is never stored or returned again.
       operationId: createUserToken
@@ -376,6 +378,9 @@ paths:
 
         `abilities` defaults to `["*"]` when omitted. Each ability must be a
         registered Spatie permission name.
+
+        Tokens expire after `API_TOKEN_EXPIRATION_DAYS` (default 90). The
+        `expires_at` timestamp is set on creation and enforced by Sanctum.
       operationId: createToken
       requestBody:
         required: true
@@ -623,7 +628,7 @@ components:
             name: admin-issued
             abilities:
               - tokens.list-own
-            expires_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
             created_at: '2026-08-05T23:15:04+00:00'
           plain_text_token: '6|example-plaintext-token-value'
         meta: {}
@@ -639,15 +644,15 @@ components:
             name: scalar-docs
             abilities:
               - '*'
-            last_used_at: '2026-08-05T23:19:05+00:00'
-            expires_at: null
+            last_used_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
             created_at: '2026-08-05T23:14:13+00:00'
           - id: 4
             name: curl-verify
             abilities:
               - '*'
-            last_used_at: '2026-08-05T23:16:49+00:00'
-            expires_at: null
+            last_used_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
             created_at: '2026-08-05T23:14:42+00:00'
         meta:
           pagination:
@@ -668,7 +673,7 @@ components:
             name: openapi-example
             abilities:
               - tokens.list-own
-            expires_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
             created_at: '2026-08-05T23:16:26+00:00'
           plain_text_token: '9|example-plaintext-token-value'
         meta: {}

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns;
 
 use App\DataTransferObjects\ListSort;
+use App\Support\AllowList;
 use App\Support\AllowListValidation;
+use App\Support\ListSortParser;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
@@ -37,7 +39,7 @@ trait ParsesSortQueryParam
      */
     public function listSort(string $defaultColumn, string $defaultDirection = 'asc'): ListSort
     {
-        $sort = $this->parseSortInput($this->safe()->string('sort')->toString());
+        $sort = ListSortParser::parse($this->safe()->string('sort')->toString());
 
         if ($sort->column === '') {
             return new ListSort(column: $defaultColumn, direction: $defaultDirection);
@@ -79,18 +81,20 @@ trait ParsesSortQueryParam
                 return;
             }
 
-            $column = $this->parseSortInput($raw)->column;
+            $column = ListSortParser::parse($raw)->column;
 
             if ($column === '') {
                 return;
             }
 
-            if (! in_array($column, $this->allowedSortColumns(), true)) {
+            $unknown = AllowList::unsupported([$column], $this->allowedSortColumns());
+
+            if ($unknown !== []) {
                 $allowed = $this->allowedSortColumns();
 
                 $check->errors()->add(
                     'sort',
-                    AllowListValidation::unsupportedMessage('Unsupported Sort Column', [$column], $allowed),
+                    AllowListValidation::unsupportedMessage('Unsupported Sort Column', $unknown, $allowed),
                 );
                 $this->recordAllowListHint('sort', $allowed);
             }
@@ -103,30 +107,4 @@ trait ParsesSortQueryParam
      * @return list<string> the allowed sort columns
      */
     abstract protected function allowedSortColumns(): array;
-
-    /*
-    |--------------------------------------------------------------------------
-    | Private
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Split a raw `sort` value into its column and direction.
-     *
-     * Strips exactly one leading `-` so a malformed `--name` fails the
-     * allow-list instead of silently resolving to `name`.
-     *
-     * @param  string   $raw the raw `sort` query param
-     * @return ListSort the parsed sort, with an empty column when `sort` is blank
-     */
-    private function parseSortInput(string $raw): ListSort
-    {
-        $trimmed = trim($raw);
-        $isDescending = str_starts_with($trimmed, '-');
-
-        return new ListSort(
-            column: $isDescending ? substr($trimmed, 1) : $trimmed,
-            direction: $isDescending ? 'desc' : 'asc',
-        );
-    }
 }

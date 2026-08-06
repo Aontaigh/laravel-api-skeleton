@@ -82,8 +82,11 @@ check RolesIndexSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.s
 check RoleShowSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['RoleShowSuccess']['value']))")" \
   "$(api GET '/roles/1?include=permissions&fields%5Broles%5D=id,name&fields%5Bpermissions%5D=id,name')"
 
+api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-index-1","abilities":["tokens.list-own"]}'
+api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-index-2","abilities":["tokens.list-own"]}'
+
 check TokensIndexSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['TokensIndexSuccess']['value']))")" \
-  "$(api GET '/tokens?per_page=2')"
+  "$(api GET '/tokens?per_page=2&sort=-id')"
 
 TOKEN_CREATE="$(api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-example","abilities":["tokens.list-own"]}')"
 check TokenCreateSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['TokenCreateSuccess']['value']))")" \

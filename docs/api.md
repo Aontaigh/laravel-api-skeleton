@@ -80,6 +80,46 @@ Issue a local token:
 ./vendor/bin/sail artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('docs')->plainTextToken;"
 ```
 
+## Browser Frontends (CORS)
+
+Cross-origin browser clients need CORS when the frontend origin differs from
+origin differs from the API host. Laravel's `HandleCors` middleware is enabled by
+default; paths are `api/*` and `sanctum/csrf-cookie`.
+
+**Bearer tokens (recommended):** send `Authorization: Bearer {token}` from your
+frontend. Set `CORS_ALLOWED_ORIGINS` in production to your app URL(s). Local and
+testing environments allow common dev-server origins (`localhost:3000`, `:5173`) when
+the env var is unset.
+
+```bash
+# .env (production)
+CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
+```
+
+**axios example:**
+
+```javascript
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL, // e.g. http://localhost/api
+  headers: { Authorization: `Bearer ${token}` },
+});
+
+const { data } = await api.get('/users');
+```
+
+**Sanctum cookie / CSRF SPA auth (optional):** set `CORS_SUPPORTS_CREDENTIALS=true`,
+list the frontend origin in `CORS_ALLOWED_ORIGINS`, align `SANCTUM_STATEFUL_DOMAINS`,
+and call `GET /sanctum/csrf-cookie` before login. This skeleton defaults to
+bearer-token auth; cookie mode is documented for teams that adopt Sanctum's SPA flow.
+
+| Piece | Location |
+| --- | --- |
+| CORS config | [config/cors.php](../config/cors.php) |
+| Stateful SPA domains | [config/sanctum.php](../config/sanctum.php) → `stateful` |
+| Feature tests | [ApiCorsTest](../tests/Feature/Http/ApiCorsTest.php) |
+
 ## Keeping the Spec in Sync
 
 When you add or change an endpoint:
