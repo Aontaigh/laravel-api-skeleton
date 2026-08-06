@@ -52,6 +52,9 @@ final class ApiValidationTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Return the standard envelope for validation failures.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_for_validation_failures(): void
     {
@@ -70,6 +73,9 @@ final class ApiValidationTest extends TestCase
         $this->assertApiValidationErrors($response, ['per_page']);
     }
 
+    /**
+     * Return multiple allow-list errors and hints in one response on show.
+     */
     #[Test]
     public function it_returns_multiple_allow_list_errors_and_hints_in_one_response_on_show(): void
     {
@@ -117,6 +123,9 @@ final class ApiValidationTest extends TestCase
         ]);
     }
 
+    /**
+     * Return multiple allow-list errors and hints in one response on index.
+     */
     #[Test]
     public function it_returns_multiple_allow_list_errors_and_hints_in_one_response_on_index(): void
     {

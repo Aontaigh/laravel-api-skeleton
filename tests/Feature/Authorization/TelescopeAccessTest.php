@@ -49,6 +49,9 @@ final class TelescopeAccessTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Allow only admins to view Telescope.
+     */
     #[Test]
     public function it_allows_only_admins_to_view_telescope(): void
     {

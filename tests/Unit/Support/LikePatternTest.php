@@ -24,7 +24,13 @@ final class LikePatternTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Escape wildcards and wrap the term.
+     */
     #[Test]
+    /**
+     * Escape wildcards and wrap the term.
+     */
     #[DataProvider('containsProvider')]
     public function it_escapes_wildcards_and_wraps_the_term(string $term, string $expected): void
     {
@@ -37,6 +43,9 @@ final class LikePatternTest extends TestCase
         $this->assertSame($expected, $pattern);
     }
 
+    /**
+     * Build a WHERE clause with an explicit escape character.
+     */
     #[Test]
     public function it_builds_a_where_clause_with_an_explicit_escape_character(): void
     {

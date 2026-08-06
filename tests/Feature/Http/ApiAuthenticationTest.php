@@ -25,6 +25,9 @@ final class ApiAuthenticationTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Return the standard envelope when no bearer token is sent.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_when_no_bearer_token_is_sent(): void
     {
@@ -42,6 +45,9 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertJsonPath('data', null);
     }
 
+    /**
+     * Return the standard envelope when the bearer token is invalid.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_when_the_bearer_token_is_invalid(): void
     {
@@ -59,6 +65,9 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertJsonPath('data', null);
     }
 
+    /**
+     * Return the standard envelope when the caller is forbidden.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_when_the_caller_is_forbidden(): void
     {
@@ -84,6 +93,9 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertJsonPath('meta', []);
     }
 
+    /**
+     * Return the standard envelope when a resource is not found.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_when_a_resource_is_not_found(): void
     {
@@ -109,6 +121,9 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertJsonPath('meta', []);
     }
 
+    /**
+     * Return the standard envelope for plain curl requests without an Accept header.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_for_plain_curl_requests_without_an_accept_header(): void
     {

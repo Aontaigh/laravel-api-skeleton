@@ -1,27 +1,42 @@
 #!/usr/bin/env bash
 # Verify OpenAPI component examples match live API response shape and envelope fields.
-# Requires Sail running and a seeded database.
+# Local: Sail + seeded DB (default), or `php artisan serve` with OPENAPI_VERIFY_BASE.
+# CI: sets ARTISAN_CMD=php artisan and OPENAPI_VERIFY_BASE=http://127.0.0.1:8000/api.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-ADMIN_TOKEN="$(./vendor/bin/sail artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
-TEST_TOKEN="$(./vendor/bin/sail artisan tinker --execute="echo App\Models\User::where('email', 'test@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
-BASE="http://localhost/api"
+if [[ -n "${ARTISAN_CMD:-}" ]]; then
+    :
+elif [[ -x ./vendor/bin/sail ]] && command -v docker >/dev/null 2>&1 && docker info >/dev/null 2>&1; then
+    ARTISAN_CMD="./vendor/bin/sail artisan"
+else
+    ARTISAN_CMD="php artisan"
+fi
+
+BASE="${OPENAPI_VERIFY_BASE:-http://localhost/api}"
+
+artisan() {
+    # shellcheck disable=SC2086
+    $ARTISAN_CMD "$@"
+}
+
+ADMIN_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
+TEST_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'test@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
 
 api() {
-  local method="$1" path="$2" token="${3:-$ADMIN_TOKEN}" body="${4:-}"
-  if [[ -n "$body" ]]; then
-    curl -s -X "$method" -H "Authorization: Bearer $token" -H "Content-Type: application/json" -d "$body" "${BASE}${path}"
-  else
-    curl -s -X "$method" -H "Authorization: Bearer $token" "${BASE}${path}"
-  fi
+    local method="$1" path="$2" token="${3:-$ADMIN_TOKEN}" body="${4:-}"
+    if [[ -n "$body" ]]; then
+        curl -s -X "$method" -H "Authorization: Bearer $token" -H "Content-Type: application/json" -d "$body" "${BASE}${path}"
+    else
+        curl -s -X "$method" -H "Authorization: Bearer $token" "${BASE}${path}"
+    fi
 }
 
 check() {
-  local name="$1" expected="$2" actual="$3"
-  python3 - "$name" "$expected" "$actual" <<'PY'
+    local name="$1" expected="$2" actual="$3"
+    python3 - "$name" "$expected" "$actual" <<'PY'
 import json, sys
 
 name, expected_raw, actual_raw = sys.argv[1:4]
@@ -98,7 +113,7 @@ check InvalidAbilitiesError "$(python3 -c "import yaml,json; print(json.dumps(ya
   "$(api POST '/tokens' "$ADMIN_TOKEN" '{"name":"bad","abilities":["not.real"]}')"
 
 check UserDeleteSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['UserDeleteSuccess']['value']))")" \
-  "$(api DELETE "/users/$(./vendor/bin/sail artisan tinker --execute="\$t=App\Models\Team::first(); \$u=App\Models\User::factory()->for(\$t)->user()->create(['name'=>'Del','email'=>'del-'.uniqid().'@example.com']); echo \$u->id;" 2>/dev/null | tail -1)")"
+  "$(api DELETE "/users/$(artisan tinker --execute="\$t=App\Models\Team::first(); \$u=App\Models\User::factory()->for(\$t)->user()->create(['name'=>'Del','email'=>'del-'.uniqid().'@example.com']); echo \$u->id;" 2>/dev/null | tail -1)")"
 
 REVOKE_ID="$(echo "$TOKEN_CREATE" | python3 -c "import json,sys; print(json.load(sys.stdin)['data']['token']['id'])")"
 check TokenRevokeSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['TokenRevokeSuccess']['value']))")" \

@@ -59,12 +59,17 @@ final class ApiSecurityProbeTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Injection-Shaped Search
-    |--------------------------------------------------------------------------
-    */
+     * Injection-Shaped Search Tests
+     * -----------------------------
+     */
 
+    /**
+     * Survive SQL-injection-shaped search terms without error.
+     */
     #[Test]
+    /**
+     * Survive SQL-injection-shaped search terms without error.
+     */
     #[DataProvider('sqlInjectionSearchProvider')]
     public function it_survives_sql_injection_shaped_search_terms_without_error(string $endpoint): void
     {
@@ -85,11 +90,13 @@ final class ApiSecurityProbeTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Mass Assignment and Privilege Escalation
-    |--------------------------------------------------------------------------
-    */
+     * Mass Assignment and Privilege Escalation Tests
+     * ----------------------------------------------
+     */
 
+    /**
+     * Ignore privilege escalation fields on User update.
+     */
     #[Test]
     public function it_ignores_privilege_escalation_fields_on_user_update(): void
     {
@@ -127,11 +134,13 @@ final class ApiSecurityProbeTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Boundaries and Method Tampering
-    |--------------------------------------------------------------------------
-    */
+     * Boundaries and Method Tampering Tests
+     * -------------------------------------
+     */
 
+    /**
+     * Accept per_page at the hard maximum.
+     */
     #[Test]
     public function it_accepts_per_page_at_the_hard_maximum(): void
     {
@@ -148,6 +157,9 @@ final class ApiSecurityProbeTest extends TestCase
         $response->assertJsonPath('meta.pagination.per_page', UserQueryConstraints::MAX_PER_PAGE);
     }
 
+    /**
+     * Reject an overlong search term.
+     */
     #[Test]
     public function it_rejects_an_overlong_search_term(): void
     {
@@ -164,6 +176,9 @@ final class ApiSecurityProbeTest extends TestCase
         $this->assertApiValidationErrors($response, ['filter.search']);
     }
 
+    /**
+     * Reject PUT on a patch-only User update route.
+     */
     #[Test]
     public function it_rejects_put_on_a_patch_only_user_update_route(): void
     {
@@ -185,6 +200,9 @@ final class ApiSecurityProbeTest extends TestCase
         $response->assertJsonPath('message', 'Method Not Allowed');
     }
 
+    /**
+     * Deny access to a Role from a foreign guard.
+     */
     #[Test]
     public function it_denies_access_to_a_role_from_a_foreign_guard(): void
     {
@@ -207,6 +225,9 @@ final class ApiSecurityProbeTest extends TestCase
         $response->assertJsonPath('message', 'Forbidden');
     }
 
+    /**
+     * Reject a massive include list without executing it.
+     */
     #[Test]
     public function it_rejects_a_massive_include_list_without_executing_it(): void
     {

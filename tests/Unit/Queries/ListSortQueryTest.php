@@ -29,6 +29,9 @@ final class ListSortQueryTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Order by an allow-listed column with an id tie-break.
+     */
     #[Test]
     public function it_orders_by_a_whitelisted_column_with_an_id_tie_break(): void
     {
@@ -60,6 +63,9 @@ final class ListSortQueryTest extends TestCase
         );
     }
 
+    /**
+     * Order descending when the sort direction is desc.
+     */
     #[Test]
     public function it_orders_descending_when_the_sort_direction_is_desc(): void
     {
@@ -91,6 +97,9 @@ final class ListSortQueryTest extends TestCase
         );
     }
 
+    /**
+     * Omit the tie-break when sorting by the tie-break column.
+     */
     #[Test]
     public function it_omits_the_tie_break_when_sorting_by_the_tie_break_column(): void
     {
@@ -119,6 +128,9 @@ final class ListSortQueryTest extends TestCase
         );
     }
 
+    /**
+     * Apply no ordering for columns outside the allow list.
+     */
     #[Test]
     public function it_applies_no_ordering_for_columns_outside_the_allow_list(): void
     {
@@ -144,6 +156,9 @@ final class ListSortQueryTest extends TestCase
         $this->assertNull($query->getQuery()->orders);
     }
 
+    /**
+     * Reject a table identifier that could carry SQL.
+     */
     #[Test]
     public function it_rejects_a_table_identifier_that_could_carry_sql(): void
     {

@@ -31,6 +31,9 @@ final class TeamTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Have many Users.
+     */
     #[Test]
     public function it_has_many_users(): void
     {

@@ -129,11 +129,13 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Listing and Scoping
-    |--------------------------------------------------------------------------
-    */
+     * Listing and Scoping Tests
+     * -------------------------
+     */
 
+    /**
+     * Return Users scoped to the viewer's Team.
+     */
     #[Test]
     public function it_returns_users_scoped_to_the_viewers_team(): void
     {
@@ -162,6 +164,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertNotContains('Other Team Member', $names);
     }
 
+    /**
+     * List Users across every Team when the viewer holds the list-all permission.
+     */
     #[Test]
     public function it_lists_users_across_every_team_when_the_viewer_holds_list_all(): void
     {
@@ -186,6 +191,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertContains('Cross Team Member', (array) $response->json('data.*.name'));
     }
 
+    /**
+     * Filter Users by the search term.
+     */
     #[Test]
     public function it_filters_by_search_term(): void
     {
@@ -209,11 +217,13 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Pagination
-    |--------------------------------------------------------------------------
-    */
+     * Pagination Tests
+     * ----------------
+     */
 
+    /**
+     * Return a later page with accurate pagination meta.
+     */
     #[Test]
     public function it_returns_a_later_page_with_accurate_pagination_meta(): void
     {
@@ -240,11 +250,13 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — `?sort=`
-    |--------------------------------------------------------------------------
-    */
+     * Sorting Tests
+     * -------------
+     */
 
+    /**
+     * Apply the documented default sort when sort is omitted.
+     */
     #[Test]
     public function it_applies_the_documented_default_sort_when_sort_is_omitted(): void
     {
@@ -270,6 +282,9 @@ final class UserIndexControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Sort descending when the column is prefixed with a hyphen.
+     */
     #[Test]
     public function it_sorts_descending_when_the_column_is_prefixed_with_a_hyphen(): void
     {
@@ -291,12 +306,17 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — `?include=` and `?fields[…]=`
-    |--------------------------------------------------------------------------
-    */
+     * Include and Fields Tests
+     * ------------------------
+     */
 
+    /**
+     * Omit the Team key for a teamless User when Team is included.
+     */
     #[Test]
+    /**
+     * Eager-load every allow-listed include.
+     */
     #[DataProvider('allowedIncludeProvider')]
     public function it_eager_loads_every_allow_listed_include(string $include): void
     {
@@ -316,6 +336,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertNotNull($response->json("data.0.{$include}.id"));
     }
 
+    /**
+     * Omit the Team key for a teamless User when Team is included.
+     */
     #[Test]
     public function it_omits_the_team_key_for_a_user_with_no_team_when_team_is_included(): void
     {
@@ -323,6 +346,10 @@ final class UserIndexControllerTest extends TestCase
          * `team_id` is nullable, unlike a typical required foreign key, so a
          * teamless User must not blow up TeamResource with a null resource —
          * this is the one place this endpoint's foreign key is optional.
+         *
+         * `withDefault()` on the BelongsTo relationship returns a default
+         * (empty) Team model when the foreign key is null, so the relation
+         * serializes as an object with default values rather than `null`.
          */
 
         // Arrange
@@ -346,9 +373,16 @@ final class UserIndexControllerTest extends TestCase
             ->firstWhere('name', 'Teamless Member');
 
         $this->assertNotNull($teamless);
-        $this->assertNull($teamless['team'] ?? null);
+        /** @var array<string, mixed>|null $team */
+        $team = $teamless['team'] ?? null;
+        $this->assertNotNull($team);
+        $this->assertNull($team['id'] ?? null);
+        $this->assertNull($team['name'] ?? null);
     }
 
+    /**
+     * Return only requested User columns in sparse fieldsets.
+     */
     #[Test]
     public function it_returns_only_requested_user_columns_in_sparse_fieldsets(): void
     {
@@ -367,6 +401,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertSame(['id', 'name'], array_keys($user));
     }
 
+    /**
+     * Keep the include working alongside a sparse User fieldset.
+     */
     #[Test]
     public function it_keeps_the_include_working_alongside_a_sparse_user_fieldset(): void
     {
@@ -394,6 +431,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertArrayNotHasKey('team_id', $user);
     }
 
+    /**
+     * Constrain nested Team columns when Team is included.
+     */
     #[Test]
     public function it_constrains_nested_team_columns_when_team_is_included(): void
     {
@@ -415,6 +455,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertSame($this->team->name, $teamPayload['name']);
     }
 
+    /**
+     * Constrain nested Role columns when Role is included.
+     */
     #[Test]
     public function it_constrains_nested_role_columns_when_role_is_included(): void
     {
@@ -436,6 +479,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertSame(RoleName::Manager->value, $rolePayload['name']);
     }
 
+    /**
+     * Accept sparse fieldsets with spaces after commas.
+     */
     #[Test]
     public function it_accepts_sparse_fieldsets_with_spaces_after_commas(): void
     {
@@ -454,6 +500,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertSame(['id', 'name'], array_keys($user));
     }
 
+    /**
+     * Treat a fieldset that parses to no columns as no constraint.
+     */
     #[Test]
     public function it_treats_a_fieldset_that_parses_to_no_columns_as_no_constraint(): void
     {
@@ -474,6 +523,9 @@ final class UserIndexControllerTest extends TestCase
         $response->assertJsonPath('data.0.name', 'Viewer Manager');
     }
 
+    /**
+     * Reject a sort value that is present but blank.
+     */
     #[Test]
     public function it_rejects_a_sort_value_that_is_present_but_blank(): void
     {
@@ -495,11 +547,13 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Email Visibility
-    |--------------------------------------------------------------------------
-    */
+     * Email Visibility Tests
+     * ----------------------
+     */
 
+    /**
+     * Expose email to a viewer with the view-email permission.
+     */
     #[Test]
     public function it_exposes_email_to_a_viewer_with_the_view_email_permission(): void
     {
@@ -525,6 +579,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertContains($admin->email, (array) $response->json('data.*.email'));
     }
 
+    /**
+     * Never expose email to a viewer without the view-email permission.
+     */
     #[Test]
     public function it_never_exposes_email_to_a_viewer_without_the_view_email_permission(): void
     {
@@ -545,6 +602,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertApiValidationErrors($response, ['fields.users']);
     }
 
+    /**
+     * Never expose email via an unconstrained select without the permission.
+     */
     #[Test]
     public function it_never_exposes_email_via_an_unconstrained_select_without_the_permission(): void
     {
@@ -570,12 +630,17 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Validation and Authorisation
-    |--------------------------------------------------------------------------
-    */
+     * Validation and Authorisation Tests
+     * ----------------------------------
+     */
 
+    /**
+     * Return supported values in the validation envelope for allow-list failures.
+     */
     #[Test]
+    /**
+     * Reject query params outside the allow lists.
+     */
     #[DataProvider('invalidQueryProvider')]
     public function it_rejects_query_params_outside_the_allow_lists(
         string $queryString,
@@ -592,6 +657,9 @@ final class UserIndexControllerTest extends TestCase
         $this->assertApiValidationErrors($response, [$expectedErrorKey]);
     }
 
+    /**
+     * Return supported values in the validation envelope for allow-list failures.
+     */
     #[Test]
     public function it_returns_supported_values_in_the_validation_envelope_for_allow_list_failures(): void
     {
@@ -615,7 +683,16 @@ final class UserIndexControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
+    /**
+     * Authorise the index according to the Role matrix.
+     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_the_index_according_to_the_role_matrix(string $role, bool $canList): void
     {
@@ -645,6 +722,9 @@ final class UserIndexControllerTest extends TestCase
         }
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {
@@ -705,6 +785,7 @@ final class UserIndexControllerTest extends TestCase
             'unknown sort column' => ['sort=password', 'sort'],
             'unknown filter key' => ['filter[team_id]=999', 'filter.team_id'],
             'unknown sparse field' => ['fields[users]=id,password', 'fields.users'],
+            'unknown sparse role field' => ['fields[roles]=id,guard_name', 'fields.roles'],
             'unknown fields resource' => ['fields[permissions]=id', 'fields.permissions'],
             'unknown include' => ['include=permissions', 'include'],
             'array-shaped sort' => ['sort[]=name', 'sort'],

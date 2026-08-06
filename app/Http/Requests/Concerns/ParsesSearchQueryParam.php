@@ -7,7 +7,7 @@ namespace App\Http\Requests\Concerns;
 /**
  * Parses the `filter[search]` query param into a normalised string.
  *
- * @mixin \Illuminate\Foundation\Http\FormRequest
+ * @mixin \App\Http\Requests\ApiFormRequest
  */
 trait ParsesSearchQueryParam
 {

@@ -23,6 +23,9 @@ final class ApiResponseTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Build a success envelope.
+     */
     #[Test]
     public function it_builds_a_success_envelope(): void
     {
@@ -42,6 +45,9 @@ final class ApiResponseTest extends TestCase
         ], $response->getData(true));
     }
 
+    /**
+     * Build an error envelope with the default status code.
+     */
     #[Test]
     public function it_builds_an_error_envelope_with_the_default_status_code(): void
     {
@@ -61,6 +67,9 @@ final class ApiResponseTest extends TestCase
         ], $response->getData(true));
     }
 
+    /**
+     * Build an error envelope with a custom status code and meta.
+     */
     #[Test]
     public function it_builds_an_error_envelope_with_a_custom_status_code_and_meta(): void
     {
@@ -84,6 +93,9 @@ final class ApiResponseTest extends TestCase
         ], $response->getData(true));
     }
 
+    /**
+     * Build a validation error envelope with allow-list hints.
+     */
     #[Test]
     public function it_builds_a_validation_error_envelope_with_allow_list_hints(): void
     {

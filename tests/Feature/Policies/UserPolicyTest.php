@@ -60,6 +60,9 @@ final class UserPolicyTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Deny a User from deleting their own account.
+     */
     #[Test]
     public function it_denies_a_user_from_deleting_their_own_account(): void
     {
@@ -77,6 +80,9 @@ final class UserPolicyTest extends TestCase
         $this->assertFalse($allowed);
     }
 
+    /**
+     * Deny Team reassignment to non-admins.
+     */
     #[Test]
     public function it_denies_team_reassignment_to_non_admins(): void
     {
@@ -94,6 +100,9 @@ final class UserPolicyTest extends TestCase
         $this->assertFalse($allowed);
     }
 
+    /**
+     * Deny a manager from viewing a User on another Team.
+     */
     #[Test]
     public function it_denies_a_manager_from_viewing_a_user_on_another_team(): void
     {
@@ -117,6 +126,9 @@ final class UserPolicyTest extends TestCase
         $this->assertFalse($allowed);
     }
 
+    /**
+     * Allow an admin to view a User on any Team.
+     */
     #[Test]
     public function it_allows_an_admin_to_view_a_user_on_any_team(): void
     {

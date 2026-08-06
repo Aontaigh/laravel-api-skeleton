@@ -11,6 +11,12 @@ use App\Models\User;
  */
 final readonly class UpdateUserData
 {
+    /*
+    |--------------------------------------------------------------------------​
+    | Constructor
+    |--------------------------------------------------------------------------​
+    */
+
     /**
      * Create a new UpdateUserData value object.
      *

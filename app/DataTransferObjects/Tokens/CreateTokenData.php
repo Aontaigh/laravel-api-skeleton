@@ -11,6 +11,12 @@ use App\Models\User;
  */
 final readonly class CreateTokenData
 {
+    /*
+    |--------------------------------------------------------------------------​
+    | Constructor
+    |--------------------------------------------------------------------------​
+    */
+
     /**
      * Create a new CreateTokenData value object.
      *

@@ -9,6 +9,12 @@ namespace App\DataTransferObjects\Roles;
  */
 final readonly class RoleFilters
 {
+    /*
+    |--------------------------------------------------------------------------​
+    | Constructor
+    |--------------------------------------------------------------------------​
+    */
+
     /**
      * Create a new RoleFilters value object.
      *

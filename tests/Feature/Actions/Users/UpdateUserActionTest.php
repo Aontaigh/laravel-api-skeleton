@@ -33,6 +33,9 @@ final class UpdateUserActionTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Update the requested attributes.
+     */
     #[Test]
     public function it_updates_the_requested_attributes(): void
     {

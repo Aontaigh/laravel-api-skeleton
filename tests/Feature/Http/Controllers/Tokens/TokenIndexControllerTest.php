@@ -100,11 +100,13 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Listing and Scoping
-    |--------------------------------------------------------------------------
-    */
+     * Listing and Scoping Tests
+     * -------------------------
+     */
 
+    /**
+     * Return only the viewer's own Tokens.
+     */
     #[Test]
     public function it_returns_only_the_viewers_own_tokens(): void
     {
@@ -130,6 +132,9 @@ final class TokenIndexControllerTest extends TestCase
         $response->assertJsonPath('meta.pagination.total', 1);
     }
 
+    /**
+     * Never expose the plaintext Token value.
+     */
     #[Test]
     public function it_never_exposes_the_plaintext_token_value(): void
     {
@@ -153,6 +158,9 @@ final class TokenIndexControllerTest extends TestCase
         $this->assertArrayNotHasKey('plain_text_token', $tokenPayload);
     }
 
+    /**
+     * Filter Tokens by the search term.
+     */
     #[Test]
     public function it_filters_by_search_term(): void
     {
@@ -174,11 +182,13 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Pagination
-    |--------------------------------------------------------------------------
-    */
+     * Pagination Tests
+     * ----------------
+     */
 
+    /**
+     * Return a later page with accurate pagination meta.
+     */
     #[Test]
     public function it_returns_a_later_page_with_accurate_pagination_meta(): void
     {
@@ -205,11 +215,13 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — `?sort=`
-    |--------------------------------------------------------------------------
-    */
+     * Sorting Tests
+     * -------------
+     */
 
+    /**
+     * Apply the documented default sort when sort is omitted.
+     */
     #[Test]
     public function it_applies_the_documented_default_sort_when_sort_is_omitted(): void
     {
@@ -231,6 +243,9 @@ final class TokenIndexControllerTest extends TestCase
         $response->assertJsonPath('data.1.id', $newer->accessToken->id);
     }
 
+    /**
+     * Sort ascending by name when requested.
+     */
     #[Test]
     public function it_sorts_ascending_by_name_when_requested(): void
     {
@@ -252,11 +267,13 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — `?fields[…]=`
-    |--------------------------------------------------------------------------
-    */
+     * Fields Tests
+     * ------------
+     */
 
+    /**
+     * Return only requested Token columns in sparse fieldsets.
+     */
     #[Test]
     public function it_returns_only_requested_token_columns_in_sparse_fieldsets(): void
     {
@@ -280,12 +297,17 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Validation
-    |--------------------------------------------------------------------------
-    */
+     * Validation Tests
+     * ----------------
+     */
 
+    /**
+     * Reject out-of-allow-list query params.
+     */
     #[Test]
+    /**
+     * Reject out-of-allow-list query params.
+     */
     #[DataProvider('invalidQueryProvider')]
     public function it_rejects_out_of_allow_list_query_params(string $queryString, string $expectedErrorKey): void
     {
@@ -305,11 +327,13 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Authorisation
-    |--------------------------------------------------------------------------
-    */
+     * Authorisation Tests
+     * -------------------
+     */
 
+    /**
+     * Deny viewers without the list-own permission.
+     */
     #[Test]
     public function it_denies_viewers_without_the_list_own_permission(): void
     {
@@ -328,6 +352,9 @@ final class TokenIndexControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

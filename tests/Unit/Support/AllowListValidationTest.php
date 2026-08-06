@@ -21,6 +21,9 @@ final class AllowListValidationTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Build a message that lists rejected and supported values.
+     */
     #[Test]
     public function it_builds_a_message_that_lists_rejected_and_supported_values(): void
     {
@@ -40,6 +43,9 @@ final class AllowListValidationTest extends TestCase
         );
     }
 
+    /**
+     * Sort allow lists before serialising them.
+     */
     #[Test]
     public function it_sorts_allow_lists_before_serialising_them(): void
     {

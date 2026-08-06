@@ -78,6 +78,7 @@
         "analyse": [
             "./vendor/bin/phpstan analyse --memory-limit=512M"
         ],
+        "verify:openapi": "bash scripts/verify-openapi-examples.sh",
         "ci": [
             "@lint",
             "@analyse",

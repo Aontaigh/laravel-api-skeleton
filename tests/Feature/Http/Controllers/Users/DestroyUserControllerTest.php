@@ -84,11 +84,13 @@ final class DestroyUserControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Delete
-    |--------------------------------------------------------------------------
-    */
+     * Delete Tests
+     * ------------
+     */
 
+    /**
+     * Soft-delete a User on the manager's Team.
+     */
     #[Test]
     public function it_soft_deletes_a_user_on_the_managers_team(): void
     {
@@ -106,6 +108,9 @@ final class DestroyUserControllerTest extends TestCase
         $this->assertSoftDeleted('users', ['id' => $this->teamMember->id]);
     }
 
+    /**
+     * Allow an admin to soft-delete a User on another Team.
+     */
     #[Test]
     public function it_allows_an_admin_to_soft_delete_a_user_on_another_team(): void
     {
@@ -131,6 +136,9 @@ final class DestroyUserControllerTest extends TestCase
         $this->assertSoftDeleted('users', ['id' => $otherUser->id]);
     }
 
+    /**
+     * Exclude soft-deleted Users from the index.
+     */
     #[Test]
     public function it_excludes_soft_deleted_users_from_the_index(): void
     {
@@ -154,6 +162,9 @@ final class DestroyUserControllerTest extends TestCase
         $this->assertNotContains($this->teamMember->id, $ids);
     }
 
+    /**
+     * Return not found when showing a soft-deleted User.
+     */
     #[Test]
     public function it_returns_not_found_when_showing_a_soft_deleted_user(): void
     {
@@ -174,11 +185,13 @@ final class DestroyUserControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Authorisation
-    |--------------------------------------------------------------------------
-    */
+     * Authorisation Tests
+     * -------------------
+     */
 
+    /**
+     * Deny deleting a User on another Team.
+     */
     #[Test]
     public function it_denies_deleting_a_user_on_another_team(): void
     {
@@ -201,6 +214,9 @@ final class DestroyUserControllerTest extends TestCase
         $this->assertNotSoftDeleted('users', ['id' => $otherUser->id]);
     }
 
+    /**
+     * Deny deleting the caller's own account.
+     */
     #[Test]
     public function it_denies_deleting_the_callers_own_account(): void
     {
@@ -217,7 +233,16 @@ final class DestroyUserControllerTest extends TestCase
         $this->assertNotSoftDeleted('users', ['id' => $this->manager->id]);
     }
 
+    /**
+     * Authorise delete according to the Role matrix.
+     */
+    /**
+     * Authorise delete according to the Role matrix.
+     */
     #[Test]
+    /**
+     * Authorise delete according to the Role matrix.
+     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_delete_according_to_the_role_matrix(string $role, bool $canDelete): void
     {
@@ -249,6 +274,9 @@ final class DestroyUserControllerTest extends TestCase
         }
     }
 
+    /**
+     * Return not found for a nonexistent User.
+     */
     #[Test]
     public function it_returns_not_found_for_a_nonexistent_user(): void
     {
@@ -262,6 +290,9 @@ final class DestroyUserControllerTest extends TestCase
         $response->assertNotFound();
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

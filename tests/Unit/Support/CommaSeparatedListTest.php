@@ -38,6 +38,9 @@ final class CommaSeparatedListTest extends TestCase
         $this->assertSame($expected, $parsed);
     }
 
+    /**
+     * Return an empty list for a blank value.
+     */
     #[Test]
     public function it_returns_an_empty_list_for_a_blank_value(): void
     {

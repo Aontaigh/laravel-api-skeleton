@@ -26,6 +26,9 @@ final class RoleFilterQueryTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Scope results to the default guard.
+     */
     #[Test]
     public function it_scopes_results_to_the_default_guard(): void
     {
@@ -47,7 +50,13 @@ final class RoleFilterQueryTest extends TestCase
         $this->assertSame([RoleQueryConstraints::GUARD_NAME], $query->getBindings());
     }
 
+    /**
+     * Escape LIKE wildcards in the search term.
+     */
     #[Test]
+    /**
+     * Escape LIKE wildcards in the search term.
+     */
     #[DataProvider('searchTermProvider')]
     public function it_escapes_like_wildcards_in_the_search_term(string $term, string $expectedPattern): void
     {

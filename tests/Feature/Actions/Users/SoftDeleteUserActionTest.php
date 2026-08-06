@@ -31,6 +31,9 @@ final class SoftDeleteUserActionTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Soft-delete the User.
+     */
     #[Test]
     public function it_soft_deletes_the_user(): void
     {

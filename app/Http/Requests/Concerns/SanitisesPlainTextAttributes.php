@@ -12,7 +12,7 @@ use App\Support\PlainText;
  * Composed by any FormRequest that accepts user-facing display names or labels.
  * Declare the attribute keys via {@see plainTextAttributeKeys()}.
  *
- * @mixin \Illuminate\Foundation\Http\FormRequest
+ * @mixin \App\Http\Requests\ApiFormRequest
  */
 trait SanitisesPlainTextAttributes
 {

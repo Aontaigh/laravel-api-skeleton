@@ -25,6 +25,9 @@ final class ParsesSortQueryParamTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Reject a double-descending prefix and record supported columns.
+     */
     #[Test]
     public function it_rejects_a_double_descending_prefix_and_records_supported_columns(): void
     {
@@ -55,7 +58,19 @@ final class ParsesSortQueryParamTest extends TestCase
  */
 final class SortQueryParamHarness extends ApiFormRequest
 {
+    /*
+    |--------------------------------------------------------------------------​
+    | Traits
+    |--------------------------------------------------------------------------​
+    */
+
     use ParsesSortQueryParam;
+
+    /*
+    |--------------------------------------------------------------------------​
+    | Public
+    |--------------------------------------------------------------------------​
+    */
 
     /**
      * Validation rules for the harness request.

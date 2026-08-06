@@ -28,6 +28,9 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Not issue a Token when the catalog rejects abilities.
+     */
     #[Test]
     public function it_does_not_issue_a_token_when_the_catalog_rejects_abilities(): void
     {

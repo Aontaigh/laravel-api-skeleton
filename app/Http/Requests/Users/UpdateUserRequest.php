@@ -15,6 +15,12 @@ use Illuminate\Validation\Validator;
  */
 final class UpdateUserRequest extends ApiFormRequest
 {
+    /*
+    |--------------------------------------------------------------------------​
+    | Traits
+    |--------------------------------------------------------------------------​
+    */
+
     use SanitisesPlainTextAttributes;
 
     /*

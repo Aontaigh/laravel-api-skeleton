@@ -47,6 +47,9 @@ final class PermissionAbilityCatalogTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Read every seeded permission name from the database.
+     */
     #[Test]
     public function it_reads_every_seeded_permission_name_from_the_database(): void
     {
@@ -62,6 +65,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertCount(11, $names);
     }
 
+    /**
+     * Normalize registered permission names from the database catalog.
+     */
     #[Test]
     public function it_normalizes_registered_permission_names_from_the_database_catalog(): void
     {

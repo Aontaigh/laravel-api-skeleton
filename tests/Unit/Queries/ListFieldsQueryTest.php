@@ -31,6 +31,9 @@ final class ListFieldsQueryTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Select only allow-listed sparse columns plus required columns.
+     */
     #[Test]
     public function it_selects_only_whitelisted_sparse_columns_plus_required_columns(): void
     {
@@ -54,6 +57,9 @@ final class ListFieldsQueryTest extends TestCase
         $this->assertSame(['users.id', 'users.name'], $query->getQuery()->columns);
     }
 
+    /**
+     * Drop requested columns outside the allow list.
+     */
     #[Test]
     public function it_drops_requested_columns_outside_the_allow_list(): void
     {
@@ -77,6 +83,9 @@ final class ListFieldsQueryTest extends TestCase
         $this->assertSame(['users.id', 'users.name'], $query->getQuery()->columns);
     }
 
+    /**
+     * Select required columns that are not client-requestable.
+     */
     #[Test]
     public function it_selects_required_columns_that_are_not_client_requestable(): void
     {
@@ -108,6 +117,9 @@ final class ListFieldsQueryTest extends TestCase
         );
     }
 
+    /**
+     * Select the default fieldset when no sparse fieldset is requested.
+     */
     #[Test]
     public function it_selects_the_default_fieldset_when_no_sparse_fieldset_is_requested(): void
     {
@@ -134,6 +146,9 @@ final class ListFieldsQueryTest extends TestCase
         );
     }
 
+    /**
+     * Project Token rows without the hash column by default.
+     */
     #[Test]
     public function it_projects_token_rows_without_the_hash_column_by_default(): void
     {
@@ -160,6 +175,9 @@ final class ListFieldsQueryTest extends TestCase
         );
     }
 
+    /**
+     * Select only required columns when the fieldset is empty.
+     */
     #[Test]
     public function it_selects_only_required_columns_when_the_fieldset_is_empty(): void
     {
@@ -183,7 +201,13 @@ final class ListFieldsQueryTest extends TestCase
         $this->assertSame(['users.id'], $query->getQuery()->columns);
     }
 
+    /**
+     * Reject identifiers that could carry SQL.
+     */
     #[Test]
+    /**
+     * Reject identifiers that could carry SQL.
+     */
     #[DataProvider('unsafeIdentifierProvider')]
     public function it_rejects_identifiers_that_could_carry_sql(string $table, string $requiredColumn): void
     {

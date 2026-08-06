@@ -80,11 +80,13 @@ final class RoleShowControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Show
-    |--------------------------------------------------------------------------
-    */
+     * Show Tests
+     * ----------
+     */
 
+    /**
+     * Return a Role by id.
+     */
     #[Test]
     public function it_returns_a_role_by_id(): void
     {
@@ -109,6 +111,9 @@ final class RoleShowControllerTest extends TestCase
         $response->assertJsonPath('data.name', RoleName::Admin->value);
     }
 
+    /**
+     * Include Permissions when requested.
+     */
     #[Test]
     public function it_includes_permissions_when_requested(): void
     {
@@ -139,6 +144,9 @@ final class RoleShowControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Apply sparse fieldsets on the Role.
+     */
     #[Test]
     public function it_applies_sparse_fieldsets_on_the_role(): void
     {
@@ -168,11 +176,13 @@ final class RoleShowControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Validation and Authorisation
-    |--------------------------------------------------------------------------
-    */
+     * Validation and Authorisation Tests
+     * ----------------------------------
+     */
 
+    /**
+     * Reject an unknown include.
+     */
     #[Test]
     public function it_rejects_an_unknown_include(): void
     {
@@ -197,7 +207,13 @@ final class RoleShowControllerTest extends TestCase
         $this->assertApiValidationErrors($response, ['include']);
     }
 
+    /**
+     * Authorise show according to the Role matrix.
+     */
     #[Test]
+    /**
+     * Authorise show according to the Role matrix.
+     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_show_according_to_the_role_matrix(string $role, bool $canView): void
     {
@@ -230,6 +246,9 @@ final class RoleShowControllerTest extends TestCase
         }
     }
 
+    /**
+     * Return not found for a nonexistent Role.
+     */
     #[Test]
     public function it_returns_not_found_for_a_nonexistent_role(): void
     {
@@ -248,6 +267,9 @@ final class RoleShowControllerTest extends TestCase
         $response->assertNotFound();
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

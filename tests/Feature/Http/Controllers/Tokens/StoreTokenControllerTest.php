@@ -8,8 +8,6 @@ use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Exceptions\InvalidTokenAbilitiesException;
 use App\Http\Controllers\Tokens\StoreTokenController;
-use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
-use App\Http\Requests\Concerns\Tokens\ValidatesTokenPayload;
 use App\Http\Requests\Tokens\StoreTokenRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
@@ -22,7 +20,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
@@ -31,8 +28,6 @@ use Tests\TestCase;
  */
 #[CoversClass(StoreTokenController::class)]
 #[CoversClass(StoreTokenRequest::class)]
-#[CoversTrait(ValidatesTokenPayload::class)]
-#[CoversTrait(SanitisesPlainTextAttributes::class)]
 #[CoversClass(CreatePersonalAccessTokenAction::class)]
 #[CoversClass(InvalidTokenAbilitiesException::class)]
 #[CoversClass(CreateTokenData::class)]
@@ -73,6 +68,9 @@ final class StoreTokenControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Create a Token for the authenticated User.
+     */
     #[Test]
     public function it_creates_a_token_for_the_authenticated_user(): void
     {
@@ -99,6 +97,9 @@ final class StoreTokenControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Strip markup from the Token name.
+     */
     #[Test]
     public function it_strips_markup_from_the_token_name(): void
     {
@@ -125,6 +126,9 @@ final class StoreTokenControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Default abilities to a wildcard when omitted.
+     */
     #[Test]
     public function it_defaults_abilities_to_a_wildcard_when_omitted(): void
     {
@@ -144,6 +148,9 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertJsonPath('data.token.abilities', ['*']);
     }
 
+    /**
+     * Accept registered permission abilities.
+     */
     #[Test]
     public function it_accepts_registered_permission_abilities(): void
     {
@@ -166,6 +173,9 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertJsonPath('data.token.abilities', ['tokens.list-own']);
     }
 
+    /**
+     * Reject unknown abilities.
+     */
     #[Test]
     public function it_rejects_unknown_abilities(): void
     {
@@ -190,6 +200,9 @@ final class StoreTokenControllerTest extends TestCase
         $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Bad Abilities']);
     }
 
+    /**
+     * Reject a missing name.
+     */
     #[Test]
     public function it_rejects_a_missing_name(): void
     {
@@ -209,6 +222,9 @@ final class StoreTokenControllerTest extends TestCase
         $this->assertApiValidationErrors($response, ['name']);
     }
 
+    /**
+     * Reject non-string abilities.
+     */
     #[Test]
     public function it_rejects_non_string_abilities(): void
     {
@@ -231,6 +247,9 @@ final class StoreTokenControllerTest extends TestCase
         $this->assertApiValidationErrors($response, ['abilities.0']);
     }
 
+    /**
+     * Deny viewers without the create-own permission.
+     */
     #[Test]
     public function it_denies_viewers_without_the_create_own_permission(): void
     {
@@ -249,6 +268,9 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

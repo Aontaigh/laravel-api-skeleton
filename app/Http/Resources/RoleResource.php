@@ -45,7 +45,7 @@ final class RoleResource extends JsonResource
         return [
             'id' => $this->whenAttributeSelected(
                 'id',
-                fn () => $this->resource->id,
+                fn (): int => (int) $this->resource->id,
             ),
             'name' => $this->whenAttributeSelected(
                 'name',

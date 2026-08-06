@@ -11,7 +11,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 /**
  * Narrows the authenticated guard user to the concrete `App\Models\User`.
  *
- * @mixin \Illuminate\Foundation\Http\FormRequest
+ * @mixin \App\Http\Requests\ApiFormRequest
  */
 trait ResolvesAuthenticatedViewer
 {

@@ -22,6 +22,9 @@ final class ApiDateTimeTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Serialise datetimes to ISO-8601 UTC without mutating the source.
+     */
     #[Test]
     public function it_serialises_datetimes_to_iso8601_utc_without_mutating_the_source(): void
     {
@@ -39,6 +42,9 @@ final class ApiDateTimeTest extends TestCase
         $this->assertSame('Europe/Dublin', $value->timezone->getName());
     }
 
+    /**
+     * Return null for a null datetime.
+     */
     #[Test]
     public function it_returns_null_for_a_null_datetime(): void
     {

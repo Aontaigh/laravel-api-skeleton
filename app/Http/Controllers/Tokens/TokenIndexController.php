@@ -63,6 +63,7 @@ final class TokenIndexController
         */
 
         $filters = new TokenFilters(
+            viewer: $request->viewer(),
             search: $request->searchTerm(),
         );
 
@@ -80,8 +81,7 @@ final class TokenIndexController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<PersonalAccessToken> $query */
-        $query = $request->viewer()->tokens()->getQuery();
+        $query = PersonalAccessToken::query();
 
         $this->filterQuery->apply($query, $filters);
         $this->sortQuery->apply(

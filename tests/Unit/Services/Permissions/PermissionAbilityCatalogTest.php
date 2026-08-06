@@ -54,6 +54,9 @@ final class PermissionAbilityCatalogTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * List every permission name from the resolver.
+     */
     #[Test]
     public function it_lists_every_permission_name_from_the_resolver(): void
     {
@@ -66,6 +69,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertSame(self::CATALOG_NAMES, $names);
     }
 
+    /**
+     * Report known and unknown permission names.
+     */
     #[Test]
     public function it_reports_known_and_unknown_permission_names(): void
     {
@@ -79,6 +85,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertFalse($catalog->exists('not-a-permission'));
     }
 
+    /**
+     * Treat a single wildcard as unrestricted.
+     */
     #[Test]
     public function it_treats_a_single_wildcard_as_unrestricted(): void
     {
@@ -92,6 +101,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertFalse($catalog->isUnrestricted(['tokens.list-own']));
     }
 
+    /**
+     * Normalize the wildcard ability.
+     */
     #[Test]
     public function it_normalizes_the_wildcard_ability(): void
     {
@@ -104,6 +116,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertSame(['*'], $abilities);
     }
 
+    /**
+     * Normalize registered permission names.
+     */
     #[Test]
     public function it_normalizes_registered_permission_names(): void
     {
@@ -119,6 +134,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertSame(['tokens.list-own', 'tokens.revoke-own'], $abilities);
     }
 
+    /**
+     * Deduplicate repeated permission names.
+     */
     #[Test]
     public function it_deduplicates_repeated_permission_names(): void
     {
@@ -134,6 +152,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertSame(['tokens.list-own'], $abilities);
     }
 
+    /**
+     * Reject unknown ability names.
+     */
     #[Test]
     public function it_rejects_unknown_ability_names(): void
     {
@@ -154,6 +175,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         }
     }
 
+    /**
+     * Reject an empty ability list.
+     */
     #[Test]
     public function it_rejects_an_empty_ability_list(): void
     {
@@ -174,6 +198,9 @@ final class PermissionAbilityCatalogTest extends TestCase
         }
     }
 
+    /**
+     * Reject a wildcard mixed with explicit permissions.
+     */
     #[Test]
     public function it_rejects_a_wildcard_mixed_with_explicit_permissions(): void
     {

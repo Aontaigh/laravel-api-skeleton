@@ -59,6 +59,9 @@ final class ApiRateLimitingTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Return the standard envelope when the API rate limit is exceeded.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_when_the_api_rate_limit_is_exceeded(): void
     {

@@ -63,6 +63,9 @@ final class UserFilterQueryTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Scope results to the viewer's Team by default.
+     */
     #[Test]
     public function it_scopes_results_to_the_viewers_team_by_default(): void
     {
@@ -84,6 +87,9 @@ final class UserFilterQueryTest extends TestCase
         $this->assertSame([self::VIEWER_TEAM_ID], $query->getBindings());
     }
 
+    /**
+     * Scope to a null Team when the viewer has no Team.
+     */
     #[Test]
     public function it_scopes_to_a_null_team_when_the_viewer_has_no_team(): void
     {
@@ -116,6 +122,9 @@ final class UserFilterQueryTest extends TestCase
         $this->assertSame('users.team_id', $query->getQuery()->wheres[0]['column']);
     }
 
+    /**
+     * Not scope viewers who list all Teams.
+     */
     #[Test]
     public function it_does_not_scope_viewers_who_list_all_teams(): void
     {
@@ -136,7 +145,13 @@ final class UserFilterQueryTest extends TestCase
         $this->assertSame([], $query->getQuery()->wheres);
     }
 
+    /**
+     * Escape LIKE wildcards in the search term.
+     */
     #[Test]
+    /**
+     * Escape LIKE wildcards in the search term.
+     */
     #[DataProvider('searchTermProvider')]
     public function it_escapes_like_wildcards_in_the_search_term(string $term, string $expectedPattern): void
     {

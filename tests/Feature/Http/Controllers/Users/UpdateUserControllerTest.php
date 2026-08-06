@@ -8,7 +8,6 @@ use App\Actions\Users\UpdateUserAction;
 use App\DataTransferObjects\Users\UpdateUserData;
 use App\Enums\RoleName;
 use App\Http\Controllers\Users\UpdateUserController;
-use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\Team;
@@ -21,7 +20,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Testing\TestResponse;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -31,7 +29,6 @@ use Tests\TestCase;
  */
 #[CoversClass(UpdateUserController::class)]
 #[CoversClass(UpdateUserRequest::class)]
-#[CoversTrait(SanitisesPlainTextAttributes::class)]
 #[CoversClass(UpdateUserAction::class)]
 #[CoversClass(UpdateUserData::class)]
 #[CoversClass(UserPolicy::class)]
@@ -91,11 +88,13 @@ final class UpdateUserControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Update
-    |--------------------------------------------------------------------------
-    */
+     * Update Tests
+     * ------------
+     */
 
+    /**
+     * Update a User on the manager's Team.
+     */
     #[Test]
     public function it_updates_a_user_on_the_managers_team(): void
     {
@@ -118,6 +117,9 @@ final class UpdateUserControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Strip markup from the updated name.
+     */
     #[Test]
     public function it_strips_markup_from_the_updated_name(): void
     {
@@ -139,6 +141,9 @@ final class UpdateUserControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Allow a manager to update their own account.
+     */
     #[Test]
     public function it_allows_a_manager_to_update_their_own_account(): void
     {
@@ -160,6 +165,9 @@ final class UpdateUserControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Allow an admin to update a User on another Team.
+     */
     #[Test]
     public function it_allows_an_admin_to_update_a_user_on_another_team(): void
     {
@@ -196,6 +204,9 @@ final class UpdateUserControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Allow only an admin to reassign a User to another Team.
+     */
     #[Test]
     public function it_allows_only_an_admin_to_reassign_a_user_to_another_team(): void
     {
@@ -224,6 +235,9 @@ final class UpdateUserControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Reject Team reassignment from a manager.
+     */
     #[Test]
     public function it_rejects_team_reassignment_from_a_manager(): void
     {
@@ -249,6 +263,9 @@ final class UpdateUserControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Reject email and password fields.
+     */
     #[Test]
     public function it_rejects_email_and_password_fields(): void
     {
@@ -270,6 +287,9 @@ final class UpdateUserControllerTest extends TestCase
         $this->assertApiValidationErrors($response, ['email', 'password']);
     }
 
+    /**
+     * Reject an empty payload.
+     */
     #[Test]
     public function it_rejects_an_empty_payload(): void
     {
@@ -288,11 +308,13 @@ final class UpdateUserControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Authorisation
-    |--------------------------------------------------------------------------
-    */
+     * Authorisation Tests
+     * -------------------
+     */
 
+    /**
+     * Deny updating a User on another Team.
+     */
     #[Test]
     public function it_denies_updating_a_user_on_another_team(): void
     {
@@ -321,7 +343,16 @@ final class UpdateUserControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Authorise update according to the Role matrix.
+     */
+    /**
+     * Authorise update according to the Role matrix.
+     */
     #[Test]
+    /**
+     * Authorise update according to the Role matrix.
+     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_update_according_to_the_role_matrix(string $role, bool $canUpdate): void
     {
@@ -362,6 +393,9 @@ final class UpdateUserControllerTest extends TestCase
         }
     }
 
+    /**
+     * Return not found for a nonexistent User.
+     */
     #[Test]
     public function it_returns_not_found_for_a_nonexistent_user(): void
     {
@@ -378,6 +412,9 @@ final class UpdateUserControllerTest extends TestCase
         $response->assertNotFound();
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

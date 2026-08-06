@@ -25,6 +25,9 @@ final class QualifiedColumnTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Join a bare table and column with a dot.
+     */
     #[Test]
     public function it_joins_a_bare_table_and_column_with_a_dot(): void
     {
@@ -37,7 +40,13 @@ final class QualifiedColumnTest extends TestCase
         $this->assertSame('users.name', $qualified);
     }
 
+    /**
+     * Reject identifiers that could carry SQL.
+     */
     #[Test]
+    /**
+     * Reject identifiers that could carry SQL.
+     */
     #[DataProvider('unsafeIdentifierProvider')]
     public function it_rejects_identifiers_that_could_carry_sql(string $table, string $column): void
     {

@@ -26,6 +26,9 @@ final class ResolvesAuthenticatedViewerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Return the authenticated User.
+     */
     #[Test]
     public function it_returns_the_authenticated_user(): void
     {
@@ -45,6 +48,9 @@ final class ResolvesAuthenticatedViewerTest extends TestCase
         $this->assertSame($expected, $viewer);
     }
 
+    /**
+     * Throw when no authenticated User is present.
+     */
     #[Test]
     public function it_throws_when_no_authenticated_user_is_present(): void
     {

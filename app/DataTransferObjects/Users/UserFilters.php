@@ -11,6 +11,12 @@ use App\Models\User;
  */
 final readonly class UserFilters
 {
+    /*
+    |--------------------------------------------------------------------------​
+    | Constructor
+    |--------------------------------------------------------------------------​
+    */
+
     /**
      * Create a new UserFilters value object.
      *

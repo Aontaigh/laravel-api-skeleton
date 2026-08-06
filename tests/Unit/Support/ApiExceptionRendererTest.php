@@ -23,7 +23,13 @@ final class ApiExceptionRendererTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Identify which paths receive API JSON envelopes.
+     */
     #[Test]
+    /**
+     * Identify which paths receive API JSON envelopes.
+     */
     #[DataProvider('apiRequestProvider')]
     public function it_identifies_which_paths_receive_api_json_envelopes(
         string $path,

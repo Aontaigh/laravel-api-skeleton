@@ -58,6 +58,9 @@ final class DestroyTokenControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Revoke the viewer's own Token.
+     */
     #[Test]
     public function it_revokes_the_viewers_own_token(): void
     {
@@ -80,6 +83,9 @@ final class DestroyTokenControllerTest extends TestCase
         $this->assertDatabaseMissing('personal_access_tokens', ['id' => $token->id]);
     }
 
+    /**
+     * Deny revoking another User's Token with not found.
+     */
     #[Test]
     public function it_denies_revoking_another_users_token_with_not_found(): void
     {
@@ -109,6 +115,9 @@ final class DestroyTokenControllerTest extends TestCase
         $this->assertDatabaseHas('personal_access_tokens', ['id' => $token->id]);
     }
 
+    /**
+     * Deny viewers without the revoke-own permission.
+     */
     #[Test]
     public function it_denies_viewers_without_the_revoke_own_permission(): void
     {
@@ -129,6 +138,9 @@ final class DestroyTokenControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    /**
+     * Return not found for a nonexistent Token.
+     */
     #[Test]
     public function it_returns_not_found_for_a_nonexistent_token(): void
     {
@@ -147,6 +159,9 @@ final class DestroyTokenControllerTest extends TestCase
         $response->assertNotFound();
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

@@ -59,6 +59,7 @@ final class UserIndexRequest extends ApiFormRequest
         $this->validateFieldsKeys($validator);
         $this->validateFieldsQueryParam($validator, 'users');
         $this->validateFieldsQueryParam($validator, 'teams');
+        $this->validateFieldsQueryParam($validator, 'roles');
         $this->validateSortQueryParam($validator);
         $this->validateIncludeQueryParam($validator);
     }

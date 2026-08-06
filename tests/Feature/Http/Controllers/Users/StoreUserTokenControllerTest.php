@@ -8,8 +8,6 @@ use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\RoleName;
 use App\Http\Controllers\Users\StoreUserTokenController;
-use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
-use App\Http\Requests\Concerns\Tokens\ValidatesTokenPayload;
 use App\Http\Requests\Users\StoreUserTokenRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
@@ -22,7 +20,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Testing\TestResponse;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
-use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -32,8 +29,6 @@ use Tests\TestCase;
  */
 #[CoversClass(StoreUserTokenController::class)]
 #[CoversClass(StoreUserTokenRequest::class)]
-#[CoversTrait(ValidatesTokenPayload::class)]
-#[CoversTrait(SanitisesPlainTextAttributes::class)]
 #[CoversClass(CreatePersonalAccessTokenAction::class)]
 #[CoversClass(CreateTokenData::class)]
 #[CoversClass(PersonalAccessTokenResource::class)]
@@ -72,6 +67,9 @@ final class StoreUserTokenControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Allow an admin to create a Token for another User.
+     */
     #[Test]
     public function it_allows_an_admin_to_create_a_token_for_another_user(): void
     {
@@ -103,6 +101,9 @@ final class StoreUserTokenControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Strip markup from the Token name.
+     */
     #[Test]
     public function it_strips_markup_from_the_token_name(): void
     {
@@ -133,6 +134,9 @@ final class StoreUserTokenControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Reject unknown abilities for an admin-issued Token.
+     */
     #[Test]
     public function it_rejects_unknown_abilities_for_an_admin_issued_token(): void
     {
@@ -162,7 +166,13 @@ final class StoreUserTokenControllerTest extends TestCase
         $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Bad Abilities']);
     }
 
+    /**
+     * Deny non-admins from creating Tokens for other Users.
+     */
     #[Test]
+    /**
+     * Deny non-admins from creating Tokens for other Users.
+     */
     #[DataProvider('nonAdminRoleProvider')]
     public function it_denies_non_admins_from_creating_tokens_for_other_users(string $role): void
     {
@@ -193,6 +203,9 @@ final class StoreUserTokenControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    /**
+     * Return not found for a nonexistent target User.
+     */
     #[Test]
     public function it_returns_not_found_for_a_nonexistent_target_user(): void
     {
@@ -214,6 +227,9 @@ final class StoreUserTokenControllerTest extends TestCase
         $response->assertNotFound();
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

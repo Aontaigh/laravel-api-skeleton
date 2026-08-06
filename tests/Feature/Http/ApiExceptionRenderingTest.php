@@ -59,6 +59,9 @@ final class ApiExceptionRenderingTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Return the standard envelope for an unsupported HTTP method.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_for_an_unsupported_http_method(): void
     {
@@ -77,6 +80,9 @@ final class ApiExceptionRenderingTest extends TestCase
         $this->assertApiErrorEnvelope($response, 405, 'Method Not Allowed');
     }
 
+    /**
+     * Return the standard envelope for an unexpected server error.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_for_an_unexpected_server_error(): void
     {
@@ -97,6 +103,9 @@ final class ApiExceptionRenderingTest extends TestCase
         $response->assertJsonMissingPath('trace');
     }
 
+    /**
+     * Return the standard envelope for an unknown API route.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_for_an_unknown_api_route(): void
     {

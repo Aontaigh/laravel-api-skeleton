@@ -52,6 +52,9 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Issue a Token with normalized abilities.
+     */
     #[Test]
     public function it_issues_a_token_with_normalized_abilities(): void
     {
@@ -80,6 +83,9 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
         ]);
     }
 
+    /**
+     * Reject unknown abilities before persisting.
+     */
     #[Test]
     public function it_rejects_unknown_abilities_before_persisting(): void
     {

@@ -13,7 +13,7 @@ use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
  * Composed by both the self-service `StoreTokenRequest` and the admin
  * `StoreUserTokenRequest` so the payload shape never drifts between them.
  *
- * @mixin \Illuminate\Foundation\Http\FormRequest
+ * @mixin \App\Http\Requests\ApiFormRequest
  */
 trait ValidatesTokenPayload
 {
@@ -79,7 +79,7 @@ trait ValidatesTokenPayload
     /**
      * {@inheritDoc}
      *
-     * @return list<string>
+     * @return list<string> the attribute names to sanitise
      */
     protected function plainTextAttributeKeys(): array
     {

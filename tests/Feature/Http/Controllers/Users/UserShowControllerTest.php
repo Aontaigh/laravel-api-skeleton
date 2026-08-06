@@ -105,11 +105,13 @@ final class UserShowControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Show and Scoping
-    |--------------------------------------------------------------------------
-    */
+     * Show and Scoping Tests
+     * ----------------------
+     */
 
+    /**
+     * Return a User on the viewer's Team.
+     */
     #[Test]
     public function it_returns_a_user_on_the_viewers_team(): void
     {
@@ -128,6 +130,9 @@ final class UserShowControllerTest extends TestCase
         $response->assertJsonPath('data.name', 'Team Member');
     }
 
+    /**
+     * Deny viewing a User on another Team.
+     */
     #[Test]
     public function it_denies_viewing_a_user_on_another_team(): void
     {
@@ -151,6 +156,9 @@ final class UserShowControllerTest extends TestCase
         $response->assertForbidden();
     }
 
+    /**
+     * Allow an admin to view a User on another Team.
+     */
     #[Test]
     public function it_allows_an_admin_to_view_a_user_on_another_team(): void
     {
@@ -179,11 +187,13 @@ final class UserShowControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — `?include=` and `fields[…]`
-    |--------------------------------------------------------------------------
-    */
+     * Include and Fields Tests
+     * ------------------------
+     */
 
+    /**
+     * Include Team and Role when requested.
+     */
     #[Test]
     public function it_includes_team_and_role_when_requested(): void
     {
@@ -201,6 +211,9 @@ final class UserShowControllerTest extends TestCase
         $response->assertJsonPath('data.role.name', RoleName::User->value);
     }
 
+    /**
+     * Apply sparse fieldsets on the User and nested Team.
+     */
     #[Test]
     public function it_applies_sparse_fieldsets_on_the_user_and_nested_team(): void
     {
@@ -227,11 +240,13 @@ final class UserShowControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Email Visibility
-    |--------------------------------------------------------------------------
-    */
+     * Email Visibility Tests
+     * ----------------------
+     */
 
+    /**
+     * Expose email to a viewer with the view-email permission.
+     */
     #[Test]
     public function it_exposes_email_to_a_viewer_with_the_view_email_permission(): void
     {
@@ -253,6 +268,9 @@ final class UserShowControllerTest extends TestCase
         $response->assertJsonPath('data.email', 'member@example.com');
     }
 
+    /**
+     * Never expose email to a viewer without the view-email permission.
+     */
     #[Test]
     public function it_never_exposes_email_to_a_viewer_without_the_view_email_permission(): void
     {
@@ -273,6 +291,9 @@ final class UserShowControllerTest extends TestCase
         $this->assertArrayNotHasKey('email', $payload);
     }
 
+    /**
+     * Reject email in sparse fieldsets without the view-email permission.
+     */
     #[Test]
     public function it_rejects_email_in_sparse_fieldsets_without_the_view_email_permission(): void
     {
@@ -290,11 +311,13 @@ final class UserShowControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Validation and Authorisation
-    |--------------------------------------------------------------------------
-    */
+     * Validation and Authorisation Tests
+     * ----------------------------------
+     */
 
+    /**
+     * Reject an unknown include.
+     */
     #[Test]
     public function it_rejects_an_unknown_include(): void
     {
@@ -320,7 +343,16 @@ final class UserShowControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Authorise show according to the Role matrix.
+     */
+    /**
+     * Authorise show according to the Role matrix.
+     */
     #[Test]
+    /**
+     * Authorise show according to the Role matrix.
+     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_show_according_to_the_role_matrix(string $role, bool $canView): void
     {
@@ -352,6 +384,9 @@ final class UserShowControllerTest extends TestCase
         }
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

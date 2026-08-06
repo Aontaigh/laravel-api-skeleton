@@ -51,6 +51,9 @@ final class ApiSanctumAuthenticationTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Authenticate a request with a real personal access Token.
+     */
     #[Test]
     public function it_authenticates_a_request_with_a_real_personal_access_token(): void
     {
@@ -71,6 +74,9 @@ final class ApiSanctumAuthenticationTest extends TestCase
         $response->assertJsonPath('status', 'success');
     }
 
+    /**
+     * Reject requests after a Token has been revoked.
+     */
     #[Test]
     public function it_rejects_requests_after_a_token_has_been_revoked(): void
     {
@@ -101,6 +107,9 @@ final class ApiSanctumAuthenticationTest extends TestCase
         $response->assertJsonPath('message', 'Unauthenticated');
     }
 
+    /**
+     * Deny endpoints outside a scoped Token's abilities.
+     */
     #[Test]
     public function it_denies_endpoints_outside_a_scoped_tokens_abilities(): void
     {
@@ -123,6 +132,9 @@ final class ApiSanctumAuthenticationTest extends TestCase
         $response->assertJsonPath('message', 'Forbidden');
     }
 
+    /**
+     * Not treat a wildcard Token as a Spatie permission bypass.
+     */
     #[Test]
     public function it_does_not_treat_a_wildcard_token_as_a_spatie_permission_bypass(): void
     {

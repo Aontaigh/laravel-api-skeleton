@@ -59,6 +59,9 @@ final class ApiTokenRateLimitingTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Return the standard envelope when Token creation is rate limited.
+     */
     #[Test]
     public function it_returns_the_standard_envelope_when_token_creation_is_rate_limited(): void
     {
@@ -83,6 +86,9 @@ final class ApiTokenRateLimitingTest extends TestCase
         $response->assertJsonPath('message', 'Too Many Requests');
     }
 
+    /**
+     * Rate-limit admin-issued Tokens separately from self-service Tokens.
+     */
     #[Test]
     public function it_rate_limits_admin_issued_tokens_separately_from_self_service_tokens(): void
     {

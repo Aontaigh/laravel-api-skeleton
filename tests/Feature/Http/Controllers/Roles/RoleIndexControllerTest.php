@@ -98,11 +98,13 @@ final class RoleIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Listing
-    |--------------------------------------------------------------------------
-    */
+     * Listing Tests
+     * -------------
+     */
 
+    /**
+     * Return every seeded Role.
+     */
     #[Test]
     public function it_returns_every_seeded_role(): void
     {
@@ -131,6 +133,9 @@ final class RoleIndexControllerTest extends TestCase
         $response->assertJsonPath('meta.pagination.total', 3);
     }
 
+    /**
+     * Filter Roles by the search term.
+     */
     #[Test]
     public function it_filters_by_search_term(): void
     {
@@ -152,11 +157,13 @@ final class RoleIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Pagination
-    |--------------------------------------------------------------------------
-    */
+     * Pagination Tests
+     * ----------------
+     */
 
+    /**
+     * Return a later page with accurate pagination meta.
+     */
     #[Test]
     public function it_returns_a_later_page_with_accurate_pagination_meta(): void
     {
@@ -182,11 +189,13 @@ final class RoleIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — `?sort=`
-    |--------------------------------------------------------------------------
-    */
+     * Sorting Tests
+     * -------------
+     */
 
+    /**
+     * Apply the documented default sort when sort is omitted.
+     */
     #[Test]
     public function it_applies_the_documented_default_sort_when_sort_is_omitted(): void
     {
@@ -209,6 +218,9 @@ final class RoleIndexControllerTest extends TestCase
         );
     }
 
+    /**
+     * Sort descending when the column is prefixed with a hyphen.
+     */
     #[Test]
     public function it_sorts_descending_when_the_column_is_prefixed_with_a_hyphen(): void
     {
@@ -233,12 +245,17 @@ final class RoleIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — `?include=` and `?fields[…]=`
-    |--------------------------------------------------------------------------
-    */
+     * Include and Fields Tests
+     * ------------------------
+     */
 
+    /**
+     * Eager-load every allow-listed include.
+     */
     #[Test]
+    /**
+     * Eager-load every allow-listed include.
+     */
     #[DataProvider('allowedIncludeProvider')]
     public function it_eager_loads_every_allow_listed_include(string $include): void
     {
@@ -258,6 +275,9 @@ final class RoleIndexControllerTest extends TestCase
         $this->assertNotEmpty($response->json("data.0.{$include}"));
     }
 
+    /**
+     * Return only requested Role columns in sparse fieldsets.
+     */
     #[Test]
     public function it_returns_only_requested_role_columns_in_sparse_fieldsets(): void
     {
@@ -281,6 +301,9 @@ final class RoleIndexControllerTest extends TestCase
         $this->assertSame(['id', 'name'], array_keys($role));
     }
 
+    /**
+     * Constrain nested Permission columns when Permissions are included.
+     */
     #[Test]
     public function it_constrains_nested_permission_columns_when_permissions_are_included(): void
     {
@@ -317,12 +340,17 @@ final class RoleIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Validation
-    |--------------------------------------------------------------------------
-    */
+     * Validation Tests
+     * ----------------
+     */
 
+    /**
+     * Reject out-of-allow-list query params.
+     */
     #[Test]
+    /**
+     * Reject out-of-allow-list query params.
+     */
     #[DataProvider('invalidQueryProvider')]
     public function it_rejects_out_of_allow_list_query_params(string $queryString, string $expectedErrorKey): void
     {
@@ -343,12 +371,17 @@ final class RoleIndexControllerTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------
-    | Tests — Authorisation
-    |--------------------------------------------------------------------------
-    */
+     * Authorisation Tests
+     * -------------------
+     */
 
+    /**
+     * Authorise the index according to the Role matrix.
+     */
     #[Test]
+    /**
+     * Authorise the index according to the Role matrix.
+     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_the_index_according_to_the_role_matrix(string $role, bool $canList): void
     {
@@ -378,6 +411,9 @@ final class RoleIndexControllerTest extends TestCase
         }
     }
 
+    /**
+     * Deny unauthenticated requests.
+     */
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {

@@ -9,6 +9,12 @@ namespace App\DataTransferObjects;
  */
 final readonly class ListSort
 {
+    /*
+    |--------------------------------------------------------------------------​
+    | Constructor
+    |--------------------------------------------------------------------------​
+    */
+
     /**
      * Create a new ListSort value object.
      *

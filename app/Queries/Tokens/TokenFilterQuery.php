@@ -10,27 +10,31 @@ use Illuminate\Database\Eloquent\Builder;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
- * Applies Token filters to an Eloquent builder.
- *
- * Row scoping (only the viewer's own Tokens) is applied by the controller
- * before this class runs — filters here are purely query refinements.
+ * Applies Token filters and row scoping to an Eloquent builder.
  */
 final class TokenFilterQuery
 {
     /*
-    |--------------------------------------------------------------------------
+    |--------------------------------------------------------------------------​
     | Public
-    |--------------------------------------------------------------------------
+    |--------------------------------------------------------------------------​
     */
 
     /**
-     * Compose filter constraints onto the query.
+     * Compose filter and row-scope constraints onto the query.
+     *
+     * Row scoping constrains tokens to those owned by the viewer.
      *
      * @param Builder<PersonalAccessToken> $query   the Token query builder
      * @param TokenFilters                 $filters the validated filter DTO
      */
     public function apply(Builder $query, TokenFilters $filters): void
     {
+        $query->where(
+            TokenQueryConstraints::TABLE.'.tokenable_id',
+            $filters->viewer->id,
+        );
+
         if ($filters->search !== null) {
             $pattern = LikePattern::contains($filters->search);
 

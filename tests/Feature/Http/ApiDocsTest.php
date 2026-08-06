@@ -25,6 +25,9 @@ final class ApiDocsTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Serve the Scalar docs page.
+     */
     #[Test]
     public function it_serves_the_scalar_docs_page(): void
     {
@@ -39,6 +42,9 @@ final class ApiDocsTest extends TestCase
         $response->assertSee('/api/openapi.yaml', false);
     }
 
+    /**
+     * Serve the OpenAPI specification.
+     */
     #[Test]
     public function it_serves_the_openapi_specification(): void
     {
@@ -57,6 +63,9 @@ final class ApiDocsTest extends TestCase
         $this->assertStringContainsString('bearerAuth', $spec);
     }
 
+    /**
+     * Require basic auth for docs when credentials are configured.
+     */
     #[Test]
     public function it_requires_basic_auth_for_docs_when_credentials_are_configured(): void
     {
@@ -76,6 +85,9 @@ final class ApiDocsTest extends TestCase
         $authenticated->assertOk();
     }
 
+    /**
+     * Require basic auth for the OpenAPI spec when credentials are configured.
+     */
     #[Test]
     public function it_requires_basic_auth_for_the_openapi_spec_when_credentials_are_configured(): void
     {
@@ -95,6 +107,9 @@ final class ApiDocsTest extends TestCase
         $authenticated->assertOk();
     }
 
+    /**
+     * Reject incorrect basic auth credentials.
+     */
     #[Test]
     public function it_rejects_incorrect_basic_auth_credentials(): void
     {
