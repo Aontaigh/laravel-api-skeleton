@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2026-08-11
+
+### Changed
+
+- Bump GitHub Actions to v7; add Dependabot for Actions and sync `.env.ci` with API rate-limit and CORS settings
+- Harden CI workflow concurrency and retrigger pipeline after GitHub Actions outage
+- Add weekly Dependabot version updates for Composer (`open-pull-requests-limit: 10`)
+
+### Fixed
+
+- Fix `v1.2.0` changelog compare link footer
+
 ## [1.2.0] - 2026-08-06
 
 ### Added
@@ -56,7 +68,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.1...HEAD
+[1.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.0.0
