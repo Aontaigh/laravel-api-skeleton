@@ -90,12 +90,12 @@ check TokensIndexSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.
 
 TOKEN_CREATE="$(api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-example","abilities":["tokens.list-own"]}')"
 check TokenCreateSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['TokenCreateSuccess']['value']))")" \
-  "$(python3 -c "import json,sys; ex=json.loads(sys.argv[1]); live=json.loads(sys.argv[2]); live['data']['token']['id']=ex['data']['token']['id']; live['data']['token']['created_at']=ex['data']['token']['created_at']; live['data']['plain_text_token']=ex['data']['plain_text_token']; print(json.dumps(live))" \
+  "$(python3 -c "import json,sys; ex=json.loads(sys.argv[1]); live=json.loads(sys.argv[2]); live['data']['token']['id']=ex['data']['token']['id']; live['data']['token']['created_at']=ex['data']['token']['created_at']; live['data']['token']['expires_at']=ex['data']['token']['expires_at']; live['data']['plain_text_token']=ex['data']['plain_text_token']; print(json.dumps(live))" \
     "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['TokenCreateSuccess']['value']))")" \
     "$TOKEN_CREATE")"
 
 check UserTokenCreateSuccess "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['UserTokenCreateSuccess']['value']))")" \
-  "$(python3 -c "import json,sys; ex=json.loads(sys.argv[1]); live=json.loads(sys.argv[2]); live['data']['token']['id']=ex['data']['token']['id']; live['data']['token']['created_at']=ex['data']['token']['created_at']; live['data']['plain_text_token']=ex['data']['plain_text_token']; print(json.dumps(live))" \
+  "$(python3 -c "import json,sys; ex=json.loads(sys.argv[1]); live=json.loads(sys.argv[2]); live['data']['token']['id']=ex['data']['token']['id']; live['data']['token']['created_at']=ex['data']['token']['created_at']; live['data']['token']['expires_at']=ex['data']['token']['expires_at']; live['data']['plain_text_token']=ex['data']['plain_text_token']; print(json.dumps(live))" \
     "$(python3 -c "import yaml,json; print(json.dumps(yaml.safe_load(open('docs/openapi.yaml'))['components']['examples']['UserTokenCreateSuccess']['value']))")" \
     "$(api POST '/users/2/tokens' "$ADMIN_TOKEN" '{"name":"admin-issued","abilities":["tokens.list-own"]}')")"
 

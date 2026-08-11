@@ -14,6 +14,7 @@ on:
     pull_request:
     push:
         branches: [main]
+    workflow_dispatch:
 
 # Cancel an in-flight CI run for a branch when a newer commit lands —
 # only the freshest result matters.
@@ -37,8 +38,9 @@ jobs:
     format:
         name: Pint
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@v4
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
@@ -61,8 +63,9 @@ jobs:
     static-analysis:
         name: Larastan (Level 9)
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@v4
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
@@ -90,6 +93,7 @@ jobs:
     tests:
         name: PHPUnit + Coverage
         runs-on: ubuntu-latest
+        timeout-minutes: 15
 
         services:
             mysql:
@@ -108,7 +112,7 @@ jobs:
                     --health-retries 10
 
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@v4
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
@@ -137,7 +141,7 @@ jobs:
 
             - name: Upload Clover Report
               if: always()
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@v4
               with:
                   name: php-coverage-clover
                   path: storage/coverage/clover.xml
@@ -152,8 +156,9 @@ jobs:
     audit:
         name: Security Audit
         runs-on: ubuntu-latest
+        timeout-minutes: 10
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@v4
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
@@ -176,6 +181,7 @@ jobs:
     openapi-examples:
         name: OpenAPI Examples
         runs-on: ubuntu-latest
+        timeout-minutes: 15
 
         services:
             mysql:
@@ -194,7 +200,7 @@ jobs:
                     --health-retries 10
 
         steps:
-            - uses: actions/checkout@v7
+            - uses: actions/checkout@v4
 
             - name: Setup PHP
               uses: shivammathur/setup-php@v2
@@ -217,6 +223,11 @@ jobs:
             - name: Migrate and Seed
               run: |
                   php artisan migrate --force --seed
+
+            - name: Setup Python
+              uses: actions/setup-python@v5
+              with:
+                  python-version: '3.12'
 
             - name: Install PyYAML for Example Verification
               run: pip install pyyaml
