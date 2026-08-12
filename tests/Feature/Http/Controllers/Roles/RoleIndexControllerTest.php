@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Controllers\Roles;
 
-use App\DataTransferObjects\ListSort;
+use App\DataTransferObjects\IndexSort;
 use App\DataTransferObjects\Roles\RoleFilters;
 use App\Enums\RoleName;
 use App\Http\Controllers\Roles\RoleIndexController;
@@ -13,8 +13,8 @@ use App\Http\Resources\PermissionResource;
 use App\Http\Resources\RoleResource;
 use App\Models\User;
 use App\Policies\RolePolicy;
-use App\Queries\ListFieldsQuery;
-use App\Queries\ListSortQuery;
+use App\Queries\IndexFieldsQuery;
+use App\Queries\IndexSortQuery;
 use App\Queries\Permissions\PermissionQueryConstraints;
 use App\Queries\Roles\RoleFilterQuery;
 use App\Queries\Roles\RoleIncludeQuery;
@@ -49,9 +49,9 @@ use Tests\TestCase;
 #[CoversClass(RoleQueryConstraints::class)]
 #[CoversClass(PermissionQueryConstraints::class)]
 #[CoversClass(RoleFilters::class)]
-#[CoversClass(ListFieldsQuery::class)]
-#[CoversClass(ListSortQuery::class)]
-#[CoversClass(ListSort::class)]
+#[CoversClass(IndexFieldsQuery::class)]
+#[CoversClass(IndexSortQuery::class)]
+#[CoversClass(IndexSort::class)]
 #[CoversClass(ApiResponse::class)]
 #[CoversClass(ApiDateTime::class)]
 #[CoversClass(CommaSeparatedList::class)]

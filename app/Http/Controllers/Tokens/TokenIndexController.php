@@ -7,8 +7,8 @@ namespace App\Http\Controllers\Tokens;
 use App\DataTransferObjects\Tokens\TokenFilters;
 use App\Http\Requests\Tokens\TokenIndexRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
-use App\Queries\ListFieldsQuery;
-use App\Queries\ListSortQuery;
+use App\Queries\IndexFieldsQuery;
+use App\Queries\IndexSortQuery;
 use App\Queries\Tokens\TokenFilterQuery;
 use App\Queries\Tokens\TokenQueryConstraints;
 use App\Support\ApiResponse;
@@ -33,13 +33,13 @@ final class TokenIndexController
      * Create a new Token Index Controller.
      *
      * @param TokenFilterQuery $filterQuery composes validated filters onto any Token builder
-     * @param ListSortQuery    $sortQuery   composes validated sort onto any single-table builder
-     * @param ListFieldsQuery  $fieldsQuery composes sparse fieldsets onto any single-table builder
+     * @param IndexSortQuery   $sortQuery   composes validated sort onto any single-table builder
+     * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto any single-table builder
      */
     public function __construct(
         private readonly TokenFilterQuery $filterQuery,
-        private readonly ListSortQuery $sortQuery,
-        private readonly ListFieldsQuery $fieldsQuery,
+        private readonly IndexSortQuery $sortQuery,
+        private readonly IndexFieldsQuery $fieldsQuery,
     ) {}
 
     /*
@@ -67,7 +67,7 @@ final class TokenIndexController
             search: $request->searchTerm(),
         );
 
-        $sort = $request->listSort(
+        $sort = $request->indexSort(
             TokenQueryConstraints::DEFAULT_SORT_COLUMN,
             TokenQueryConstraints::DEFAULT_SORT_DIRECTION,
         );

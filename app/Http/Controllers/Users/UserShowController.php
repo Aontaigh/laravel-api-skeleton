@@ -7,7 +7,7 @@ namespace App\Http\Controllers\Users;
 use App\Http\Requests\Users\UserShowRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Queries\ListFieldsQuery;
+use App\Queries\IndexFieldsQuery;
 use App\Queries\Users\UserIncludeQuery;
 use App\Queries\Users\UserQueryConstraints;
 use App\Support\ApiResponse;
@@ -30,11 +30,11 @@ final class UserShowController
     /**
      * Create a new User Show Controller.
      *
-     * @param ListFieldsQuery  $fieldsQuery  composes sparse fieldsets onto any single-table builder
+     * @param IndexFieldsQuery $fieldsQuery  composes sparse fieldsets onto any single-table builder
      * @param UserIncludeQuery $includeQuery composes validated includes onto any User builder
      */
     public function __construct(
-        private readonly ListFieldsQuery $fieldsQuery,
+        private readonly IndexFieldsQuery $fieldsQuery,
         private readonly UserIncludeQuery $includeQuery,
     ) {}
 

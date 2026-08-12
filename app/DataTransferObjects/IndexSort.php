@@ -5,9 +5,9 @@ declare(strict_types=1);
 namespace App\DataTransferObjects;
 
 /**
- * Normalised sort column and direction for list endpoints.
+ * Normalised sort column and direction for index endpoints.
  */
-final readonly class ListSort
+final readonly class IndexSort
 {
     /*
     |--------------------------------------------------------------------------​
@@ -16,7 +16,7 @@ final readonly class ListSort
     */
 
     /**
-     * Create a new ListSort value object.
+     * Create a new IndexSort value object.
      *
      * @param string       $column    a whitelisted database column name
      * @param 'asc'|'desc' $direction the sort direction

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Controllers\Users;
 
-use App\DataTransferObjects\ListSort;
+use App\DataTransferObjects\IndexSort;
 use App\DataTransferObjects\Users\UserFilters;
 use App\Enums\RoleName;
 use App\Http\Controllers\Users\UserIndexController;
@@ -14,8 +14,8 @@ use App\Http\Resources\UserResource;
 use App\Models\Team;
 use App\Models\User;
 use App\Policies\UserPolicy;
-use App\Queries\ListFieldsQuery;
-use App\Queries\ListSortQuery;
+use App\Queries\IndexFieldsQuery;
+use App\Queries\IndexSortQuery;
 use App\Queries\Users\UserFilterQuery;
 use App\Queries\Users\UserIncludeQuery;
 use App\Queries\Users\UserQueryConstraints;
@@ -47,13 +47,13 @@ use Tests\TestCase;
 #[CoversClass(UserResource::class)]
 #[CoversClass(TeamResource::class)]
 #[CoversClass(UserPolicy::class)]
-#[CoversClass(ListFieldsQuery::class)]
-#[CoversClass(ListSortQuery::class)]
+#[CoversClass(IndexFieldsQuery::class)]
+#[CoversClass(IndexSortQuery::class)]
 #[CoversClass(UserFilterQuery::class)]
 #[CoversClass(UserIncludeQuery::class)]
 #[CoversClass(UserQueryConstraints::class)]
 #[CoversClass(UserFilters::class)]
-#[CoversClass(ListSort::class)]
+#[CoversClass(IndexSort::class)]
 #[CoversClass(User::class)]
 #[CoversClass(Team::class)]
 #[CoversClass(ApiResponse::class)]

@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
-use App\DataTransferObjects\ListSort;
+use App\DataTransferObjects\IndexSort;
 use App\Support\AllowList;
 use App\Support\AllowListValidation;
-use App\Support\ListSortParser;
+use App\Support\IndexSortParser;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
@@ -35,14 +35,14 @@ trait ParsesSortQueryParam
      *
      * @param  string       $defaultColumn    the column to use when `sort` is omitted
      * @param  'asc'|'desc' $defaultDirection the direction to use when `sort` is omitted
-     * @return ListSort     the resolved sort
+     * @return IndexSort    the resolved sort
      */
-    public function listSort(string $defaultColumn, string $defaultDirection = 'asc'): ListSort
+    public function indexSort(string $defaultColumn, string $defaultDirection = 'asc'): IndexSort
     {
-        $sort = ListSortParser::parse($this->safe()->string('sort')->toString());
+        $sort = IndexSortParser::parse($this->safe()->string('sort')->toString());
 
         if ($sort->column === '') {
-            return new ListSort(column: $defaultColumn, direction: $defaultDirection);
+            return new IndexSort(column: $defaultColumn, direction: $defaultDirection);
         }
 
         return $sort;
@@ -81,7 +81,7 @@ trait ParsesSortQueryParam
                 return;
             }
 
-            $column = ListSortParser::parse($raw)->column;
+            $column = IndexSortParser::parse($raw)->column;
 
             if ($column === '') {
                 return;

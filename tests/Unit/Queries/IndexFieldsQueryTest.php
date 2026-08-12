@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tests\Unit\Queries;
 
 use App\Models\User;
-use App\Queries\ListFieldsQuery;
+use App\Queries\IndexFieldsQuery;
 use App\Queries\Tokens\TokenQueryConstraints;
 use App\Queries\Users\UserQueryConstraints;
 use Illuminate\Database\Eloquent\Builder;
@@ -17,13 +17,13 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Unit tests for the shared ListFieldsQuery.
+ * Unit tests for the shared IndexFieldsQuery.
  *
  * Composition is asserted against the builder's own column list, so these run
  * with no database.
  */
-#[CoversClass(ListFieldsQuery::class)]
-final class ListFieldsQueryTest extends TestCase
+#[CoversClass(IndexFieldsQuery::class)]
+final class IndexFieldsQueryTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
@@ -44,7 +44,7 @@ final class ListFieldsQueryTest extends TestCase
 
         // Act
 
-        (new ListFieldsQuery)->apply(
+        (new IndexFieldsQuery)->apply(
             query: $query,
             requestedFields: ['name'],
             allowedFields: UserQueryConstraints::ALLOWED_FIELDS,
@@ -70,7 +70,7 @@ final class ListFieldsQueryTest extends TestCase
 
         // Act
 
-        (new ListFieldsQuery)->apply(
+        (new IndexFieldsQuery)->apply(
             query: $query,
             requestedFields: ['name', 'password', 'team_id'],
             allowedFields: UserQueryConstraints::ALLOWED_FIELDS,
@@ -101,7 +101,7 @@ final class ListFieldsQueryTest extends TestCase
 
         // Act
 
-        (new ListFieldsQuery)->apply(
+        (new IndexFieldsQuery)->apply(
             query: $query,
             requestedFields: ['name'],
             allowedFields: UserQueryConstraints::ALLOWED_FIELDS,
@@ -130,7 +130,7 @@ final class ListFieldsQueryTest extends TestCase
 
         // Act
 
-        (new ListFieldsQuery)->apply(
+        (new IndexFieldsQuery)->apply(
             query: $query,
             requestedFields: null,
             allowedFields: UserQueryConstraints::ALLOWED_FIELDS,
@@ -159,7 +159,7 @@ final class ListFieldsQueryTest extends TestCase
 
         // Act
 
-        (new ListFieldsQuery)->apply(
+        (new IndexFieldsQuery)->apply(
             query: $query,
             requestedFields: null,
             allowedFields: TokenQueryConstraints::ALLOWED_FIELDS,
@@ -188,7 +188,7 @@ final class ListFieldsQueryTest extends TestCase
 
         // Act
 
-        (new ListFieldsQuery)->apply(
+        (new IndexFieldsQuery)->apply(
             query: $query,
             requestedFields: [],
             allowedFields: UserQueryConstraints::ALLOWED_FIELDS,
@@ -220,7 +220,7 @@ final class ListFieldsQueryTest extends TestCase
 
         $this->expectException(InvalidArgumentException::class);
 
-        (new ListFieldsQuery)->apply(
+        (new IndexFieldsQuery)->apply(
             query: $query,
             requestedFields: ['name'],
             allowedFields: UserQueryConstraints::ALLOWED_FIELDS,

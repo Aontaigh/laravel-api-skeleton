@@ -7,8 +7,8 @@ namespace App\Http\Controllers\Roles;
 use App\DataTransferObjects\Roles\RoleFilters;
 use App\Http\Requests\Roles\RoleIndexRequest;
 use App\Http\Resources\RoleResource;
-use App\Queries\ListFieldsQuery;
-use App\Queries\ListSortQuery;
+use App\Queries\IndexFieldsQuery;
+use App\Queries\IndexSortQuery;
 use App\Queries\Roles\RoleFilterQuery;
 use App\Queries\Roles\RoleIncludeQuery;
 use App\Queries\Roles\RoleQueryConstraints;
@@ -34,14 +34,14 @@ final class RoleIndexController
      * Create a new Role Index Controller.
      *
      * @param RoleFilterQuery  $filterQuery  composes validated filters onto any Role builder
-     * @param ListSortQuery    $sortQuery    composes validated sort onto any single-table builder
-     * @param ListFieldsQuery  $fieldsQuery  composes sparse fieldsets onto any single-table builder
+     * @param IndexSortQuery   $sortQuery    composes validated sort onto any single-table builder
+     * @param IndexFieldsQuery $fieldsQuery  composes sparse fieldsets onto any single-table builder
      * @param RoleIncludeQuery $includeQuery composes validated includes onto any Role builder
      */
     public function __construct(
         private readonly RoleFilterQuery $filterQuery,
-        private readonly ListSortQuery $sortQuery,
-        private readonly ListFieldsQuery $fieldsQuery,
+        private readonly IndexSortQuery $sortQuery,
+        private readonly IndexFieldsQuery $fieldsQuery,
         private readonly RoleIncludeQuery $includeQuery,
     ) {}
 
@@ -69,7 +69,7 @@ final class RoleIndexController
             search: $request->searchTerm(),
         );
 
-        $sort = $request->listSort(
+        $sort = $request->indexSort(
             RoleQueryConstraints::DEFAULT_SORT_COLUMN,
             RoleQueryConstraints::DEFAULT_SORT_DIRECTION,
         );

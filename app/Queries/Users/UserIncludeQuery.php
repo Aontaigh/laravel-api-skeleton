@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace App\Queries\Users;
 
 use App\Models\User;
-use App\Queries\ListFieldsQuery;
+use App\Queries\IndexFieldsQuery;
 use App\Queries\Roles\RoleQueryConstraints;
 use App\Queries\Teams\TeamQueryConstraints;
 use Closure;
@@ -27,10 +27,10 @@ final class UserIncludeQuery
     /**
      * Create a new User include query.
      *
-     * @param ListFieldsQuery $fieldsQuery composes sparse fieldsets onto nested relation builders
+     * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto nested relation builders
      */
     public function __construct(
-        private readonly ListFieldsQuery $fieldsQuery,
+        private readonly IndexFieldsQuery $fieldsQuery,
     ) {}
 
     /*

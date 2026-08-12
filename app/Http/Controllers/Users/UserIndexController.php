@@ -8,8 +8,8 @@ use App\DataTransferObjects\Users\UserFilters;
 use App\Http\Requests\Users\UserIndexRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
-use App\Queries\ListFieldsQuery;
-use App\Queries\ListSortQuery;
+use App\Queries\IndexFieldsQuery;
+use App\Queries\IndexSortQuery;
 use App\Queries\Users\UserFilterQuery;
 use App\Queries\Users\UserIncludeQuery;
 use App\Queries\Users\UserQueryConstraints;
@@ -34,14 +34,14 @@ final class UserIndexController
      * Create a new User Index Controller.
      *
      * @param UserFilterQuery  $filterQuery  composes validated filters onto any User builder
-     * @param ListSortQuery    $sortQuery    composes validated sort onto any single-table builder
-     * @param ListFieldsQuery  $fieldsQuery  composes sparse fieldsets onto any single-table builder
+     * @param IndexSortQuery   $sortQuery    composes validated sort onto any single-table builder
+     * @param IndexFieldsQuery $fieldsQuery  composes sparse fieldsets onto any single-table builder
      * @param UserIncludeQuery $includeQuery composes validated includes onto any User builder
      */
     public function __construct(
         private readonly UserFilterQuery $filterQuery,
-        private readonly ListSortQuery $sortQuery,
-        private readonly ListFieldsQuery $fieldsQuery,
+        private readonly IndexSortQuery $sortQuery,
+        private readonly IndexFieldsQuery $fieldsQuery,
         private readonly UserIncludeQuery $includeQuery,
     ) {}
 
@@ -71,7 +71,7 @@ final class UserIndexController
             search: $request->searchTerm(),
         );
 
-        $sort = $request->listSort(
+        $sort = $request->indexSort(
             UserQueryConstraints::DEFAULT_SORT_COLUMN,
             UserQueryConstraints::DEFAULT_SORT_DIRECTION,
         );

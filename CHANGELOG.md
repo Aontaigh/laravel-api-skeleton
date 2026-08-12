@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rename index helpers from `List*` to `Index*`: `IndexSort`, `IndexSortQuery`, `IndexFieldsQuery`, `IndexSortParser`; FormRequest accessor `indexSort()` (was `listSort()`)
+
 ## [1.2.1] - 2026-08-11
 
 ### Changed
@@ -23,8 +27,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `ListSortParser` and `AllowList` Support helpers for query-param parsing and allow-list comparison
-- Unit tests for `ListSortParser` and `AllowList` with adversarial `#[DataProvider]` coverage
+- `IndexSortParser` and `AllowList` Support helpers for query-param parsing and allow-list comparison
+- Unit tests for `IndexSortParser` and `AllowList` with adversarial `#[DataProvider]` coverage
 - CORS configuration (`config/cors.php`) and `ApiCorsTest` feature coverage for browser clients
 - Personal Access Token expiration via `API_TOKEN_EXPIRATION_DAYS` (default 90), synced to Sanctum config
 - Feature tests for expired Sanctum tokens and token `expires_at` on creation

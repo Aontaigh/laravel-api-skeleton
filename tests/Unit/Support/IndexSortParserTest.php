@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Support;
 
-use App\DataTransferObjects\ListSort;
-use App\Support\ListSortParser;
+use App\DataTransferObjects\IndexSort;
+use App\Support\IndexSortParser;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -14,8 +14,8 @@ use Tests\TestCase;
 /**
  * Unit tests for `sort` query-param parsing.
  */
-#[CoversClass(ListSortParser::class)]
-final class ListSortParserTest extends TestCase
+#[CoversClass(IndexSortParser::class)]
+final class IndexSortParserTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
@@ -25,11 +25,11 @@ final class ListSortParserTest extends TestCase
 
     #[Test]
     #[DataProvider('parseProvider')]
-    public function it_parses_a_sort_value_into_column_and_direction(string $raw, ListSort $expected): void
+    public function it_parses_a_sort_value_into_column_and_direction(string $raw, IndexSort $expected): void
     {
         // Act
 
-        $parsed = ListSortParser::parse($raw);
+        $parsed = IndexSortParser::parse($raw);
 
         // Assert
 
@@ -46,18 +46,18 @@ final class ListSortParserTest extends TestCase
     /**
      * Raw sort values mapped to the expected column and direction.
      *
-     * @return array<string, array{0: string, 1: ListSort}>
+     * @return array<string, array{0: string, 1: IndexSort}>
      */
     public static function parseProvider(): array
     {
         return [
-            'ascending column' => ['name', new ListSort(column: 'name', direction: 'asc')],
-            'descending column' => ['-name', new ListSort(column: 'name', direction: 'desc')],
-            'double descending prefix' => ['--name', new ListSort(column: '-name', direction: 'desc')],
-            'leading whitespace trimmed' => [' -name ', new ListSort(column: 'name', direction: 'desc')],
-            'blank value' => ['', new ListSort(column: '', direction: 'asc')],
-            'whitespace only' => ['   ', new ListSort(column: '', direction: 'asc')],
-            'ascending with internal hyphen' => ['created_at', new ListSort(column: 'created_at', direction: 'asc')],
+            'ascending column' => ['name', new IndexSort(column: 'name', direction: 'asc')],
+            'descending column' => ['-name', new IndexSort(column: 'name', direction: 'desc')],
+            'double descending prefix' => ['--name', new IndexSort(column: '-name', direction: 'desc')],
+            'leading whitespace trimmed' => [' -name ', new IndexSort(column: 'name', direction: 'desc')],
+            'blank value' => ['', new IndexSort(column: '', direction: 'asc')],
+            'whitespace only' => ['   ', new IndexSort(column: '', direction: 'asc')],
+            'ascending with internal hyphen' => ['created_at', new IndexSort(column: 'created_at', direction: 'asc')],
         ];
     }
 }

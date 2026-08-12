@@ -11,7 +11,7 @@ use App\Http\Resources\PermissionResource;
 use App\Http\Resources\RoleResource;
 use App\Models\User;
 use App\Policies\RolePolicy;
-use App\Queries\ListFieldsQuery;
+use App\Queries\IndexFieldsQuery;
 use App\Queries\Permissions\PermissionQueryConstraints;
 use App\Queries\Roles\RoleIncludeQuery;
 use App\Queries\Roles\RoleQueryConstraints;
@@ -35,7 +35,7 @@ use Tests\TestCase;
 #[CoversClass(RoleResource::class)]
 #[CoversClass(PermissionResource::class)]
 #[CoversClass(RolePolicy::class)]
-#[CoversClass(ListFieldsQuery::class)]
+#[CoversClass(IndexFieldsQuery::class)]
 #[CoversClass(RoleIncludeQuery::class)]
 #[CoversClass(RoleQueryConstraints::class)]
 #[CoversClass(PermissionQueryConstraints::class)]

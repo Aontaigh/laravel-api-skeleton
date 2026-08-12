@@ -12,7 +12,7 @@ use App\Http\Resources\UserResource;
 use App\Models\Team;
 use App\Models\User;
 use App\Policies\UserPolicy;
-use App\Queries\ListFieldsQuery;
+use App\Queries\IndexFieldsQuery;
 use App\Queries\Users\UserIncludeQuery;
 use App\Queries\Users\UserQueryConstraints;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -34,7 +34,7 @@ use Tests\TestCase;
 #[CoversClass(UserResource::class)]
 #[CoversClass(TeamResource::class)]
 #[CoversClass(UserPolicy::class)]
-#[CoversClass(ListFieldsQuery::class)]
+#[CoversClass(IndexFieldsQuery::class)]
 #[CoversClass(UserIncludeQuery::class)]
 #[CoversClass(UserQueryConstraints::class)]
 final class UserShowControllerTest extends TestCase

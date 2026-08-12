@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Queries\Roles;
 
-use App\Queries\ListFieldsQuery;
+use App\Queries\IndexFieldsQuery;
 use App\Queries\Permissions\PermissionQueryConstraints;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
@@ -26,10 +26,10 @@ final class RoleIncludeQuery
     /**
      * Create a new Role include query.
      *
-     * @param ListFieldsQuery $fieldsQuery composes sparse fieldsets onto nested relation builders
+     * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto nested relation builders
      */
     public function __construct(
-        private readonly ListFieldsQuery $fieldsQuery,
+        private readonly IndexFieldsQuery $fieldsQuery,
     ) {}
 
     /*

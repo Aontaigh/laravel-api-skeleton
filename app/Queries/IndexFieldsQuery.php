@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Model;
  * client-requested columns with required columns (the key, and foreign keys
  * needed by eager loads).
  */
-final class ListFieldsQuery
+final class IndexFieldsQuery
 {
     /*
     |--------------------------------------------------------------------------

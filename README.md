@@ -240,7 +240,7 @@ Report vulnerabilities privately before opening a public issue.
 | --- | --- | --- |
 | Controllers | Single-action invokable (`__invoke`) | [app/Http/Controllers/](app/Http/Controllers/) |
 | Form requests | `authorize()` → Policy; allow-lists in `rules()` | [app/Http/Requests/](app/Http/Requests/) |
-| DTOs | `final readonly` value objects (`UserFilters`, `ListSort`) | [app/DataTransferObjects/](app/DataTransferObjects/) |
+| DTOs | `final readonly` value objects (`UserFilters`, `IndexSort`) | [app/DataTransferObjects/](app/DataTransferObjects/) |
 | Query classes | Sort, filter, include, sparse fieldsets | [app/Queries/](app/Queries/) |
 | Actions | Single `execute()` for business operations | [app/Actions/](app/Actions/) |
 | Services | Stateless utilities used by Actions | [app/Services/](app/Services/) |
@@ -271,7 +271,7 @@ template — only allow-lists and filter logic change per resource.
 ```
 app/
 ├── Actions/              # CreatePersonalAccessTokenAction, SoftDeleteUserAction, …
-├── DataTransferObjects/  # UserFilters, TokenFilters, ListSort
+├── DataTransferObjects/  # UserFilters, TokenFilters, IndexSort
 ├── Http/
 │   ├── Controllers/
 │   │   ├── Api/          # ShowApiDocsController, ShowOpenApiSpecController

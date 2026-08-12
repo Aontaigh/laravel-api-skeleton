@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Controllers\Tokens;
 
-use App\DataTransferObjects\ListSort;
+use App\DataTransferObjects\IndexSort;
 use App\DataTransferObjects\Tokens\TokenFilters;
 use App\Http\Controllers\Tokens\TokenIndexController;
 use App\Http\Requests\Tokens\TokenIndexRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
 use App\Policies\PersonalAccessTokenPolicy;
-use App\Queries\ListFieldsQuery;
-use App\Queries\ListSortQuery;
+use App\Queries\IndexFieldsQuery;
+use App\Queries\IndexSortQuery;
 use App\Queries\Tokens\TokenFilterQuery;
 use App\Queries\Tokens\TokenQueryConstraints;
 use App\Support\ApiDateTime;
@@ -40,9 +40,9 @@ use Tests\TestCase;
 #[CoversClass(TokenFilterQuery::class)]
 #[CoversClass(TokenQueryConstraints::class)]
 #[CoversClass(TokenFilters::class)]
-#[CoversClass(ListFieldsQuery::class)]
-#[CoversClass(ListSortQuery::class)]
-#[CoversClass(ListSort::class)]
+#[CoversClass(IndexFieldsQuery::class)]
+#[CoversClass(IndexSortQuery::class)]
+#[CoversClass(IndexSort::class)]
 #[CoversClass(ApiResponse::class)]
 #[CoversClass(ApiDateTime::class)]
 #[CoversClass(CommaSeparatedList::class)]

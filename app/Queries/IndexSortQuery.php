@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Queries;
 
-use App\DataTransferObjects\ListSort;
+use App\DataTransferObjects\IndexSort;
 use App\Support\QualifiedColumn;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -16,7 +16,7 @@ use Illuminate\Database\Eloquent\Model;
  * Add a resource-specific `{Resource}SortQuery` only when sort needs joins,
  * computed columns, or a non-`id` tie-break.
  */
-final class ListSortQuery
+final class IndexSortQuery
 {
     /*
     |--------------------------------------------------------------------------
@@ -37,14 +37,14 @@ final class ListSortQuery
      * @template TModel of Model
      *
      * @param Builder<TModel> $query          the Eloquent query builder
-     * @param ListSort        $sort           the validated sort DTO
+     * @param IndexSort       $sort           the validated sort DTO
      * @param list<string>    $allowedSorts   whitelisted column names
      * @param string          $table          table name or query alias
      * @param string          $tieBreakColumn stable secondary sort column (default `id`)
      */
     public function apply(
         Builder $query,
-        ListSort $sort,
+        IndexSort $sort,
         array $allowedSorts,
         string $table,
         string $tieBreakColumn = 'id',

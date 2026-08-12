@@ -6,7 +6,7 @@ namespace App\Http\Controllers\Roles;
 
 use App\Http\Requests\Roles\RoleShowRequest;
 use App\Http\Resources\RoleResource;
-use App\Queries\ListFieldsQuery;
+use App\Queries\IndexFieldsQuery;
 use App\Queries\Roles\RoleIncludeQuery;
 use App\Queries\Roles\RoleQueryConstraints;
 use App\Support\ApiResponse;
@@ -30,11 +30,11 @@ final class RoleShowController
     /**
      * Create a new Role Show Controller.
      *
-     * @param ListFieldsQuery  $fieldsQuery  composes sparse fieldsets onto any single-table builder
+     * @param IndexFieldsQuery $fieldsQuery  composes sparse fieldsets onto any single-table builder
      * @param RoleIncludeQuery $includeQuery composes validated includes onto any Role builder
      */
     public function __construct(
-        private readonly ListFieldsQuery $fieldsQuery,
+        private readonly IndexFieldsQuery $fieldsQuery,
         private readonly RoleIncludeQuery $includeQuery,
     ) {}
 

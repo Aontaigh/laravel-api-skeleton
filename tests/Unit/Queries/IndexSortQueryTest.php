@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Queries;
 
-use App\DataTransferObjects\ListSort;
+use App\DataTransferObjects\IndexSort;
 use App\Models\User;
-use App\Queries\ListSortQuery;
+use App\Queries\IndexSortQuery;
 use App\Queries\Users\UserQueryConstraints;
 use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
@@ -15,13 +15,13 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Unit tests for the shared ListSortQuery.
+ * Unit tests for the shared IndexSortQuery.
  *
  * Ordering is asserted against the builder's own order list, so these run
  * with no database.
  */
-#[CoversClass(ListSortQuery::class)]
-final class ListSortQueryTest extends TestCase
+#[CoversClass(IndexSortQuery::class)]
+final class IndexSortQueryTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
@@ -40,12 +40,12 @@ final class ListSortQueryTest extends TestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var ListSort $sort */
-        $sort = new ListSort(column: 'name', direction: 'asc');
+        /** @var IndexSort $sort */
+        $sort = new IndexSort(column: 'name', direction: 'asc');
 
         // Act
 
-        (new ListSortQuery)->apply(
+        (new IndexSortQuery)->apply(
             query: $query,
             sort: $sort,
             allowedSorts: UserQueryConstraints::ALLOWED_SORTS,
@@ -74,12 +74,12 @@ final class ListSortQueryTest extends TestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var ListSort $sort */
-        $sort = new ListSort(column: 'created_at', direction: 'desc');
+        /** @var IndexSort $sort */
+        $sort = new IndexSort(column: 'created_at', direction: 'desc');
 
         // Act
 
-        (new ListSortQuery)->apply(
+        (new IndexSortQuery)->apply(
             query: $query,
             sort: $sort,
             allowedSorts: UserQueryConstraints::ALLOWED_SORTS,
@@ -108,12 +108,12 @@ final class ListSortQueryTest extends TestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var ListSort $sort */
-        $sort = new ListSort(column: 'id', direction: 'asc');
+        /** @var IndexSort $sort */
+        $sort = new IndexSort(column: 'id', direction: 'asc');
 
         // Act
 
-        (new ListSortQuery)->apply(
+        (new IndexSortQuery)->apply(
             query: $query,
             sort: $sort,
             allowedSorts: ['id'],
@@ -139,12 +139,12 @@ final class ListSortQueryTest extends TestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var ListSort $sort */
-        $sort = new ListSort(column: 'password', direction: 'asc');
+        /** @var IndexSort $sort */
+        $sort = new IndexSort(column: 'password', direction: 'asc');
 
         // Act
 
-        (new ListSortQuery)->apply(
+        (new IndexSortQuery)->apply(
             query: $query,
             sort: $sort,
             allowedSorts: UserQueryConstraints::ALLOWED_SORTS,
@@ -167,14 +167,14 @@ final class ListSortQueryTest extends TestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var ListSort $sort */
-        $sort = new ListSort(column: 'name', direction: 'asc');
+        /** @var IndexSort $sort */
+        $sort = new IndexSort(column: 'name', direction: 'asc');
 
         // Act + Assert
 
         $this->expectException(InvalidArgumentException::class);
 
-        (new ListSortQuery)->apply(
+        (new IndexSortQuery)->apply(
             query: $query,
             sort: $sort,
             allowedSorts: UserQueryConstraints::ALLOWED_SORTS,
