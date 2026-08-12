@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Support\SearchTermParser;
+
 /**
  * Parses the `filter[search]` query param into a normalised string.
  *
@@ -30,9 +32,9 @@ trait ParsesSearchQueryParam
             return null;
         }
 
-        $term = trim($this->safe()->string('filter.search')->toString());
-
-        return $term === '' ? null : $term;
+        return SearchTermParser::normalize(
+            $this->safe()->string('filter.search')->toString(),
+        );
     }
 
     /*
@@ -49,7 +51,7 @@ trait ParsesSearchQueryParam
     protected function searchFilterRules(): array
     {
         return [
-            'filter.search' => ['sometimes', 'string', 'max:255'],
+            'filter.search' => ['sometimes', 'nullable', 'string', 'max:255'],
         ];
     }
 }

@@ -216,6 +216,55 @@ final class UserIndexControllerTest extends TestCase
         $response->assertJsonPath('data.1.name', 'Acme Two');
     }
 
+    /**
+     * Trim whitespace from the search term before filtering.
+     */
+    #[Test]
+    public function it_trims_whitespace_from_the_search_term(): void
+    {
+        // Arrange
+
+        User::factory()->for($this->team)->create(['name' => 'Acme One']);
+        User::factory()->for($this->team)->create(['name' => 'Beta User']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[search]='.rawurlencode('  Acme  '),
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.name', 'Acme One');
+    }
+
+    /**
+     * Ignore a blank search term so every User is returned.
+     */
+    #[Test]
+    public function it_ignores_a_blank_search_term(): void
+    {
+        // Arrange
+
+        User::factory()->for($this->team)->create(['name' => 'Acme One']);
+        User::factory()->for($this->team)->create(['name' => 'Beta User']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[search]='.rawurlencode('   '),
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(3, 'data');
+    }
+
     /*
      * Pagination Tests
      * ----------------
