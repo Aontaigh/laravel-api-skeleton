@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-08-12
+
+### Added
+
+- Release runbook in `docs/releasing.md` — changelog, quality gates, tag, and GitHub publish steps
+
+### Changed
+
+- README visual polish — centred header badges, Mermaid pipeline diagram, GitHub callouts, expanded testing and quality-gate notes
+
 ## [1.3.0] - 2026-08-12
 
 ### Changed
@@ -76,7 +86,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.1.0...v1.2.0
