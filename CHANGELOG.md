@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Rename index helpers from `List*` to `Index*`: `IndexSort`, `IndexSortQuery`, `IndexFieldsQuery`, `IndexSortParser`; FormRequest accessor `indexSort()` (was `listSort()`)
+- Move trait unit-test harness classes from test files into `tests/Support/` (one class per file)
 
 ## [1.2.1] - 2026-08-11
 

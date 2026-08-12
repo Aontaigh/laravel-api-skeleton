@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Requests\Concerns;
 
-use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\Tokens\ValidatesTokenPayload;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\Http\Requests\Concerns\TokenPayloadHarness;
 use Tests\TestCase;
 
 /**
@@ -140,53 +140,5 @@ final class ValidatesTokenPayloadTest extends TestCase
         // Assert
 
         $this->assertSame(['name'], $keys);
-    }
-}
-
-/**
- * Minimal harness exposing token payload validation for unit tests.
- */
-final class TokenPayloadHarness extends ApiFormRequest
-{
-    /*
-    |--------------------------------------------------------------------------​
-    | Traits
-    |--------------------------------------------------------------------------​
-    */
-
-    use ValidatesTokenPayload;
-
-    /*
-    |--------------------------------------------------------------------------​
-    | Public
-    |--------------------------------------------------------------------------​
-    */
-
-    /**
-     * Validation rules for the harness request.
-     *
-     * @return array<string, array<int, string>> the token payload rules
-     */
-    public function rules(): array
-    {
-        return $this->tokenPayloadRules();
-    }
-
-    /**
-     * Expose the protected sanitisation hook for testing.
-     */
-    public function prepareForValidation(): void
-    {
-        $this->sanitisePlainTextAttributes();
-    }
-
-    /**
-     * Expose the declared plain-text attribute keys for assertions.
-     *
-     * @return list<string> the attribute names to sanitise
-     */
-    public function exposedPlainTextAttributeKeys(): array
-    {
-        return $this->plainTextAttributeKeys();
     }
 }

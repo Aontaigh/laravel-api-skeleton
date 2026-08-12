@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Requests\Concerns;
 
-use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\Http\Requests\Concerns\PlainTextHarness;
 use Tests\TestCase;
 
 /**
@@ -133,55 +133,5 @@ final class SanitisesPlainTextAttributesTest extends TestCase
         // Assert
 
         $this->assertSame(['array', 'value'], $request->input('name'));
-    }
-}
-
-/**
- * Minimal harness exposing plain-text sanitisation for unit tests.
- */
-final class PlainTextHarness extends ApiFormRequest
-{
-    /*
-    |--------------------------------------------------------------------------​
-    | Traits
-    |--------------------------------------------------------------------------​
-    */
-
-    use SanitisesPlainTextAttributes;
-
-    /*
-    |--------------------------------------------------------------------------​
-    | Public
-    |--------------------------------------------------------------------------​
-    */
-
-    /**
-     * Validation rules for the harness request.
-     *
-     * @return array<string, array<int, string>> the validation rules
-     */
-    public function rules(): array
-    {
-        return [
-            'name' => ['sometimes', 'string'],
-        ];
-    }
-
-    /**
-     * The attribute keys to sanitise as plain text.
-     *
-     * @return list<string> the attribute names to sanitise
-     */
-    protected function plainTextAttributeKeys(): array
-    {
-        return ['name'];
-    }
-
-    /**
-     * Expose the protected sanitisation hook for testing.
-     */
-    public function prepareForValidation(): void
-    {
-        $this->sanitisePlainTextAttributes();
     }
 }

@@ -4,12 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Requests\Concerns;
 
-use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Route;
 use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\Http\Requests\Concerns\SearchQueryParamHarness;
 use Tests\TestCase;
 
 /**
@@ -147,35 +147,5 @@ final class ParsesSearchQueryParamTest extends TestCase
         // Assert
 
         $this->assertFalse($validator->errors()->has('filter.search'));
-    }
-}
-
-/**
- * Minimal harness exposing search filter validation for unit tests.
- */
-final class SearchQueryParamHarness extends ApiFormRequest
-{
-    /*
-    |--------------------------------------------------------------------------​
-    | Traits
-    |--------------------------------------------------------------------------​
-    */
-
-    use ParsesSearchQueryParam;
-
-    /*
-    |--------------------------------------------------------------------------​
-    | Public
-    |--------------------------------------------------------------------------​
-    */
-
-    /**
-     * Validation rules for the harness request.
-     *
-     * @return array<string, array<int, string>> the search filter rules
-     */
-    public function rules(): array
-    {
-        return $this->searchFilterRules();
     }
 }

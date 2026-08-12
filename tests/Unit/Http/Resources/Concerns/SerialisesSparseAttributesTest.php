@@ -7,10 +7,10 @@ namespace Tests\Unit\Http\Resources\Concerns;
 use App\Http\Resources\Concerns\SerialisesSparseAttributes;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Http\Resources\Json\JsonResource;
 use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\Test;
-use RuntimeException;
+use Tests\Support\Http\Resources\Concerns\SparseAttributesClosureHarnessResource;
+use Tests\Support\Http\Resources\Concerns\SparseAttributesHarnessResource;
 use Tests\TestCase;
 
 /**
@@ -84,47 +84,5 @@ final class SerialisesSparseAttributesTest extends TestCase
         // Assert
 
         $this->assertArrayNotHasKey('email', $data);
-    }
-}
-
-/**
- * Minimal JsonResource exposing `whenAttributeSelected` for sparse column tests.
- *
- * @property-read User $resource
- */
-final class SparseAttributesHarnessResource extends JsonResource
-{
-    use SerialisesSparseAttributes;
-
-    /**
-     * @return array<string, mixed> the serialised attributes
-     */
-    public function toArray(Request $request): array
-    {
-        return [
-            'name' => $this->whenAttributeSelected('name', fn (): string => $this->resource->name),
-        ];
-    }
-}
-
-/**
- * Harness that throws when the email Closure runs — proves lazy evaluation.
- *
- * @property-read User $resource
- */
-final class SparseAttributesClosureHarnessResource extends JsonResource
-{
-    use SerialisesSparseAttributes;
-
-    /**
-     * @return array<string, mixed> the serialised attributes
-     */
-    public function toArray(Request $request): array
-    {
-        return [
-            'email' => $this->whenAttributeSelected('email', function (): string {
-                throw new RuntimeException('Email Closure Should Not Run When Email Was Not Selected');
-            }),
-        ];
     }
 }

@@ -9,6 +9,7 @@ use App\Models\User;
 use Illuminate\Auth\AuthenticationException;
 use PHPUnit\Framework\Attributes\CoversTrait;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Support\Http\Requests\Concerns\FakeViewerHost;
 use Tests\TestCase;
 
 /**
@@ -70,27 +71,5 @@ final class ResolvesAuthenticatedViewerTest extends TestCase
         $this->expectException(AuthenticationException::class);
 
         $host->viewer();
-    }
-}
-
-/**
- * Minimal `ResolvesAuthenticatedViewer` host for the tests above.
- *
- * A named class, rather than an anonymous class per scenario, keeps
- * `user()`'s declared `?User` return type honest for both the
- * authenticated and guest cases: static analysis of the trait's
- * `instanceof` guard sees the same genuinely-nullable signature either
- * way, instead of a per-literal type narrowed to whichever single
- * scenario that literal happened to construct.
- */
-final class FakeViewerHost
-{
-    use ResolvesAuthenticatedViewer;
-
-    public function __construct(private readonly ?User $authenticated) {}
-
-    public function user($guard = null): ?User
-    {
-        return $this->authenticated;
     }
 }
