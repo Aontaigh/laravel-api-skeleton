@@ -94,6 +94,23 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Two-Factor Authentication
+    |--------------------------------------------------------------------------
+    |
+    | Code lifetime, pending-challenge lifetime, and per-code guess budget.
+    | Pending TTL should be at least as long as the code TTL so stateless
+    | clients can complete send + verify within one window.
+    |
+    */
+
+    'two_factor_code_ttl_seconds' => (int) env('API_TWO_FACTOR_CODE_TTL_SECONDS', 300),
+
+    'two_factor_pending_ttl_seconds' => (int) env('API_TWO_FACTOR_PENDING_TTL_SECONDS', 300),
+
+    'two_factor_max_attempts' => (int) env('API_TWO_FACTOR_MAX_ATTEMPTS', 5),
+
+    /*
+    |--------------------------------------------------------------------------
     | Auth Timing Normalisation Hash
     |--------------------------------------------------------------------------
     |

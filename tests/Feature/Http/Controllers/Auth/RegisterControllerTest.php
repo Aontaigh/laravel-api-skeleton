@@ -6,7 +6,6 @@ namespace Tests\Feature\Http\Controllers\Auth;
 
 use App\Actions\Auth\RecordAuthAuditAction;
 use App\Actions\Auth\RegisterUserAction;
-use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\RegisterUserData;
 use App\Enums\AuthAuditEvent;
 use App\Enums\RoleName;
@@ -16,9 +15,13 @@ use App\Http\Resources\AuthenticatedUserResource;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\Auth\PendingTwoFactor;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -32,10 +35,10 @@ use Tests\TestCase;
 #[CoversClass(RegisterRequest::class)]
 #[CoversClass(RecordAuthAuditAction::class)]
 #[CoversClass(RegisterUserAction::class)]
-#[CoversClass(CreatePersonalAccessTokenAction::class)]
 #[CoversClass(RegisterUserData::class)]
 #[CoversClass(AuthenticatedUserResource::class)]
 #[CoversClass(PersonalAccessTokenResource::class)]
+#[CoversClass(PendingTwoFactor::class)]
 #[CoversClass(ApiResponse::class)]
 final class RegisterControllerTest extends TestCase
 {
@@ -75,7 +78,7 @@ final class RegisterControllerTest extends TestCase
      */
 
     /**
-     * Return the standard success envelope with user, token, and plaintext value.
+     * Return the pending two-factor envelope after account creation.
      */
     #[Test]
     public function it_returns_the_standard_success_envelope(): void
@@ -88,7 +91,6 @@ final class RegisterControllerTest extends TestCase
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
             'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
-            'device_name' => 'Mobile App',
         ]);
 
         // Assert
@@ -98,14 +100,12 @@ final class RegisterControllerTest extends TestCase
         $response->assertJsonPath('status_code', 201);
         $response->assertJsonPath('message', 'Account Created Successfully');
         $response->assertJsonStructure([
-            'data' => [
-                'user' => ['id', 'name', 'email', 'created_at'],
-                'token' => ['id', 'name', 'abilities', 'expires_at', 'created_at'],
-                'plain_text_token',
-            ],
+            'data' => ['two_factor_required', 'two_factor_token'],
             'meta',
         ]);
-        $response->assertJsonPath('data.token.name', 'Mobile App');
+        $response->assertJsonPath('data.two_factor_required', true);
+        $response->assertJsonMissingPath('data.user');
+        $response->assertJsonMissingPath('data.token');
     }
 
     /*
@@ -114,15 +114,17 @@ final class RegisterControllerTest extends TestCase
      */
 
     /**
-     * Register a User and return a bearer token.
+     * Register a User and return a bearer token after two-factor verification.
      */
     #[Test]
-    public function it_registers_a_user_and_returns_a_bearer_token(): void
+    public function it_registers_a_user_and_returns_a_bearer_token_after_two_factor_verification(): void
     {
-        // Act
+        // Arrange
 
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        Notification::fake();
+
+        /** @var TestResponse<JsonResponse> $register */
+        $register = $this->postJson('/api/register', [
             'name' => 'Alice',
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -130,9 +132,36 @@ final class RegisterControllerTest extends TestCase
             'device_name' => 'Mobile App',
         ]);
 
+        $twoFactorToken = $register->json('data.two_factor_token');
+        $this->assertIsString($twoFactorToken);
+
+        $this->postJson('/api/two-factor/send', [
+            'channel' => 'email',
+            'two_factor_token' => $twoFactorToken,
+        ]);
+
+        /** @var User $user */
+        $user = User::query()->where('email', 'alice@example.com')->firstOrFail();
+
+        $code = '123456';
+        Cache::put('two-factor:'.$user->id, [
+            'code_hash' => Hash::make($code),
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(5)->timestamp,
+        ], 300);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/two-factor/verify', [
+            'code' => $code,
+            'device_name' => 'Mobile App',
+            'two_factor_token' => $twoFactorToken,
+        ]);
+
         // Assert
 
-        $response->assertCreated();
+        $response->assertOk();
         $response->assertJsonPath('data.user.email', 'alice@example.com');
         $this->assertNotEmpty($response->json('data.plain_text_token'));
 
@@ -141,9 +170,7 @@ final class RegisterControllerTest extends TestCase
             'team_id' => null,
         ]);
 
-        /** @var User $user */
-        $user = User::query()->where('email', 'alice@example.com')->firstOrFail();
-        $this->assertTrue($user->hasRole(RoleName::User->value));
+        $this->assertTrue($user->refresh()->hasRole(RoleName::User->value));
         $this->assertNull($user->email_verified_at);
         $this->assertDatabaseHas('personal_access_tokens', [
             'name' => 'Mobile App',
@@ -151,6 +178,11 @@ final class RegisterControllerTest extends TestCase
         ]);
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::Register->value,
+            'user_id' => $user->id,
+            'email' => 'alice@example.com',
+        ]);
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::Login->value,
             'user_id' => $user->id,
             'email' => 'alice@example.com',
         ]);
@@ -175,7 +207,6 @@ final class RegisterControllerTest extends TestCase
         // Assert
 
         $response->assertCreated();
-        $response->assertJsonPath('data.user.email', 'alice@example.com');
         $this->assertDatabaseHas('users', ['email' => 'alice@example.com']);
     }
 
@@ -198,7 +229,6 @@ final class RegisterControllerTest extends TestCase
         // Assert
 
         $response->assertCreated();
-        $response->assertJsonPath('data.user.name', 'alert(1)Alice');
         $this->assertDatabaseHas('users', [
             'email' => 'alice@example.com',
             'name' => 'alert(1)Alice',

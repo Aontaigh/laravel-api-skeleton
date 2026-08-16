@@ -10,8 +10,9 @@ use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
 /**
  * Shared validation rules and typed accessors for issuing a Personal Access Token.
  *
- * Composed by both the self-service `StoreTokenRequest` and the admin
- * `StoreUserTokenRequest` so the payload shape never drifts between them.
+ * Composed by the self-service `StoreTokenRequest`, the admin
+ * `StoreUserTokenRequest`, and `UpdateClientRequest` so the payload shape
+ * never drifts between them.
  *
  * @mixin \App\Http\Requests\ApiFormRequest
  */
@@ -39,10 +40,36 @@ trait ValidatesTokenPayload
      */
     public function tokenAbilities(): array
     {
+        return $this->optionalTokenAbilities() ?? ['*'];
+    }
+
+    /**
+     * Get validated abilities when the client sent `abilities`, or null when omitted.
+     *
+     * @return list<string>|null the ability names, or null when the key is absent
+     */
+    public function optionalTokenAbilities(): ?array
+    {
         if (! $this->safe()->has('abilities')) {
-            return ['*'];
+            return null;
         }
 
+        return $this->validatedTokenAbilities();
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Protected
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Build a typed ability list from the validated `abilities` array.
+     *
+     * @return list<string> the ability names
+     */
+    protected function validatedTokenAbilities(): array
+    {
         /*
          * `abilities.*` is validated as `string`, but that only proves the
          * shape at the HTTP boundary — PHPStan still sees the validated
@@ -61,12 +88,6 @@ trait ValidatesTokenPayload
 
         return $abilities;
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Protected
-    |--------------------------------------------------------------------------
-    */
 
     /**
      * Validation rules for the Token payload.

@@ -43,6 +43,9 @@ final class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
 
+        // Demo accounts intentionally omit mfa_method so local login stays
+        // password-only. New registrations and admin-created users auto-enrol.
+
         $this->call(ApiClientsSeeder::class);
     }
 }

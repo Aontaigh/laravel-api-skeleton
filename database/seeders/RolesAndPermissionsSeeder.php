@@ -43,6 +43,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'users.delete',            // DELETE /api/users/{user} (soft delete)
         'users.force-logout',      // POST /api/users/logout (admin session termination)
         'users.suspend',           // POST /api/users/{user}/suspend and /unsuspend
+        'users.create',            // POST /api/users
         'roles.list',              // GET /api/roles and GET /api/roles/{role}
         'tokens.list-own',         // GET /api/tokens (own tokens only)
         'tokens.create-own',       // POST /api/tokens
@@ -51,6 +52,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'api-clients.list',        // GET /api/clients and GET /api/clients/{client}
         'api-clients.create',      // POST /api/clients
         'api-clients.delete',      // DELETE /api/clients/{client}
+        'api-clients.update',      // PATCH /api/clients/{client}
         'audit-logs.list',         // GET /api/audit-logs
         'teams.list',              // GET /api/teams and GET /api/teams/{team}
         'permissions.list',        // GET /api/permissions
@@ -73,6 +75,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'users.delete',
             'users.force-logout',
             'users.suspend',
+            'users.create',
             'roles.list',
             'tokens.list-own',
             'tokens.create-own',
@@ -81,6 +84,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'api-clients.list',
             'api-clients.create',
             'api-clients.delete',
+            'api-clients.update',
             'audit-logs.list',
             'teams.list',
             'permissions.list',

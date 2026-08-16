@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\DataTransferObjects\Auth\RegisterUserData;
+use App\Enums\MfaMethod;
 use App\Enums\RoleName;
 use App\Models\User;
+use App\Support\EmailAddress;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -35,10 +37,11 @@ final class RegisterUserAction
             /** @var User $user */
             $user = User::query()->create([
                 'name' => $data->name,
-                'email' => $data->email,
+                'email' => EmailAddress::normalise($data->email),
                 'password' => $data->password,
                 'team_id' => null,
                 'email_verified_at' => null,
+                'mfa_method' => MfaMethod::Email,
             ]);
 
             $user->assignRole(RoleName::User->value);

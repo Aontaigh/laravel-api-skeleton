@@ -6,7 +6,9 @@ namespace App\Providers;
 
 use App\Enums\RoleName;
 use App\Events\AuthEventOccurred;
+use App\Events\TwoFactorChallengeIssued;
 use App\Listeners\RecordAuthAuditLog;
+use App\Listeners\SendTwoFactorCodeNotification;
 use App\Models\ApiClient;
 use App\Models\AuthAuditLog;
 use App\Models\User;
@@ -71,6 +73,7 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(Permission::class, PermissionPolicy::class);
 
         Event::listen(AuthEventOccurred::class, RecordAuthAuditLog::class);
+        Event::listen(TwoFactorChallengeIssued::class, SendTwoFactorCodeNotification::class);
 
         $this->registerTelescopeGate();
         $this->configurePasswordDefaults();

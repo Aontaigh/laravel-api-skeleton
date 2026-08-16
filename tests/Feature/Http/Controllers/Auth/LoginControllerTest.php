@@ -6,8 +6,10 @@ namespace Tests\Feature\Http\Controllers\Auth;
 
 use App\Actions\Auth\ApplyRememberMeAction;
 use App\Actions\Auth\AuthenticateUserAction;
+use App\Actions\Auth\FinaliseAuthenticatedSessionAction;
 use App\Actions\Auth\RecordAuthAuditAction;
 use App\Actions\Tokens\CreatePersonalAccessTokenAction;
+use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\LoginCredentialsData;
 use App\Enums\AuthAuditEvent;
 use App\Http\Controllers\Auth\LoginController;
@@ -34,6 +36,8 @@ use Tests\TestCase;
  */
 #[CoversClass(LoginController::class)]
 #[CoversClass(LoginRequest::class)]
+#[CoversClass(FinaliseAuthenticatedSessionAction::class)]
+#[CoversClass(FinaliseAuthenticatedSessionData::class)]
 #[CoversClass(ApplyRememberMeAction::class)]
 #[CoversClass(RecordAuthAuditAction::class)]
 #[CoversClass(AuthenticateUserAction::class)]

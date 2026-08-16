@@ -4,12 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Auth;
 
-use App\Actions\Auth\ApplyRememberMeAction;
 use App\Actions\Auth\AuthenticateUserAction;
-use App\Actions\Tokens\CreatePersonalAccessTokenAction;
+use App\Actions\Auth\FinaliseAuthenticatedSessionAction;
+use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\LoginCredentialsData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
-use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\LoginRequest;
@@ -17,8 +16,8 @@ use App\Http\Resources\AuthenticatedUserResource;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\Auth\PendingTwoFactor;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -38,17 +37,15 @@ final class LoginController
     /**
      * Verify credentials and return a bearer token.
      *
-     * @param  LoginRequest                    $request       the validated login request
-     * @param  AuthenticateUserAction          $authenticate  the credential check Action
-     * @param  ApplyRememberMeAction           $applyRemember the remember-me Action
-     * @param  CreatePersonalAccessTokenAction $issueToken    the token issuance Action
-     * @return JsonResponse                    the standardised success envelope
+     * @param  LoginRequest                       $request      the validated login request
+     * @param  AuthenticateUserAction             $authenticate the credential check Action
+     * @param  FinaliseAuthenticatedSessionAction $finalise     the session finalisation Action
+     * @return JsonResponse                       the standardised success envelope
      */
     public function __invoke(
         LoginRequest $request,
         AuthenticateUserAction $authenticate,
-        ApplyRememberMeAction $applyRemember,
-        CreatePersonalAccessTokenAction $issueToken,
+        FinaliseAuthenticatedSessionAction $finalise,
     ): JsonResponse {
         /*
         |--------------------------------------------------------------------------
@@ -83,39 +80,44 @@ final class LoginController
             throw $exception;
         }
 
-        if ($credentials->remember) {
-            $applyRemember->execute($user);
-            Auth::guard('web')->login($user->refresh(), true);
+        /*
+        |--------------------------------------------------------------------------
+        | Two-Factor Gate
+        |--------------------------------------------------------------------------
+        |
+        | When the User has MFA enrolled, the credential check is the first
+        | factor only — a pending challenge is stashed in the session and the
+        | caller must complete verification before a token is issued.
+        |
+        */
 
-            /*
-             * Rotate the session id at the privilege boundary so a pre-auth
-             * (fixated) session id can no longer be used. Guarded: bearer-token
-             * clients hit this controller with no session store bound.
-             */
-            if ($request->hasSession()) {
-                $request->session()->regenerate();
-            }
+        if ($user->hasMfaEnabled()) {
+            $deviceName = $input->filled('device_name')
+                ? $input->string('device_name')->toString()
+                : null;
+
+            $twoFactorToken = PendingTwoFactor::begin($user->id, $credentials->remember, $deviceName);
+
+            return ApiResponse::success(
+                data: [
+                    'two_factor_required' => true,
+                    'two_factor_token' => $twoFactorToken,
+                ],
+                message: 'Two-Factor Required',
+            );
         }
 
         $deviceName = $input->filled('device_name')
             ? $input->string('device_name')->toString()
             : 'API Session';
 
-        $newToken = $issueToken->execute(new CreateTokenData(
-            forUser: $user,
-            name: $deviceName,
-            abilities: ['*'],
+        $newToken = $finalise->execute(new FinaliseAuthenticatedSessionData(
+            user: $user,
+            deviceName: $deviceName,
             remember: $credentials->remember,
-        ));
-
-        AuthEventOccurred::dispatch(new RecordAuthAuditData(
-            event: AuthAuditEvent::Login,
-            userId: $user->id,
-            email: $user->email,
-            ipAddress: $request->ip(),
+            ipAddress: (string) $request->ip(),
             userAgent: $request->userAgent(),
-            personalAccessTokenId: $newToken->accessToken->id,
-            rememberMe: $credentials->remember,
+            regenerateSession: $request->hasSession(),
         ));
 
         /*

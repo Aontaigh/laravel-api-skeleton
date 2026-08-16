@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-08-17
+
+### Added
+
+- Email two-factor authentication — `POST /api/two-factor/send` and `POST /api/two-factor/verify` complete sign-in after valid credentials when `mfa_method` is set; opaque `two_factor_token` supports stateless clients
+- `POST /api/users` — admin user creation with role and optional `team_id` (`users.create`); new accounts auto-enrol in email MFA
+- `PATCH /api/clients/{client}` — update API client name, abilities, and active status (`api-clients.update`)
+- `users.create` and `api-clients.update` permissions; permission catalog count is now 21
+- `mfa_method` column on users (migration); `MfaMethod` enum; audit events for two-factor issued, verified, and failed
+- `FinaliseAuthenticatedSessionAction` — shared remember-me, token issuance, and login audit for password and two-factor completion flows
+- Queued `TwoFactorChallengeIssued` event and `SendTwoFactorCodeNotification` listener for off-request email delivery
+- Configurable two-factor TTLs and attempt limits (`API_TWO_FACTOR_CODE_TTL_SECONDS`, `API_TWO_FACTOR_PENDING_TTL_SECONDS`, `API_TWO_FACTOR_MAX_ATTEMPTS`)
+
+### Changed
+
+- `POST /api/register` and MFA-enrolled `POST /api/login` return `two_factor_required` and `two_factor_token` instead of an immediate bearer token — complete send/verify before a session is issued
+- Email addresses are normalised to lowercase on register, login, admin user creation, and API client service-user emails
+- OpenAPI, README, and `docs/permissions.md` updated for two-factor flow, user creation, and client PATCH
+
 ## [1.5.0] - 2026-08-16
 
 ### Added
@@ -151,7 +170,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.0...v1.3.1

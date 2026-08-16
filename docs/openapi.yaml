@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.5.0
+  version: 1.6.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -82,7 +82,7 @@ info:
     | Scope | Default limit |
     | --- | --- |
     | General API (`throttle:api`) | 500 requests / minute / user (or IP when unauthenticated) |
-    | Login and registration (`POST /login`, `POST /register`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
+    | Login and registration (`POST /login`, `POST /register`, `POST /two-factor/send`, `POST /two-factor/verify`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
     | Client credentials (`POST /oauth/token`) | 5 requests / minute / `client_id`+IP, plus a 20 requests / minute per-IP ceiling |
     | Token creation (`POST /tokens`, `POST /users/{user}/tokens`, `POST /clients`) | 10 requests / minute / user |
 
@@ -175,6 +175,13 @@ paths:
       summary: Log In
       description: |
         Verify email and password credentials and return a Sanctum bearer token.
+        When the User has enrolled in email two-factor authentication (`mfa_method`
+        set), valid credentials return `200` with `two_factor_required: true`,
+        `two_factor_token`, and no bearer token — the caller must complete
+        `POST /two-factor/send` and `POST /two-factor/verify` before a session is
+        issued. Pass `two_factor_token` on send and verify when the client cannot
+        rely on session cookies (stateless API clients).
+
         Set `remember` to `true` for industry-standard remember-me: a longer-lived
         Sanctum token, a rotated `remember_token` on the User, and a web-guard
         remember cookie for stateful SPAs.
@@ -214,8 +221,82 @@ paths:
               examples:
                 LoginSuccess:
                   $ref: '#/components/examples/LoginSuccess'
+                TwoFactorRequired:
+                  $ref: '#/components/examples/TwoFactorRequiredSuccess'
         '422':
           $ref: '#/components/responses/ValidationError'
+
+  /two-factor/send:
+    post:
+      tags: [Authentication]
+      summary: Send Two-Factor Code
+      description: |
+        Dispatch a six-digit email code for the pending login challenge. Requires
+        a prior `POST /login` or `POST /register` that returned
+        `two_factor_required: true`. The pending challenge is bound to the caller's
+        session **or** the opaque `two_factor_token` returned alongside
+        `two_factor_required` — pass the token on stateless clients that do not
+        retain cookies. Only `email` is supported today; the channel must match the
+        user's enrolled `mfa_method`.
+
+        Returns `422` with `Your Sign-In Session Has Expired` when no pending
+        challenge exists. Suspended accounts receive `403 Account Suspended`.
+      operationId: sendTwoFactorCode
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendTwoFactorRequest'
+      responses:
+        '200':
+          description: Code Sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorRequiredSuccess'
+              examples:
+                default:
+                  $ref: '#/components/examples/TwoFactorCodeSentSuccess'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /two-factor/verify:
+    post:
+      tags: [Authentication]
+      summary: Verify Two-Factor Code
+      description: |
+        Verify the six-digit code and issue a Sanctum bearer token. Requires the
+        pending challenge opened by `POST /login` or `POST /register` — resolved
+        from the session cookie or optional `two_factor_token`.
+
+        Wrong, expired, or over-attempt codes return `422` with
+        `Invalid or Expired Code`. Suspended accounts receive `403 Account
+        Suspended`. Successful verification records `Two-Factor Verified` and
+        `Login` audit events.
+      operationId: verifyTwoFactorCode
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VerifyTwoFactorRequest'
+      responses:
+        '200':
+          description: Authenticated Session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionSuccess'
+              examples:
+                default:
+                  $ref: '#/components/examples/LoginSuccess'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /login/remember:
     post:
@@ -254,8 +335,12 @@ paths:
       summary: Register
       description: |
         Create a new User with the default `User` role, no Team assignment (`team_id`
-        remains null), and return a Sanctum bearer token. Email verification is not
-        required — `email_verified_at` remains null.
+        remains null), and auto-enrol email two-factor authentication
+        (`mfa_method: email`). Email addresses are normalised to lowercase before
+        validation and persistence. Returns `201` with `two_factor_required: true`
+        and `two_factor_token` — no bearer token until
+        `POST /two-factor/send` and `POST /two-factor/verify` complete. Email
+        verification is not required — `email_verified_at` remains null.
 
         Duplicate email addresses return `422` with the same generic `Invalid Credentials`
         message on the `email` field as failed login — callers cannot distinguish an
@@ -289,10 +374,10 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthSessionSuccess'
+                $ref: '#/components/schemas/TwoFactorRequiredSuccess'
               examples:
-                RegisterSuccess:
-                  $ref: '#/components/examples/RegisterSuccess'
+                RegisterPending:
+                  $ref: '#/components/examples/RegisterPendingSuccess'
         '422':
           $ref: '#/components/responses/ValidationError'
 
@@ -525,6 +610,50 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+
+    post:
+      tags: [Users]
+      summary: Create User
+      description: |
+        Admin-initiated user creation. Requires `users.create` (Admin only).
+
+        Assigns the default `User` role when `role` is omitted. Optional `role`
+        may be `Admin`, `Manager`, or `User`; optional `team_id` assigns the user
+        to a team. Email addresses are normalised to lowercase before validation
+        and persistence. New accounts are auto-enrolled in email two-factor
+        authentication (`mfa_method: email`). `email_verified_at` remains null —
+        no verification email is sent. Does not return a bearer token.
+
+        Plain-text markup in `name` is stripped before validation.
+      operationId: createUser
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateUserRequest'
+      responses:
+        '201':
+          description: User Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      status_code:
+                        example: 201
+                      message:
+                        example: User Created Successfully
+                      data:
+                        $ref: '#/components/schemas/User'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserCreateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
 
   /users/logout:
     post:
@@ -1208,6 +1337,46 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
 
+    patch:
+      tags: [API Clients]
+      summary: Update API Client
+      description: |
+        Update `name`, `abilities`, and/or `is_active`. Requires
+        `api-clients.update`.
+
+        At least one of `name`, `abilities`, or `is_active` is required.
+        Abilities are validated against the registered Spatie permission catalog.
+        Setting `is_active` to `false` blocks future client-credentials exchange
+        at `POST /oauth/token`; existing bearer tokens are not revoked.
+      operationId: updateApiClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateApiClientRequest'
+      responses:
+        '200':
+          description: API Client Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: API Client Updated Successfully
+                      data:
+                        $ref: '#/components/schemas/ApiClient'
+              examples:
+                default:
+                  $ref: '#/components/examples/ClientUpdateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
     delete:
       tags: [API Clients]
       summary: Revoke API Client
@@ -1504,6 +1673,19 @@ components:
           created_at: '2026-08-05T22:18:42+00:00'
         meta: {}
 
+    UserCreateSuccess:
+      summary: User Created
+      value:
+        status: success
+        status_code: 201
+        message: User Created Successfully
+        data:
+          id: 8
+          name: Alice
+          email: alice@example.com
+          created_at: '2026-08-05T23:16:26+00:00'
+        meta: {}
+
     UserDeleteSuccess:
       summary: User Deleted
       value:
@@ -1536,27 +1718,36 @@ components:
           plain_text_token: '10|example-plaintext-token-value'
         meta: {}
 
-    RegisterSuccess:
-      summary: Account Created
+    TwoFactorRequiredSuccess:
+      summary: Two-Factor Challenge Required
+      value:
+        status: success
+        status_code: 200
+        message: Two-Factor Required
+        data:
+          two_factor_required: true
+          two_factor_token: 'opaque-pending-challenge-token'
+        meta: {}
+
+    RegisterPendingSuccess:
+      summary: Account Created — Two-Factor Pending
       value:
         status: success
         status_code: 201
         message: Account Created Successfully
         data:
-          user:
-            id: 7
-            name: Alice
-            email: alice@example.com
-            created_at: '2026-08-05T23:16:26+00:00'
-          token:
-            id: 11
-            name: API Session
-            abilities:
-              - '*'
-            last_used_at: null
-            expires_at: '2026-11-03T23:15:04+00:00'
-            created_at: '2026-08-05T23:16:26+00:00'
-          plain_text_token: '11|example-plaintext-token-value'
+          two_factor_required: true
+          two_factor_token: 'opaque-pending-challenge-token'
+        meta: {}
+
+    TwoFactorCodeSentSuccess:
+      summary: Two-Factor Code Sent
+      value:
+        status: success
+        status_code: 200
+        message: Two-Factor Code Sent
+        data:
+          two_factor_required: true
         meta: {}
 
     LogoutSuccess:
@@ -1746,8 +1937,8 @@ components:
           pagination:
             current_page: 1
             per_page: 2
-            total: 17
-            last_page: 9
+            total: 21
+            last_page: 11
 
     ClientTokenExchangeSuccess:
       summary: Client Credentials Token Issued
@@ -1877,6 +2068,24 @@ components:
           client_secret: DemoClientSecret12
         meta: {}
 
+    ClientUpdateSuccess:
+      summary: API Client Updated
+      value:
+        status: success
+        status_code: 200
+        message: API Client Updated Successfully
+        data:
+          id: 1
+          name: Billing Sync
+          client_id: demo-integration-client
+          abilities:
+            - users.list
+            - users.list-all
+          is_active: true
+          last_used_at: null
+          created_at: '2026-08-14T16:11:53+00:00'
+        meta: {}
+
     ClientRevokeSuccess:
       summary: API Client Revoked
       value:
@@ -1954,15 +2163,22 @@ components:
               - api-clients.create
               - api-clients.delete
               - api-clients.list
+              - api-clients.update
+              - audit-logs.list
+              - permissions.list
               - roles.list
+              - teams.list
               - tokens.create-for-user
               - tokens.create-own
               - tokens.list-own
               - tokens.revoke-own
+              - users.create
               - users.delete
+              - users.force-logout
               - users.list
               - users.list-all
               - users.reassign-team
+              - users.suspend
               - users.update
               - users.view-email
 
@@ -2043,7 +2259,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.5.0
+          version: 1.6.0
         meta: {}
 
     HealthUnavailable:
@@ -2514,7 +2730,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.5.0
+          example: 1.6.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     ApiDateTime:
@@ -2679,6 +2895,90 @@ components:
           minItems: 1
           items:
             type: string
+
+    CreateUserRequest:
+      type: object
+      required: [name, email, password, password_confirmation]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: Display Name; HTML Markup Is Stripped
+        email:
+          type: string
+          format: email
+          maxLength: 255
+          description: Stored in Lowercase
+        password:
+          type: string
+        password_confirmation:
+          type: string
+        role:
+          type: string
+          enum: [Admin, Manager, User]
+          default: User
+        team_id:
+          type: integer
+          description: Optional Team Assignment
+
+    SendTwoFactorRequest:
+      type: object
+      required: [channel]
+      properties:
+        channel:
+          type: string
+          enum: [email]
+          description: Delivery channel for the six-digit code; must match the user's enrolled mfa_method
+        two_factor_token:
+          type: string
+          maxLength: 255
+          description: Opaque token from login/register when session cookies are unavailable
+
+    VerifyTwoFactorRequest:
+      type: object
+      required: [code]
+      properties:
+        code:
+          type: string
+          pattern: '^[0-9]{6}$'
+        device_name:
+          type: string
+          maxLength: 255
+        two_factor_token:
+          type: string
+          maxLength: 255
+          description: Opaque token from login/register when session cookies are unavailable
+
+    TwoFactorRequiredSuccess:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [two_factor_required]
+              properties:
+                two_factor_required:
+                  type: boolean
+                  const: true
+                two_factor_token:
+                  type: string
+                  description: Opaque token for stateless send/verify when cookies are not retained
+
+    UpdateApiClientRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        abilities:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        is_active:
+          type: boolean
 
     ClientTokenExchangeData:
       type: object

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\MfaMethod;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -29,6 +30,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property bool                            $is_service_account
  * @property \Illuminate\Support\Carbon|null $suspended_at
+ * @property MfaMethod|null                  $mfa_method
  * @property int                             $session_version
  * @property-read Collection<int, Role>      $roles the HasRoles::roles() relation,
  *                                                   declared here because that trait's
@@ -59,6 +61,7 @@ final class User extends Authenticatable
         'email',
         'password',
         'is_service_account',
+        'mfa_method',
     ];
 
     /** @var list<string> */
@@ -85,6 +88,7 @@ final class User extends Authenticatable
             'password' => 'hashed',
             'is_service_account' => 'boolean',
             'suspended_at' => 'datetime',
+            'mfa_method' => MfaMethod::class,
             'session_version' => 'integer',
             'created_at' => 'datetime',
             'updated_at' => 'datetime',
@@ -145,6 +149,16 @@ final class User extends Authenticatable
     public function isSuspended(): bool
     {
         return $this->suspended_at !== null;
+    }
+
+    /**
+     * Whether this User has enrolled in multi-factor authentication.
+     *
+     * @return bool true when an MFA channel is configured
+     */
+    public function hasMfaEnabled(): bool
+    {
+        return $this->mfa_method !== null;
     }
 
     /**

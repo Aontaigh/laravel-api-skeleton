@@ -23,6 +23,7 @@ Policy or request concern.
 | `users.list` | Access to `GET /api/users` and `GET /api/users/{user}` | `UserPolicy::viewAny()` and `UserPolicy::view()` |
 | `users.list-all` | List users across every team (not just the viewer's team) | [AppliesUserFilters](../app/Http/Requests/Concerns/Users/AppliesUserFilters.php) → [UserFilterQuery](../app/Queries/Users/UserFilterQuery.php) |
 | `users.view-email` | See and select the `email` column on user records | [AppliesUserFilters](../app/Http/Requests/Concerns/Users/AppliesUserFilters.php) and [UserResource](../app/Http/Resources/UserResource.php) |
+| `users.create` | Create a user via `POST /api/users` | `UserPolicy::create()` |
 | `users.update` | Update a user via `PATCH /api/users/{user}` | `UserPolicy::update()` |
 | `users.reassign-team` | Reassign `team_id` on `PATCH /api/users/{user}` | `UserPolicy::reassignTeam()` |
 | `users.delete` | Soft-delete a user via `DELETE /api/users/{user}` | `UserPolicy::delete()` |
@@ -35,6 +36,7 @@ Policy or request concern.
 | `tokens.create-for-user` | Access to `POST /api/users/{user}/tokens` (issue a token for another user) | `PersonalAccessTokenPolicy::createForUser()` |
 | `api-clients.list` | Access to `GET /api/clients` and `GET /api/clients/{client}` | `ApiClientPolicy::viewAny()` and `ApiClientPolicy::view()` |
 | `api-clients.create` | Access to `POST /api/clients` | `ApiClientPolicy::create()` |
+| `api-clients.update` | Access to `PATCH /api/clients/{client}` | `ApiClientPolicy::update()` |
 | `api-clients.delete` | Access to `DELETE /api/clients/{client}` | `ApiClientPolicy::delete()` |
 | `audit-logs.list` | Access to `GET /api/audit-logs` and `GET /api/audit-logs/{auth_audit_log}` (Admin role only for now) | `AuthAuditLogPolicy::viewAny()` and `AuthAuditLogPolicy::view()` |
 | `permissions.list` | Access to `GET /api/permissions` | `PermissionPolicy::viewAny()` |
@@ -59,6 +61,14 @@ response always includes the caller's `email` and supports the same `include` an
 Even when `fields[users]` is omitted (default column projection), `email` is stripped
 from the response unless the viewer holds this permission. The check lives in
 `UserResource`, not only in the query allow-list.
+
+#### `users.create`
+
+Admin-only creation of interactive user accounts via `POST /api/users`. Assigns
+role (`Admin`, `Manager`, or `User`; defaults to `User`) and optional `team_id`.
+Email addresses are normalised to lowercase before validation and persistence.
+`email_verified_at` remains null and no bearer token is returned. New accounts
+are auto-enrolled in email two-factor authentication (`mfa_method: email`).
 
 #### `users.update`
 
@@ -120,8 +130,9 @@ password login:
 - Each client is linked to a **service User** (`is_service_account = true`) with the
   `Service` role. Token abilities are stored on the client and further scope API access.
 - Service accounts cannot log in, self-issue tokens, or be force-logged out.
-- Admins manage clients via `GET /api/clients`, `POST /api/clients`, and
-  `DELETE /api/clients/{client}`. The plaintext `client_secret` is returned once on create.
+- Admins manage clients via `GET /api/clients`, `POST /api/clients`,
+  `PATCH /api/clients/{client}`, and `DELETE /api/clients/{client}`. The plaintext
+  `client_secret` is returned once on create.
 
 After `migrate:fresh --seed`, a demo client is available:
 

@@ -114,6 +114,8 @@ All routes below require `Authorization: Bearer {token}` unless noted.
 
 ```http
 POST /api/login           # {"email": "...", "password": "...", "remember": optional, "device_name": optional}
+POST /api/two-factor/send # {"channel": "email", "two_factor_token": optional}
+POST /api/two-factor/verify # {"code": "123456", "device_name": optional, "two_factor_token": optional}
 POST /api/login/remember  # Stateful SPA re-auth via remember-me cookie or session
 POST /api/register        # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}
 POST /api/oauth/token     # {"grant_type":"client_credentials","client_id":"...","client_secret":"..."}
@@ -126,9 +128,12 @@ ceiling (`API_AUTH_IP_CEILING_PER_MINUTE`, default **20**). Client-credentials e
 per `client_id`+IP (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling
 pattern. The per-IP ceiling is skipped in `local` so the dev suite never self-throttles. After seed,
 use demo client `demo-integration-client` / `DemoClientSecret12`. Admins manage clients via
-`GET|POST|DELETE /api/clients` and `GET /api/clients/{client}`. Registration assigns the default `User` role with `team_id` null and returns a Sanctum bearer token;
+`GET|POST|PATCH|DELETE /api/clients` and `GET /api/clients/{client}`. Registration assigns the default `User` role with `team_id` null, auto-enrols email two-factor authentication, and returns `two_factor_required` plus an opaque `two_factor_token` — no bearer token until send/verify complete;
 email verification is not required. Invalid login credentials return a generic
-`Invalid Credentials` message on the `email` field. Login, logout, registration,
+`Invalid Credentials` message on the `email` field. Users with email MFA enrolled
+receive `two_factor_required: true` and `two_factor_token` after valid credentials — complete
+`POST /api/two-factor/send` then `POST /api/two-factor/verify` on the same session
+(or pass `two_factor_token` on stateless clients) before a bearer token is issued. Login, logout, registration,
 failed logins, and remember-me restores are recorded to `auth_audit_logs` — written by a
 **queued listener** ([RecordAuthAuditLog](app/Listeners/RecordAuthAuditLog.php)) off the
 request hot path, so a queue worker must be running in non-`sync` environments.
@@ -239,8 +244,13 @@ required. Supports the same `fields`/`include` allow-lists as show. Service acco
 receive `403`. The authenticated User may also update their own `name` via
 `PATCH /api/me` and change their password via `PATCH /api/me/password`.
 
+**Admin Creation:** `POST /api/users` creates an account with caller-specified role and
+optional `team_id` (`users.create`, Admin only). Email is normalised to lowercase;
+new accounts are auto-enrolled in email MFA; no bearer token is returned.
+
 **Source of Truth:** [UserQueryConstraints](app/Queries/Users/UserQueryConstraints.php),
-[UserPolicy](app/Policies/UserPolicy.php), [MeShowController](app/Http/Controllers/Users/MeShowController.php).
+[UserPolicy](app/Policies/UserPolicy.php), [MeShowController](app/Http/Controllers/Users/MeShowController.php),
+[StoreUserController](app/Http/Controllers/Users/StoreUserController.php).
 
 | Method | Path | Notes |
 | --- | --- | --- |
@@ -248,6 +258,7 @@ receive `403`. The authenticated User may also update their own `name` via
 | `PATCH` | `/api/me` | Update own `name`; `email`/`password`/`team_id` prohibited |
 | `PATCH` | `/api/me/password` | Change own password (requires current password) |
 | `GET` | `/api/users` | Paginated index |
+| `POST` | `/api/users` | Create account (`users.create`); optional `role` and `team_id` |
 | `GET` | `/api/users/{user}` | Show — same `fields`/`include` as index |
 | `PATCH` | `/api/users/{user}` | Update `name`; Admins may reassign `team_id` |
 | `DELETE` | `/api/users/{user}` | Soft-delete; cannot delete own account |
@@ -294,6 +305,24 @@ validates on create.
 
 **Source of Truth:** [PermissionQueryConstraints](app/Queries/Permissions/PermissionQueryConstraints.php),
 [PermissionPolicy](app/Policies/PermissionPolicy.php).
+
+### API Clients
+
+```http
+GET    /api/clients
+POST   /api/clients                       # {"name": "...", "abilities": ["users.list"]}
+GET    /api/clients/{client}
+PATCH  /api/clients/{client}              # update name, abilities, and/or is_active
+DELETE /api/clients/{client}
+```
+
+Requires `api-clients.list`, `api-clients.create`, `api-clients.update`, and
+`api-clients.delete` respectively (Admin only). The plaintext `client_secret` is
+returned once on `POST`. Setting `is_active` to `false` blocks future
+client-credentials exchange; existing bearer tokens are not revoked.
+
+**Source of Truth:** [ApiClientQueryConstraints](app/Queries/ApiClients/ApiClientQueryConstraints.php),
+[ApiClientPolicy](app/Policies/ApiClientPolicy.php).
 
 ### Tokens
 

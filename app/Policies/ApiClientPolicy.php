@@ -62,4 +62,16 @@ final class ApiClientPolicy
     {
         return $user->can('api-clients.delete');
     }
+
+    /**
+     * Whether the User may update the given API client.
+     *
+     * @param  User      $user   the authenticated User
+     * @param  ApiClient $client the client being updated
+     * @return bool      true when the User may update that client
+     */
+    public function update(User $user, ApiClient $client): bool
+    {
+        return $user->can('api-clients.update');
+    }
 }

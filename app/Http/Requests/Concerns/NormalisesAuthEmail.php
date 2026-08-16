@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns;
 
+use App\Support\EmailAddress;
+
 /**
- * Lowercases the email attribute before validation on auth FormRequests.
+ * Lowercases the email attribute before validation on FormRequests that accept
+ * user email addresses.
  *
- * Composed via {@see PreparesAuthCredentials} on login and registration requests.
+ * Composed via {@see PreparesPlainTextAndEmail} and {@see PreparesAuthCredentials}.
  *
  * @mixin \App\Http\Requests\ApiFormRequest
  */
@@ -26,7 +29,7 @@ trait NormalisesAuthEmail
     {
         if ($this->has('email') && is_string($this->input('email'))) {
             $this->merge([
-                'email' => strtolower($this->string('email')->toString()),
+                'email' => EmailAddress::normalise($this->string('email')->toString()),
             ]);
         }
     }

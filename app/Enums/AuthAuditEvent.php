@@ -17,4 +17,7 @@ enum AuthAuditEvent: string
     case RememberMeLogin = 'Remember Me Login';
     case ClientTokenExchange = 'Client Token Exchange';
     case ClientTokenExchangeFailed = 'Client Token Exchange Failed';
+    case TwoFactorIssued = 'Two-Factor Issued';
+    case TwoFactorVerified = 'Two-Factor Verified';
+    case TwoFactorFailed = 'Two-Factor Failed';
 }

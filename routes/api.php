@@ -27,6 +27,12 @@ Route::middleware(['throttle:api-auth'])->group(function (): void {
     Route::post('/register', \App\Http\Controllers\Auth\RegisterController::class)
         ->name('auth.register');
 
+    Route::post('/two-factor/send', \App\Http\Controllers\Auth\SendTwoFactorController::class)
+        ->name('two-factor.send');
+
+    Route::post('/two-factor/verify', \App\Http\Controllers\Auth\VerifyTwoFactorController::class)
+        ->name('two-factor.verify');
+
     Route::post('/oauth/token', \App\Http\Controllers\Auth\ClientTokenExchangeController::class)
         ->middleware('throttle:api-client-auth')
         ->name('oauth.token');
@@ -60,6 +66,9 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
 
     Route::get('/users', \App\Http\Controllers\Users\UserIndexController::class)
         ->name('users.index');
+
+    Route::post('/users', \App\Http\Controllers\Users\StoreUserController::class)
+        ->name('users.store');
 
     Route::post('/users/logout', \App\Http\Controllers\Users\ForceLogoutUsersController::class)
         ->name('users.force-logout');
@@ -123,6 +132,9 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
 
     Route::delete('/clients/{client}', \App\Http\Controllers\Clients\DestroyClientController::class)
         ->name('clients.destroy');
+
+    Route::patch('/clients/{client}', \App\Http\Controllers\Clients\UpdateClientController::class)
+        ->name('clients.update');
 
     /*
     |--------------------------------------------------------------------------

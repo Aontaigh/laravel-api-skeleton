@@ -10,6 +10,7 @@ use App\Enums\RoleName;
 use App\Models\ApiClient;
 use App\Models\User;
 use App\Services\Permissions\PermissionAbilityCatalog;
+use App\Support\EmailAddress;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
@@ -114,6 +115,6 @@ final class CreateApiClientAction
         $base = Str::limit($slug, 50, '');
         $suffix = Str::lower(Str::random(8));
 
-        return "{$base}.{$suffix}@clients.internal";
+        return EmailAddress::normalise("{$base}.{$suffix}@clients.internal");
     }
 }

@@ -32,6 +32,19 @@ final class UserPolicy
     }
 
     /**
+     * Whether the User may create Users.
+     *
+     * Requires `users.create`. Only Admins hold this permission.
+     *
+     * @param  User $user the authenticated User
+     * @return bool true when the User may create a User
+     */
+    public function create(User $user): bool
+    {
+        return $user->can('users.create');
+    }
+
+    /**
      * Whether the User may view their own profile via `GET /me`.
      *
      * Open to every interactive account with a bearer token. Service accounts

@@ -5,21 +5,17 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\RegisterUserAction;
-use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Auth\RegisterUserData;
-use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\RegisterRequest;
-use App\Http\Resources\AuthenticatedUserResource;
-use App\Http\Resources\PersonalAccessTokenResource;
 use App\Support\ApiResponse;
+use App\Support\Auth\PendingTwoFactor;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Support\ValidatedInput;
 
 /**
- * Registers a new User and issues the first Sanctum token.
+ * Registers a new User and begins email two-factor verification.
  *
  * @example
  * POST /api/register {"name": "Alice", "email": "alice@example.com", "password": "SecretPass12", "password_confirmation": "SecretPass12"}
@@ -33,17 +29,15 @@ final class RegisterController
     */
 
     /**
-     * Create an account and return a bearer token.
+     * Create an account and return a pending two-factor challenge.
      *
-     * @param  RegisterRequest                 $request    the validated registration request
-     * @param  RegisterUserAction              $register   the registration Action
-     * @param  CreatePersonalAccessTokenAction $issueToken the token issuance Action
-     * @return JsonResponse                    the standardised success envelope
+     * @param  RegisterRequest    $request  the validated registration request
+     * @param  RegisterUserAction $register the registration Action
+     * @return JsonResponse       the pending-challenge envelope
      */
     public function __invoke(
         RegisterRequest $request,
         RegisterUserAction $register,
-        CreatePersonalAccessTokenAction $issueToken,
     ): JsonResponse {
         /*
         |--------------------------------------------------------------------------
@@ -57,11 +51,6 @@ final class RegisterController
         |--------------------------------------------------------------------------
         | Action
         |--------------------------------------------------------------------------
-        |
-        | Each step consumes the previous one's result, so the payloads are built
-        | inline rather than hoisted into Input: the token needs the new User, and
-        | the audit entry needs the issued token.
-        |
         */
 
         $user = $register->execute(new RegisterUserData(
@@ -70,11 +59,11 @@ final class RegisterController
             password: $input->string('password')->toString(),
         ));
 
-        $newToken = $issueToken->execute(new CreateTokenData(
-            forUser: $user,
-            name: $this->deviceName($input),
-            abilities: ['*'],
-        ));
+        $deviceName = $input->filled('device_name')
+            ? $input->string('device_name')->toString()
+            : null;
+
+        $twoFactorToken = PendingTwoFactor::begin($user->id, shouldRemember: false, deviceName: $deviceName);
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::Register,
@@ -82,7 +71,6 @@ final class RegisterController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
-            personalAccessTokenId: $newToken->accessToken->id,
         ));
 
         /*
@@ -93,33 +81,11 @@ final class RegisterController
 
         return ApiResponse::success(
             data: [
-                'user' => new AuthenticatedUserResource($user),
-                'token' => new PersonalAccessTokenResource($newToken->accessToken),
-                'plain_text_token' => $newToken->plainTextToken,
+                'two_factor_required' => true,
+                'two_factor_token' => $twoFactorToken,
             ],
             message: 'Account Created Successfully',
             statusCode: 201,
         );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Private
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Resolve the Sanctum token label from validated input.
-     *
-     * @param  \Illuminate\Support\ValidatedInput $input the validated request payload
-     * @return string                             the device label
-     */
-    private function deviceName(ValidatedInput $input): string
-    {
-        if ($input->filled('device_name')) {
-            return $input->string('device_name')->toString();
-        }
-
-        return 'API Session';
     }
 }
