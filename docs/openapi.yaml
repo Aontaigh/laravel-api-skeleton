@@ -1559,6 +1559,7 @@ components:
             user:
               id: 1
               name: Admin User
+              email: admin@example.com
         meta:
           pagination:
             current_page: 1
