@@ -6,6 +6,7 @@ name: CI
 #   - Larastan Level 9 + strict + deprecation rules (static analysis)
 #   - PHPUnit + coverage gate (>= 90% line coverage on `app/`)
 #   - composer audit (any advisory in production deps = fail)
+#   - App version sync (composer.json vs OpenAPI; tag on release builds)
 #   - OpenAPI example verification (live responses vs docs/openapi.yaml)
 #
 # Each gate is its own job so a failure in one (e.g. a Pint nit) does not
@@ -58,6 +59,9 @@ jobs:
 
             - name: Run Pint
               run: composer lint
+
+            - name: Verify App Version Sync
+              run: composer verify:version
 
     # ---------------------------------------------------------------------
     # Static Analysis (Larastan, PHPStan Level 9 + Strict + Deprecation)

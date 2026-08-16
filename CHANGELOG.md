@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-08-16
+
+### Added
+
+- `PATCH /api/me` — self-service profile update (`name` only; `email`, `password`, and `team_id` are prohibited)
+- `PATCH /api/me/password` — self-service password change (requires the current password and rotates the User's sessions)
+- `GET /api/teams` and `GET /api/teams/{team}` — read-only Team index and show with the standard sort, `fields[teams]`, and `filter[search]` contract (`teams.list` on Admin and Manager)
+- `POST /api/users/{user}/suspend` and `POST /api/users/{user}/unsuspend` — admin account suspension (`users.suspend`); suspended identities are turned away on every authenticated route
+- `GET /health` — public uptime probe (no auth) reporting database reachability and the application version
+
+### Changed
+
+- Application version now derives from the `version` field in `composer.json` via `config('app.version')` (override with `APP_VERSION`); `/health` reports it
+- CI adds a `composer verify:version` gate — fails when `docs/openapi.yaml` drifts from `composer.json`
+
+### Fixed
+
+- OAuth client-credentials tokens honour their own expiration instead of falling back to the user Personal Access Token lifetime
+
 ## [1.4.0] - 2026-08-16
 
 ### Added
@@ -132,7 +151,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.1...v1.3.0

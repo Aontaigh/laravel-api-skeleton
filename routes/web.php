@@ -27,3 +27,16 @@ Route::middleware('api-docs')->group(function (): void {
     Route::get('/api/openapi.yaml', \App\Http\Controllers\Api\ShowOpenApiSpecController::class)
         ->name('api.openapi');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Health
+|--------------------------------------------------------------------------
+|
+| Public uptime probe — no auth, no throttling. Load balancers and uptime
+| monitors hit this to confirm the API is serving and the database answers.
+|
+*/
+
+Route::get('/health', \App\Http\Controllers\Api\ShowHealthController::class)
+    ->name('health');

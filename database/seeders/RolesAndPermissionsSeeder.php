@@ -42,6 +42,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'users.reassign-team',     // team_id changes on PATCH /api/users/{user}
         'users.delete',            // DELETE /api/users/{user} (soft delete)
         'users.force-logout',      // POST /api/users/logout (admin session termination)
+        'users.suspend',           // POST /api/users/{user}/suspend and /unsuspend
         'roles.list',              // GET /api/roles and GET /api/roles/{role}
         'tokens.list-own',         // GET /api/tokens (own tokens only)
         'tokens.create-own',       // POST /api/tokens
@@ -51,6 +52,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'api-clients.create',      // POST /api/clients
         'api-clients.delete',      // DELETE /api/clients/{client}
         'audit-logs.list',         // GET /api/audit-logs
+        'teams.list',              // GET /api/teams and GET /api/teams/{team}
         'permissions.list',        // GET /api/permissions
     ];
 
@@ -70,6 +72,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'users.reassign-team',
             'users.delete',
             'users.force-logout',
+            'users.suspend',
             'roles.list',
             'tokens.list-own',
             'tokens.create-own',
@@ -79,6 +82,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'api-clients.create',
             'api-clients.delete',
             'audit-logs.list',
+            'teams.list',
             'permissions.list',
         ],
         RoleName::Manager->value => [
@@ -89,6 +93,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'tokens.list-own',
             'tokens.create-own',
             'tokens.revoke-own',
+            'teams.list',
             'permissions.list',
         ],
         RoleName::User->value => [

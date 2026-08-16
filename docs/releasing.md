@@ -15,23 +15,50 @@ This runbook is the surrounding procedure — gates, changelog, tag, and publish
 
 ## Release Checklist
 
-- [ ] 1. `CHANGELOG.md` updated — `## [X.Y.Z] - YYYY-MM-DD` with today's date
-- [ ] 2. Quality gates green locally (see below)
-- [ ] 3. Release commit pushed to `main`, CI green **on that commit**
-- [ ] 4. Tag `vX.Y.Z` on the CI-green commit and push
-- [ ] 5. GitHub release published (transform changelog headings to emoji — do not paste
+- [ ] 1. App version bumped — `composer.json`, `docs/openapi.yaml`, and changelog (see [App version](#app-version))
+- [ ] 2. `CHANGELOG.md` updated — `## [X.Y.Z] - YYYY-MM-DD` with today's date
+- [ ] 3. Quality gates green locally (see below)
+- [ ] 4. Release commit pushed to `main`, CI green **on that commit**
+- [ ] 5. Tag `vX.Y.Z` on the CI-green commit and push
+- [ ] 6. GitHub release published (transform changelog headings to emoji — do not paste
   `CHANGELOG.md` verbatim)
 
 ## Release Flow
 
 ```mermaid
 flowchart LR
-    A[Update CHANGELOG] --> B[Run Quality Gates]
-    B --> C[Push to main]
-    C --> D[CI Green]
-    D --> E[Tag vX.Y.Z]
-    E --> F[gh release create]
+    A[Bump App Version] --> B[Update CHANGELOG]
+    B --> C[Run Quality Gates]
+    C --> D[Push to main]
+    D --> E[CI Green]
+    E --> F[Tag vX.Y.Z]
+    F --> G[gh release create]
 ```
+
+## App Version
+
+The `/health` endpoint reports the app version from `config('app.version')`. That
+value defaults to the **`version` field in `composer.json`** — not a hard-coded
+fallback in `config/app.php`. Keep these in sync on every release:
+
+| File | What to update |
+| --- | --- |
+| [`composer.json`](../composer.json) | `"version": "X.Y.Z"` — **source of truth** |
+| [`docs/openapi.yaml`](../docs/openapi.yaml) | `info.version`, the `HealthSuccess` example, and the `HealthData.version` schema example |
+| Git tag | `vX.Y.Z` (must match composer version without the `v` prefix) |
+
+`APP_VERSION` in `.env` is an optional override for deployed environments. Local
+dev and CI do not need it when `composer.json` is current.
+
+CI enforces sync via `composer verify:version` (also part of `composer ci`):
+
+```bash
+composer verify:version
+# or: php scripts/verify-app-version.php
+```
+
+The script fails when OpenAPI drifts from `composer.json`, or when a tagged GitHub
+Actions build (`GITHUB_REF_NAME=vX.Y.Z`) does not match the composer version.
 
 ## 1. Update the Changelog
 
@@ -57,9 +84,9 @@ Local (Sail when host PHP is not 8.5):
 bash scripts/verify-openapi-examples.sh
 ```
 
-`composer ci` runs Pint, Larastan, PHPUnit with the 90% coverage gate, and
-`composer audit`. OpenAPI example verification is a **separate** CI job — run it
-locally before tagging when API or docs changed.
+`composer ci` runs Pint, Larastan, PHPUnit with the 90% coverage gate, app version
+sync (`composer verify:version`), and `composer audit`. OpenAPI example verification
+is a **separate** CI job — run it locally before tagging when API or docs changed.
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
 Sail port notes when Docker ports on your machine are already in use.
@@ -67,15 +94,15 @@ Sail port notes when Docker ports on your machine are already in use.
 ## 3. Commit and Push, Then Wait for CI
 
 ```bash
-git add CHANGELOG.md README.md docs/
+git add CHANGELOG.md composer.json docs/
 git commit -m "chore(release): prepare vX.Y.Z"
 git push origin main
 gh run watch --exit-status
 ```
 
 CI must be green on the commit you are about to tag. The **All Quality Gates** summary
-job must pass — Pint, Larastan, PHPUnit + coverage, Security Audit, and OpenAPI
-Examples.
+job must pass — Pint, app version sync, Larastan, PHPUnit + coverage, Security Audit,
+and OpenAPI Examples.
 
 ## 4. Tag the CI-Green Commit
 

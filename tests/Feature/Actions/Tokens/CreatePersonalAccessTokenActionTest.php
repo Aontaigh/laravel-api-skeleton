@@ -94,6 +94,40 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
     }
 
     /**
+     * Honour an explicit null expiration without falling back to configured user lifetime.
+     */
+    #[Test]
+    public function it_honours_an_explicit_null_expiration_without_using_configured_user_lifetime(): void
+    {
+        // Arrange
+
+        config(['api.token_expiration_days' => 90]);
+
+        /** @var User $user */
+        $user = User::factory()->user()->create();
+
+        $data = new CreateTokenData(
+            forUser: $user,
+            name: 'No Expiry Token',
+            abilities: ['tokens.list-own'],
+            expiresAt: null,
+            useConfiguredExpiration: false,
+        );
+
+        // Act
+
+        $issued = app(CreatePersonalAccessTokenAction::class)->execute($data);
+
+        // Assert
+
+        $this->assertNull($issued->accessToken->expires_at);
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'name' => 'No Expiry Token',
+            'expires_at' => null,
+        ]);
+    }
+
+    /**
      * Reject unknown abilities before persisting.
      */
     #[Test]

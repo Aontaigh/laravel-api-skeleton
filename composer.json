@@ -1,6 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "aontaigh/laravel-api-skeleton",
+    "version": "1.5.0",
     "type": "project",
     "description": "Production-ready Laravel 13 API skeleton with Sanctum, Spatie permissions, and a consistent query-driven index pattern.",
     "keywords": [
@@ -80,10 +81,12 @@
             "./vendor/bin/phpstan analyse --memory-limit=512M"
         ],
         "verify:openapi": "bash scripts/verify-openapi-examples.sh",
+        "verify:version": "@php scripts/verify-app-version.php",
         "ci": [
             "@lint",
             "@analyse",
             "@test:coverage:check",
+            "@verify:version",
             "composer audit --locked --no-ansi"
         ],
         "post-autoload-dump": [

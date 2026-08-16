@@ -67,6 +67,7 @@ final class ExchangeClientCredentialsAction
             name: $client->name.' Client Credentials',
             abilities: $client->abilities,
             expiresAt: $expiresAt,
+            useConfiguredExpiration: false,
         ));
 
         $client->forceFill(['last_used_at' => now()])->save();

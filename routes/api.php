@@ -41,6 +41,12 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
     Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)
         ->name('me.show');
 
+    Route::patch('/me', \App\Http\Controllers\Users\UpdateMeController::class)
+        ->name('me.update');
+
+    Route::patch('/me/password', \App\Http\Controllers\Users\UpdateMePasswordController::class)
+        ->name('me.password.update');
+
     /*
     |--------------------------------------------------------------------------
     | Users
@@ -57,6 +63,12 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
 
     Route::post('/users/logout', \App\Http\Controllers\Users\ForceLogoutUsersController::class)
         ->name('users.force-logout');
+
+    Route::post('/users/{user}/suspend', \App\Http\Controllers\Users\SuspendUserController::class)
+        ->name('users.suspend');
+
+    Route::post('/users/{user}/unsuspend', \App\Http\Controllers\Users\UnsuspendUserController::class)
+        ->name('users.unsuspend');
 
     Route::get('/users/{user}', \App\Http\Controllers\Users\UserShowController::class)
         ->name('users.show');
@@ -155,5 +167,21 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
 
     Route::get('/permissions', \App\Http\Controllers\Permissions\PermissionIndexController::class)
         ->name('permissions.index');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Teams
+    |--------------------------------------------------------------------------
+    |
+    | Query-Param-Driven Team Index and Show Endpoints (`sort`, `fields`,
+    | `filter`, pagination on index).
+    |
+    */
+
+    Route::get('/teams', \App\Http\Controllers\Teams\TeamIndexController::class)
+        ->name('teams.index');
+
+    Route::get('/teams/{team}', \App\Http\Controllers\Teams\TeamShowController::class)
+        ->name('teams.show');
 
 });

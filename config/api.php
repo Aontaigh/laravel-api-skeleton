@@ -48,6 +48,7 @@ return [
     |
     | Number of days until a token issued via POST /oauth/token expires.
     | Shorter than user PAT lifetime by default for machine-to-machine access.
+    | Set to 0 to disable expiration (local development only).
     |
     */
 

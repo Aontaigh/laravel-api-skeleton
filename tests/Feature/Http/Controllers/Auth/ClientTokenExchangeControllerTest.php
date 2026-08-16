@@ -129,6 +129,46 @@ final class ClientTokenExchangeControllerTest extends TestCase
     }
 
     /**
+     * Issue a non-expiring token when client token lifetime is disabled.
+     */
+    #[Test]
+    public function it_issues_a_non_expiring_token_when_client_lifetime_is_zero(): void
+    {
+        // Arrange
+
+        config([
+            'api.client_token_expiration_days' => 0,
+            'api.token_expiration_days' => 90,
+        ]);
+
+        $plainSecret = 'ClientSecretValue12';
+        $client = ApiClient::factory()->create([
+            'client_secret' => Hash::make($plainSecret),
+            'abilities' => ['users.list'],
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/oauth/token', [
+            'grant_type' => 'client_credentials',
+            'client_id' => $client->client_id,
+            'client_secret' => $plainSecret,
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.expires_in', null);
+        $response->assertJsonPath('data.token.expires_at', null);
+
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'tokenable_id' => $client->user_id,
+            'expires_at' => null,
+        ]);
+    }
+
+    /**
      * Exchange the seeded demo client credentials.
      */
     #[Test]

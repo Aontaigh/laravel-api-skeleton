@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.0.0
+  version: 1.5.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -36,7 +36,7 @@ info:
     ## Index Query Contract
 
     List endpoints (`GET /users`, `GET /roles`, `GET /tokens`, `GET /clients`,
-    `GET /audit-logs`, `GET /permissions`) share the same query-param vocabulary.
+    `GET /audit-logs`, `GET /permissions`, `GET /teams`) share the same query-param vocabulary.
     Unknown sort columns, filter keys, field names, or include relations return
     `422`.
 
@@ -63,8 +63,8 @@ info:
     ### Show Endpoints
 
     `GET /me`, `GET /users/{user}`, `GET /roles/{role}`, `GET /clients/{client}`,
-    and `GET /audit-logs/{auth_audit_log}` support `include` and `fields[…]` only —
-    no `sort`, `filter`, or pagination.
+    `GET /audit-logs/{auth_audit_log}`, and `GET /teams/{team}` support `include`
+    and `fields[…]` only — no `sort`, `filter`, or pagination.
 
     ## Account Status
 
@@ -73,7 +73,9 @@ info:
     message — no bearer token is issued. An existing bearer token or session
     receives `403` with message `Account Suspended` on every authenticated route
     (`active.account` middleware). Remember-me restoration answers with generic
-    `401 Unauthenticated`.
+    `401 Unauthenticated`. Admins suspend and unsuspend accounts via
+    `POST /users/{user}/suspend` and `POST /users/{user}/unsuspend`
+    (requires `users.suspend`).
 
     ## Rate Limits
 
@@ -109,19 +111,64 @@ tags:
   - name: Authentication
     description: Password Login and Self-Service Registration (Public, Rate-Limited)
   - name: Users
-    description: User Index, Show, Update, Soft-Delete, and Admin-Issued Tokens
+    description: User Index, Show, Update, Soft-Delete, Suspension, Self-Service Profile, and Admin-Issued Tokens
   - name: Tokens
     description: Self-Service Personal Access Token Management
   - name: Roles
     description: Role Index and Show (Read-Only)
+  - name: Teams
+    description: Team Index and Show (Read-Only)
   - name: Permissions
     description: Permission Catalog for Token and API Client Ability Pickers
   - name: API Clients
     description: Admin-Managed Machine-to-Machine Client Credentials
   - name: Audit Logs
     description: Admin Read-Only Authentication Audit Trail
+  - name: Health
+    description: Public Uptime Probe (No Auth)
 
 paths:
+  /health:
+    get:
+      tags: [Health]
+      summary: Health Check
+      description: |
+        Public uptime probe — no auth, no throttling. Returns the application
+        version and whether the primary database answers `select 1`. Returns
+        `503 Service Unavailable` when the database is unreachable.
+
+        Served at the **root** (`/health`), outside the `/api` prefix.
+      operationId: health
+      servers:
+        - url: /
+          description: Root — Health Probe Bypasses the /api Prefix
+      responses:
+        '200':
+          description: Service Healthy
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Service Healthy
+                      data:
+                        $ref: '#/components/schemas/HealthData'
+              examples:
+                default:
+                  $ref: '#/components/examples/HealthSuccess'
+        '503':
+          description: Service Unavailable (Database Unreachable)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                default:
+                  $ref: '#/components/examples/HealthUnavailable'
+
   /login:
     post:
       tags: [Authentication]
@@ -343,6 +390,83 @@ paths:
               examples:
                 default:
                   $ref: '#/components/examples/MeShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    patch:
+      tags: [Users]
+      summary: Update Current User Profile
+      description: |
+        Update the authenticated User's own `name`. Any interactive bearer token
+        holder may call this — `users.update` is **not** required.
+
+        - `name` is required; `email`, `password`, and `team_id` are **prohibited**
+        - Plain-text markup in `name` is stripped before validation
+        - Service accounts (`is_service_account`) receive `403`
+      operationId: updateMe
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMeRequest'
+      responses:
+        '200':
+          description: Updated Profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Profile Updated Successfully
+                      data:
+                        $ref: '#/components/schemas/User'
+              examples:
+                default:
+                  $ref: '#/components/examples/MeUpdateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /me/password:
+    patch:
+      tags: [Users]
+      summary: Change Current User Password
+      description: |
+        Change the authenticated User's own password. Any interactive bearer
+        token holder may call this.
+
+        Requires the current password to verify the change, then sets the new
+        password (minimum 8 characters) and rotates the User's sessions so any
+        existing session is signed out. Service accounts receive `403`.
+      operationId: updateMePassword
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateMePasswordRequest'
+      responses:
+        '200':
+          description: Password Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Password Updated Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/MePasswordUpdateSuccess'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationError' }
@@ -570,6 +694,73 @@ paths:
               examples:
                 default:
                   $ref: '#/components/examples/UserDeleteSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{user}/suspend:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+
+    post:
+      tags: [Users]
+      summary: Suspend User
+      description: |
+        Suspend a User's account by setting `suspended_at`. Requires
+        `users.suspend` (Admin only).
+
+        Once suspended, the User is turned away with `403 Account Suspended`
+        on every authenticated route. Callers cannot suspend their own account.
+      operationId: suspendUser
+      responses:
+        '200':
+          description: User Suspended
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: User Suspended Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserSuspendSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{user}/unsuspend:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+
+    post:
+      tags: [Users]
+      summary: Unsuspend User
+      description: |
+        Lift a User's suspension by clearing `suspended_at`. Requires
+        `users.suspend` (Admin only).
+      operationId: unsuspendUser
+      responses:
+        '200':
+          description: User Unsuspended
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: User Unsuspended Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserUnsuspendSuccess'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1145,6 +1336,89 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
 
+  /teams:
+    get:
+      tags: [Teams]
+      summary: List Teams
+      description: |
+        Paginated, filterable team list. Requires `teams.list` (Admin and
+        Manager).
+
+        **Sort Whitelist:** `id`, `name`, `created_at` (default `id` ascending).
+
+        **Filter:** `filter[search]` partial name match.
+
+        **Fields Keys:** `fields[teams]` (columns `id`, `name`). No includes.
+      operationId: listTeams
+      parameters:
+        - $ref: '#/components/parameters/QuerySortTeams'
+        - $ref: '#/components/parameters/QueryFieldsTeams'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Team Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Teams Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Team'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/TeamsIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /teams/{team}:
+    parameters:
+      - $ref: '#/components/parameters/TeamId'
+
+    get:
+      tags: [Teams]
+      summary: Show Team
+      description: |
+        Single team. Requires `teams.list`.
+
+        Supports `fields[teams]` (columns `id`, `name`). No `sort`, `filter`,
+        or pagination.
+      operationId: showTeam
+      parameters:
+        - $ref: '#/components/parameters/QueryFieldsTeams'
+      responses:
+        '200':
+          description: Team Resource
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Team Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/Team'
+              examples:
+                default:
+                  $ref: '#/components/examples/TeamShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
 components:
   examples:
     UsersIndexSuccess:
@@ -1692,6 +1966,95 @@ components:
               - users.update
               - users.view-email
 
+    MeUpdateSuccess:
+      summary: Updated Profile
+      value:
+        status: success
+        status_code: 200
+        message: Profile Updated Successfully
+        data:
+          id: 3
+          name: Renamed User
+          email: test@example.com
+          created_at: '2026-08-05T22:18:42+00:00'
+        meta: {}
+
+    MePasswordUpdateSuccess:
+      summary: Password Updated
+      value:
+        status: success
+        status_code: 200
+        message: Password Updated Successfully
+        data: null
+        meta: {}
+
+    UserSuspendSuccess:
+      summary: User Suspended
+      value:
+        status: success
+        status_code: 200
+        message: User Suspended Successfully
+        data: null
+        meta: {}
+
+    UserUnsuspendSuccess:
+      summary: User Unsuspended
+      value:
+        status: success
+        status_code: 200
+        message: User Unsuspended Successfully
+        data: null
+        meta: {}
+
+    TeamsIndexSuccess:
+      summary: Paginated Team Collection
+      value:
+        status: success
+        status_code: 200
+        message: Teams Retrieved Successfully
+        data:
+          - id: 1
+            name: Acme Corp
+          - id: 2
+            name: Engineering
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 2
+            total: 2
+            last_page: 1
+
+    TeamShowSuccess:
+      summary: Team Resource
+      value:
+        status: success
+        status_code: 200
+        message: Team Retrieved Successfully
+        data:
+          id: 1
+          name: Acme Corp
+        meta: {}
+
+    HealthSuccess:
+      summary: Service Healthy
+      value:
+        status: success
+        status_code: 200
+        message: Service Healthy
+        data:
+          database: up
+          version: 1.5.0
+        meta: {}
+
+    HealthUnavailable:
+      summary: Service Unavailable (Database Unreachable)
+      value:
+        status: error
+        status_code: 503
+        message: Service Unavailable
+        data: null
+        meta: {}
+
   securitySchemes:
     bearerAuth:
       type: http
@@ -1743,6 +2106,15 @@ components:
         type: integer
         format: int64
       description: Auth Audit Log Primary Key
+
+    TeamId:
+      name: team
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: Team Primary Key
 
     QueryPage:
       name: page
@@ -1909,6 +2281,20 @@ components:
           - created_at
           - -created_at
         default: -id
+
+    QuerySortTeams:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - name
+          - -name
+          - created_at
+          - -created_at
+        default: id
 
     QueryIncludeUsers:
       name: include
@@ -2117,6 +2503,19 @@ components:
       properties:
         pagination:
           $ref: '#/components/schemas/PaginationMeta'
+
+    HealthData:
+      type: object
+      required: [database, version]
+      properties:
+        database:
+          type: string
+          const: up
+          example: up
+        version:
+          type: string
+          example: 1.5.0
+          description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     ApiDateTime:
       type: string
@@ -2402,6 +2801,42 @@ components:
           type: string
           description: Prohibited
           not: {}
+
+    UpdateMeRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: HTML Markup Is Stripped
+        email:
+          type: string
+          description: Prohibited
+          not: {}
+        password:
+          type: string
+          description: Prohibited
+          not: {}
+        team_id:
+          type: integer
+          description: Prohibited
+          not: {}
+
+    UpdateMePasswordRequest:
+      type: object
+      required: [current_password, password, password_confirmation]
+      properties:
+        current_password:
+          type: string
+          description: The Caller's Current Password for Verification
+        password:
+          type: string
+          minLength: 8
+          description: The New Password
+        password_confirmation:
+          type: string
+          description: Must Match `password`
 
   responses:
     Unauthorized:

@@ -27,6 +27,7 @@ Policy or request concern.
 | `users.reassign-team` | Reassign `team_id` on `PATCH /api/users/{user}` | `UserPolicy::reassignTeam()` |
 | `users.delete` | Soft-delete a user via `DELETE /api/users/{user}` | `UserPolicy::delete()` |
 | `users.force-logout` | Force-logout Users via `POST /api/users/logout` | `UserPolicy::forceLogout()` |
+| `users.suspend` | Suspend or unsuspend a User via `POST /api/users/{user}/suspend` and `POST /api/users/{user}/unsuspend` | `UserPolicy::suspend()` and `UserPolicy::unsuspend()` |
 | `roles.list` | Access to `GET /api/roles` and `GET /api/roles/{role}` | `RolePolicy::viewAny()` and `RolePolicy::view()` |
 | `tokens.list-own` | Access to `GET /api/tokens` (own tokens only) | `PersonalAccessTokenPolicy::viewAny()` |
 | `tokens.create-own` | Access to `POST /api/tokens` | `PersonalAccessTokenPolicy::create()` |
@@ -102,6 +103,12 @@ reject suspended identities up front with the generic `Invalid Credentials`
 validation message (same as a wrong password) so callers cannot obtain a token
 that only fails on the next request. Remember-me restoration answers with a
 generic `401 Unauthenticated`.
+
+Admins suspend and unsuspend accounts via `POST /api/users/{user}/suspend` and
+`POST /api/users/{user}/unsuspend`, both gated by `users.suspend`. An Admin
+cannot suspend their own account — that would leave no one able to lift the
+suspension. Suspending a service account disables its API clients'
+client-credentials exchange (the exchange rejects suspended identities).
 
 #### Service Accounts and API Clients
 

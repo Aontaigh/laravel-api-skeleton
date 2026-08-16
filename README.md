@@ -48,8 +48,9 @@ you can copy into greenfield APIs or port legacy endpoints toward over time.
 **What you get:**
 
 - Paginated, filterable **user** index with team row scoping and permission-gated fields
-- **Role** index with permission includes for management UIs
-- Self-service and admin-issued **API tokens** via Sanctum
+- **Role** and **team** indexes for management UIs
+- Self-service **profile** update, password change, and admin-issued **API tokens** via Sanctum
+- Admin **account suspension** (suspend / unsuspend) plus a public `/health` uptime probe
 - Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with hosted [Scalar](https://scalar.com) docs at `/api/docs` (local and production)
 - Dockerised local dev via [Laravel Sail](https://laravel.com/docs/sail)
 - 90% line-coverage CI gate with parallel quality jobs
@@ -235,7 +236,8 @@ enforced in [UserResource](app/Http/Resources/UserResource.php), not only the qu
 
 **Profile:** `GET /api/me` returns the authenticated User's own record — no `users.list`
 required. Supports the same `fields`/`include` allow-lists as show. Service accounts
-receive `403`.
+receive `403`. The authenticated User may also update their own `name` via
+`PATCH /api/me` and change their password via `PATCH /api/me/password`.
 
 **Source of Truth:** [UserQueryConstraints](app/Queries/Users/UserQueryConstraints.php),
 [UserPolicy](app/Policies/UserPolicy.php), [MeShowController](app/Http/Controllers/Users/MeShowController.php).
@@ -243,10 +245,29 @@ receive `403`.
 | Method | Path | Notes |
 | --- | --- | --- |
 | `GET` | `/api/me` | Current user's profile — any token holder except service accounts |
+| `PATCH` | `/api/me` | Update own `name`; `email`/`password`/`team_id` prohibited |
+| `PATCH` | `/api/me/password` | Change own password (requires current password) |
 | `GET` | `/api/users` | Paginated index |
 | `GET` | `/api/users/{user}` | Show — same `fields`/`include` as index |
 | `PATCH` | `/api/users/{user}` | Update `name`; Admins may reassign `team_id` |
 | `DELETE` | `/api/users/{user}` | Soft-delete; cannot delete own account |
+| `POST` | `/api/users/logout` | Admin force-logout by ids (`users.force-logout`) |
+| `POST` | `/api/users/{user}/tokens` | Admin token issuance (`tokens.create-for-user`) |
+| `POST` | `/api/users/{user}/suspend` | Admin suspend (`users.suspend`) |
+| `POST` | `/api/users/{user}/unsuspend` | Admin unsuspend (`users.suspend`) |
+
+### Teams
+
+```http
+GET /api/teams?filter[search]=engineering&fields[teams]=id,name&sort=name
+GET /api/teams/{team}?fields[teams]=id,name
+```
+
+Requires `teams.list` (Admin and Manager). Read-only index and show with the standard
+sort, `fields[teams]` (`id`, `name`), and `filter[search]` contract — no includes.
+
+**Source of Truth:** [TeamQueryConstraints](app/Queries/Teams/TeamQueryConstraints.php),
+[TeamPolicy](app/Policies/TeamPolicy.php).
 
 ### Roles
 
@@ -306,6 +327,19 @@ role (and `audit-logs.list`). Supports `filter[search]` (email),
 
 **Source of Truth:** [AuthAuditLogQueryConstraints](app/Queries/AuthAuditLogs/AuthAuditLogQueryConstraints.php),
 [AuthAuditLogPolicy](app/Policies/AuthAuditLogPolicy.php).
+
+### Health
+
+```http
+GET /health
+```
+
+Public uptime probe — no auth, no throttling. Served at the **root** (not under
+`/api`). Returns the application version and whether the database answers `select 1`;
+returns `503` when the database is unreachable.
+
+**Source of Truth:** [ShowHealthController](app/Http/Controllers/Api/ShowHealthController.php),
+`config('app.version')`.
 
 ## API Reference
 

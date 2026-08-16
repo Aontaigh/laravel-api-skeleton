@@ -19,6 +19,31 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Application Version
+    |--------------------------------------------------------------------------
+    |
+    | The semantic version of this API. Reported by the `/health` endpoint
+    | and kept in sync with the OpenAPI spec (`docs/openapi.yaml`). Defaults
+    | to the `version` field in `composer.json` (bump that on each release).
+    |
+    */
+
+    'version' => env('APP_VERSION', (static function (): string {
+        $path = dirname(__DIR__).'/composer.json';
+
+        if (! is_file($path)) {
+            return '1.0.0';
+        }
+
+        /** @var array<string, mixed>|null $composer */
+        $composer = json_decode((string) file_get_contents($path), true);
+        $version = $composer['version'] ?? null;
+
+        return is_string($version) && $version !== '' ? $version : '1.0.0';
+    })()),
+
+    /*
+    |--------------------------------------------------------------------------
     | Application Environment
     |--------------------------------------------------------------------------
     |

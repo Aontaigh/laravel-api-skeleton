@@ -46,6 +46,21 @@ final class UserPolicy
     }
 
     /**
+     * Whether the User may update their own profile via `PATCH /me`.
+     *
+     * Open to every interactive account with a bearer token. Service accounts
+     * are machine identities — they use client credentials, not self-service
+     * endpoints.
+     *
+     * @param  User $user the authenticated User
+     * @return bool true when the User may call `PATCH /me`
+     */
+    public function updateMe(User $user): bool
+    {
+        return ! $user->isServiceAccount();
+    }
+
+    /**
      * Whether the User may view a single User record.
      *
      * Requires `users.list`. Row scope matches the index: callers without
@@ -116,6 +131,46 @@ final class UserPolicy
     public function forceLogout(User $user): bool
     {
         return $user->can('users.force-logout');
+    }
+
+    /**
+     * Whether the User may suspend another User's account.
+     *
+     * Requires `users.suspend`. Callers may never suspend their own account
+     * through this endpoint — an Admin suspending themselves would have no
+     * one left to lift the suspension.
+     *
+     * @param  User $user  the authenticated User
+     * @param  User $model the User being suspended
+     * @return bool true when the User may suspend that record
+     */
+    public function suspend(User $user, User $model): bool
+    {
+        if (! $user->can('users.suspend')) {
+            return false;
+        }
+
+        return $user->id !== $model->id;
+    }
+
+    /**
+     * Whether the User may unsuspend another User's account.
+     *
+     * Requires `users.suspend`. A suspended User cannot reach this endpoint
+     * (the `active.account` gate blocks them first), so the only reachable
+     * caller is an active Admin lifting another account's suspension.
+     *
+     * @param  User $user  the authenticated User
+     * @param  User $model the User being unsuspended
+     * @return bool true when the User may unsuspend that record
+     */
+    public function unsuspend(User $user, User $model): bool
+    {
+        if (! $user->can('users.suspend')) {
+            return false;
+        }
+
+        return $user->id !== $model->id;
     }
 
     /**
