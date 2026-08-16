@@ -9,6 +9,7 @@ use App\DataTransferObjects\Tokens\TokenFilters;
 use App\Http\Controllers\Tokens\TokenIndexController;
 use App\Http\Requests\Tokens\TokenIndexRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
+use App\Models\Team;
 use App\Models\User;
 use App\Policies\PersonalAccessTokenPolicy;
 use App\Queries\IndexFieldsQuery;
@@ -25,6 +26,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Testing\TestResponse;
+use Laravel\Sanctum\PersonalAccessToken;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
@@ -100,6 +102,12 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /*
+    |--------------------------------------------------------------------------
+    | Tests
+    |--------------------------------------------------------------------------
+    */
+
+    /*
      * Listing and Scoping Tests
      * -------------------------
      */
@@ -127,6 +135,39 @@ final class TokenIndexControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('message', 'Tokens Retrieved Successfully');
+        $response->assertJsonCount(1, 'data');
+        $response->assertJsonPath('data.0.name', 'My Token');
+        $response->assertJsonPath('meta.pagination.total', 1);
+    }
+
+    /**
+     * Exclude rows that share the viewer's id but belong to another morph type.
+     */
+    #[Test]
+    public function it_excludes_tokens_with_a_non_user_tokenable_type(): void
+    {
+        // Arrange
+
+        $this->viewer->createToken('My Token');
+
+        $collisionToken = new PersonalAccessToken;
+        $collisionToken->forceFill([
+            'tokenable_type' => Team::class,
+            'tokenable_id' => $this->viewer->id,
+            'name' => 'Morph Collision Token',
+            'token' => hash('sha256', 'morph-collision-token'),
+            'abilities' => ['*'],
+        ]);
+        $collisionToken->save();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens');
+
+        // Assert
+
+        $response->assertOk();
         $response->assertJsonCount(1, 'data');
         $response->assertJsonPath('data.0.name', 'My Token');
         $response->assertJsonPath('meta.pagination.total', 1);
@@ -305,9 +346,6 @@ final class TokenIndexControllerTest extends TestCase
      * Reject out-of-allow-list query params.
      */
     #[Test]
-    /**
-     * Reject out-of-allow-list query params.
-     */
     #[DataProvider('invalidQueryProvider')]
     public function it_rejects_out_of_allow_list_query_params(string $queryString, string $expectedErrorKey): void
     {

@@ -129,6 +129,12 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /*
+    |--------------------------------------------------------------------------
+    | Tests
+    |--------------------------------------------------------------------------
+    */
+
+    /*
      * Listing and Scoping Tests
      * -------------------------
      */
@@ -684,17 +690,15 @@ final class UserIndexControllerTest extends TestCase
      */
 
     /**
-     * Return supported values in the validation envelope for allow-list failures.
-     */
-    #[Test]
-    /**
      * Reject query params outside the allow lists.
      */
+    #[Test]
     #[DataProvider('invalidQueryProvider')]
     public function it_rejects_query_params_outside_the_allow_lists(
         string $queryString,
         string $expectedErrorKey,
     ): void {
+
         // Act
 
         /** @var TestResponse<JsonResponse> $response */

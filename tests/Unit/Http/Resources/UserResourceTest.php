@@ -12,13 +12,13 @@ use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for UserResource serialisation.
  */
 #[CoversClass(UserResource::class)]
-final class UserResourceTest extends TestCase
+final class UserResourceTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------​

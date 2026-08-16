@@ -6,7 +6,6 @@ use App\Support\ApiExceptionRenderer;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
-use Illuminate\Http\Request;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,17 +15,20 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'api-docs' => \App\Http\Middleware\EnsureCanViewApiDocs::class,
+            'active.account' => \App\Http\Middleware\EnsureAccountIsActive::class,
+            'session.version' => \App\Http\Middleware\EnsureSessionVersionMatches::class,
         ]);
 
-        $middleware->redirectGuestsTo(function (Request $request): ?string {
-            if ($request->is('api/*')) {
-                return null;
-            }
+        $middleware->statefulApi();
 
-            return null;
-        });
+        /*
+         * API-only app — never redirect unauthenticated guests to a web login route.
+         */
+        $middleware->redirectGuestsTo(static fn (): ?string => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         ApiExceptionRenderer::register($exceptions);

@@ -63,9 +63,14 @@ final class TelescopeAccessTest extends TestCase
         /** @var User $manager */
         $manager = User::factory()->manager()->create();
 
+        // Act
+
+        $adminAllowed = Gate::forUser($admin)->allows('viewTelescope');
+        $managerAllowed = Gate::forUser($manager)->allows('viewTelescope');
+
         // Assert
 
-        $this->assertTrue(Gate::forUser($admin)->allows('viewTelescope'));
-        $this->assertFalse(Gate::forUser($manager)->allows('viewTelescope'));
+        $this->assertTrue($adminAllowed);
+        $this->assertFalse($managerAllowed);
     }
 }

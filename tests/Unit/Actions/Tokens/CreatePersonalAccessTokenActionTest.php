@@ -11,7 +11,7 @@ use App\Models\User;
 use App\Services\Permissions\PermissionAbilityCatalog;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for CreatePersonalAccessTokenAction.
@@ -20,7 +20,7 @@ use Tests\TestCase;
  * unsaved; `createToken()` is never reached when the catalog rejects abilities.
  */
 #[CoversClass(CreatePersonalAccessTokenAction::class)]
-final class CreatePersonalAccessTokenActionTest extends TestCase
+final class CreatePersonalAccessTokenActionTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------
@@ -44,7 +44,7 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
             abilities: ['read'],
         );
 
-        // Act & Assert
+        // Act + Assert
 
         $this->expectException(InvalidTokenAbilitiesException::class);
 

@@ -36,10 +36,10 @@ final class UserResource extends JsonResource
      * Transform the User into its API shape.
      *
      * Omits keys for columns that were not selected (sparse fieldsets), and
-     * omits `email` unless the requesting User holds `users.view-email` —
-     * a sparse-fieldset omission alone is not enough, because a request
-     * that never constrains `fields[users]` runs an unqualified `SELECT *`
-     * and would otherwise leak the column regardless of permission.
+     * omits `email` unless the requesting User holds `users.view-email` or is
+     * viewing their own record — a sparse-fieldset omission alone is not enough,
+     * because a request that never constrains `fields[users]` runs an unqualified
+     * `SELECT *` and would otherwise leak the column regardless of permission.
      *
      * @param  Request              $request the inbound HTTP request
      * @return array<string, mixed> the serialised User
@@ -57,7 +57,10 @@ final class UserResource extends JsonResource
             ),
             'email' => $this->when(
                 array_key_exists('email', $this->resource->getAttributes())
-                    && $request->user()?->can('users.view-email') === true,
+                    && (
+                        $request->user()?->is($this->resource) === true
+                        || $request->user()?->can('users.view-email') === true
+                    ),
                 fn (): string => $this->resource->email,
             ),
             'created_at' => $this->whenAttributeSelected(

@@ -9,7 +9,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for QualifiedColumn.
@@ -17,7 +17,7 @@ use Tests\TestCase;
  * Pure string logic, so these run without a database.
  */
 #[CoversClass(QualifiedColumn::class)]
-final class QualifiedColumnTest extends TestCase
+final class QualifiedColumnTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

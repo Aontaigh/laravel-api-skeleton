@@ -9,8 +9,10 @@ info:
 
     ## Authentication
 
-    Every route requires `Authorization: Bearer {token}` unless noted. Issue a
-    token via `POST /tokens` or use a seeded account (see README).
+    Issue a bearer token with `POST /login`, `POST /register`, or
+    `POST /oauth/token` (client credentials). Stateful SPAs may restore a
+    remember-me session via `POST /login/remember` (session cookie + CSRF).
+    All other routes require `Authorization: Bearer {token}`.
 
     ## Response Envelope
 
@@ -33,16 +35,17 @@ info:
 
     ## Index Query Contract
 
-    `GET /users`, `GET /roles`, and `GET /tokens` share the same query-param
-    vocabulary. Unknown sort columns, filter keys, field names, or include
-    relations return `422`.
+    List endpoints (`GET /users`, `GET /roles`, `GET /tokens`, `GET /clients`,
+    `GET /audit-logs`, `GET /permissions`) share the same query-param vocabulary.
+    Unknown sort columns, filter keys, field names, or include relations return
+    `422`.
 
     | Param | Format | Notes |
     | --- | --- | --- |
     | `sort` | `{column}` or `-{column}` | Single column; prefix `-` for descending. Whitelist is resource-specific (see each operation). Default sort is documented per resource. |
     | `fields[{resource}]` | comma-separated columns | Sparse fieldset — only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. |
     | `include` | comma-separated relations | Whitelisted eager loads. Singular keys may load plural relations (e.g. `include=role` eager-loads `roles`). |
-    | `filter[search]` | string (max 255) | Partial match on name (and email for users). Only `search` is supported; other `filter[…]` keys are rejected. |
+    | `filter[search]` | string (max 255) | Partial match on name (and email for users and audit logs). Only whitelisted `filter[…]` keys are accepted per resource. |
     | `page` | integer ≥ 1 | Offset pagination page (default `1`). |
     | `per_page` | integer 1–100 | Page size (default `25`). |
 
@@ -59,15 +62,27 @@ info:
 
     ### Show Endpoints
 
-    `GET /users/{user}` and `GET /roles/{role}` support `include` and `fields[…]`
-    only — no `sort`, `filter`, or pagination.
+    `GET /me`, `GET /users/{user}`, `GET /roles/{role}`, `GET /clients/{client}`,
+    and `GET /audit-logs/{auth_audit_log}` support `include` and `fields[…]` only —
+    no `sort`, `filter`, or pagination.
+
+    ## Account Status
+
+    Suspended accounts (`suspended_at` set) are rejected at login and OAuth
+    client-credentials exchange with the generic `Invalid Credentials` validation
+    message — no bearer token is issued. An existing bearer token or session
+    receives `403` with message `Account Suspended` on every authenticated route
+    (`active.account` middleware). Remember-me restoration answers with generic
+    `401 Unauthenticated`.
 
     ## Rate Limits
 
     | Scope | Default limit |
     | --- | --- |
     | General API (`throttle:api`) | 500 requests / minute / user (or IP when unauthenticated) |
-    | Token creation (`POST /tokens`, `POST /users/{user}/tokens`) | 10 requests / minute / user |
+    | Login and registration (`POST /login`, `POST /register`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
+    | Client credentials (`POST /oauth/token`) | 5 requests / minute / `client_id`+IP, plus a 20 requests / minute per-IP ceiling |
+    | Token creation (`POST /tokens`, `POST /users/{user}/tokens`, `POST /clients`) | 10 requests / minute / user |
 
     Exceeded limits return `429` with message `Too Many Requests`.
 
@@ -91,14 +106,247 @@ security:
   - bearerAuth: []
 
 tags:
+  - name: Authentication
+    description: Password Login and Self-Service Registration (Public, Rate-Limited)
   - name: Users
     description: User Index, Show, Update, Soft-Delete, and Admin-Issued Tokens
   - name: Tokens
     description: Self-Service Personal Access Token Management
   - name: Roles
     description: Role Index and Show (Read-Only)
+  - name: Permissions
+    description: Permission Catalog for Token and API Client Ability Pickers
+  - name: API Clients
+    description: Admin-Managed Machine-to-Machine Client Credentials
+  - name: Audit Logs
+    description: Admin Read-Only Authentication Audit Trail
 
 paths:
+  /login:
+    post:
+      tags: [Authentication]
+      summary: Log In
+      description: |
+        Verify email and password credentials and return a Sanctum bearer token.
+        Set `remember` to `true` for industry-standard remember-me: a longer-lived
+        Sanctum token, a rotated `remember_token` on the User, and a web-guard
+        remember cookie for stateful SPAs.
+
+        Invalid credentials, suspended accounts, and service accounts return `422`
+        with a generic `Invalid Credentials` message on the `email` field.
+        Successful and failed attempts are recorded in `auth_audit_logs`
+        (queued listener).
+      operationId: login
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                remember:
+                  type: boolean
+                  description: Extend token lifetime and enable remember-me cookie recall
+                device_name:
+                  type: string
+                  maxLength: 255
+      responses:
+        '200':
+          description: Authenticated Session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionSuccess'
+              examples:
+                LoginSuccess:
+                  $ref: '#/components/examples/LoginSuccess'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /login/remember:
+    post:
+      tags: [Authentication]
+      summary: Restore Session (Remember Me)
+      description: |
+        Re-authenticate a User from an active web session or remember-me cookie and
+        issue a fresh long-lived Sanctum bearer token. Intended for stateful SPAs
+        after a prior `POST /login` with `remember: true`. Suspended accounts and
+        service accounts receive generic `401 Unauthenticated` (same as a bad
+        cookie). Records a `Remember Me Login` row in `auth_audit_logs`.
+      operationId: loginRemember
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                device_name:
+                  type: string
+                  maxLength: 255
+      responses:
+        '200':
+          description: Session Restored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionSuccess'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /register:
+    post:
+      tags: [Authentication]
+      summary: Register
+      description: |
+        Create a new User with the default `User` role, no Team assignment (`team_id`
+        remains null), and return a Sanctum bearer token. Email verification is not
+        required — `email_verified_at` remains null.
+
+        Duplicate email addresses return `422` with the same generic `Invalid Credentials`
+        message on the `email` field as failed login — callers cannot distinguish an
+        existing account from other validation failures on that field.
+      operationId: register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password, password_confirmation]
+              properties:
+                name:
+                  type: string
+                  maxLength: 255
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                password_confirmation:
+                  type: string
+                device_name:
+                  type: string
+                  maxLength: 255
+      responses:
+        '201':
+          description: Account Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthSessionSuccess'
+              examples:
+                RegisterSuccess:
+                  $ref: '#/components/examples/RegisterSuccess'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+
+  /oauth/token:
+    post:
+      tags: [Authentication]
+      summary: Issue Token (Client Credentials)
+      description: |
+        Exchange `client_id` and `client_secret` for a scoped Sanctum bearer token
+        using the OAuth2 `client_credentials` grant. Tokens default to a **30**-day
+        lifetime (`API_CLIENT_TOKEN_EXPIRATION_DAYS`).
+
+        Invalid credentials and suspended service users return `422` with a generic
+        `Invalid Credentials` message on the `client_id` field. Successful and
+        failed exchanges are recorded in `auth_audit_logs`.
+      operationId: oauthToken
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientTokenExchangeRequest'
+      responses:
+        '200':
+          description: Token Issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientTokenExchangeSuccess'
+              examples:
+                ClientTokenExchangeSuccess:
+                  $ref: '#/components/examples/ClientTokenExchangeSuccess'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /logout:
+    post:
+      tags: [Authentication]
+      summary: Log Out
+      description: |
+        End the authenticated session everywhere. Revokes **all** Sanctum Personal
+        Access Tokens for the User, clears the remember-me token, deletes every
+        server-side session row for that User, and invalidates the current request
+        session when present (SPA cookie auth).
+      operationId: logout
+      responses:
+        '200':
+          description: Logged Out
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+              examples:
+                LogoutSuccess:
+                  $ref: '#/components/examples/LogoutSuccess'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /me:
+    get:
+      tags: [Users]
+      summary: Show Current User Profile
+      description: |
+        Return the authenticated User's own profile. Any bearer token holder may
+        call this endpoint — `users.list` is **not** required.
+
+        Service accounts (`is_service_account`) receive `403`.
+
+        Supports `include` and `fields[…]` with the same allow-lists as
+        `GET /users/{user}`. `email` is always available on the caller's own
+        profile. No `sort`, `filter`, or pagination.
+      operationId: showMe
+      parameters:
+        - $ref: '#/components/parameters/QueryIncludeUsers'
+        - $ref: '#/components/parameters/QueryFieldsUsers'
+        - $ref: '#/components/parameters/QueryFieldsTeams'
+        - $ref: '#/components/parameters/QueryFieldsRoles'
+      responses:
+        '200':
+          description: Current User Profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Profile Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/User'
+              examples:
+                default:
+                  $ref: '#/components/examples/MeShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
   /users:
     get:
       tags: [Users]
@@ -153,6 +401,67 @@ paths:
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /users/logout:
+    post:
+      tags: [Users]
+      summary: Force Log Out Users
+      description: |
+        Admin-only session termination for one or more Users by id. Requires
+        `users.force-logout`.
+
+        Revokes **all** Sanctum Personal Access Tokens for each target User,
+        clears remember-me tokens, and deletes every server-side session row.
+        Does not end the admin's own bearer session.
+      operationId: forceLogoutUsers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [ids]
+              properties:
+                ids:
+                  type: array
+                  minItems: 1
+                  maxItems: 100
+                  items:
+                    type: integer
+                    format: int64
+      responses:
+        '200':
+          description: Users Logged Out
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Users Logged Out Successfully
+                      data:
+                        type: object
+                        required: [user_ids]
+                        properties:
+                          user_ids:
+                            type: array
+                            items:
+                              type: integer
+                              format: int64
+              examples:
+                default:
+                  value:
+                    status: success
+                    status_code: 200
+                    message: Users Logged Out Successfully
+                    data:
+                      user_ids: [2, 5]
+                    meta: {}
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
 
   /users/{user}:
     parameters:
@@ -542,6 +851,300 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '422': { $ref: '#/components/responses/ValidationError' }
 
+  /permissions:
+    get:
+      tags: [Permissions]
+      summary: List Permissions
+      description: |
+        Paginated permission catalog. Requires `permissions.list` (Admin, Manager,
+        and User).
+
+        Results are scoped to the `web` guard Spatie stores on permission rows.
+        Powers token and API client ability pickers — the same catalog
+        `PermissionAbilityCatalog` validates on create.
+
+        **Sort Whitelist:** `id`, `name` (default `id` ascending).
+
+        **Fields Keys:** `fields[permissions]`.
+
+        **Include:** not supported — any `include` value returns `422`.
+
+        **Filter:** `filter[search]` partial name match only.
+      operationId: listPermissions
+      parameters:
+        - $ref: '#/components/parameters/QuerySortPermissions'
+        - $ref: '#/components/parameters/QueryFieldsPermissions'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Permission Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Permissions Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Permission'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/PermissionsIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /clients:
+    get:
+      tags: [API Clients]
+      summary: List API Clients
+      description: |
+        Paginated API client index. Requires `api-clients.list`.
+
+        **Sort Whitelist:** `id`, `name`, `created_at`, `last_used_at` (default `id` ascending).
+
+        **Fields Keys:** `fields[api_clients]`.
+
+        **Include:** not supported — this resource has no includable relations; any
+        `include` value returns `422`.
+
+        **Filter:** `filter[search]` partial name match only.
+      operationId: listApiClients
+      parameters:
+        - $ref: '#/components/parameters/QuerySortApiClients'
+        - $ref: '#/components/parameters/QueryFieldsApiClients'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated API Client Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: API Clients Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ApiClient'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/ClientsIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+    post:
+      tags: [API Clients]
+      summary: Create API Client
+      description: |
+        Create a service account and linked client credentials. Requires
+        `api-clients.create`. The plaintext `client_secret` is returned once.
+      operationId: createApiClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiClientRequest'
+      responses:
+        '201':
+          description: API Client Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiClientCreatedSuccess'
+              examples:
+                ClientCreateSuccess:
+                  $ref: '#/components/examples/ClientCreateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /clients/{client}:
+    parameters:
+      - $ref: '#/components/parameters/ApiClientId'
+
+    get:
+      tags: [API Clients]
+      summary: Show API Client
+      description: |
+        Single API client. Requires `api-clients.list`.
+
+        Supports `fields[api_clients]` only. No `include`, `sort`, `filter`, or
+        pagination — any `include` value returns `422`.
+      operationId: showApiClient
+      parameters:
+        - $ref: '#/components/parameters/QueryFieldsApiClients'
+      responses:
+        '200':
+          description: API Client Resource
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: API Client Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/ApiClient'
+              examples:
+                default:
+                  $ref: '#/components/examples/ClientShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    delete:
+      tags: [API Clients]
+      summary: Revoke API Client
+      description: |
+        Deactivate an API client and revoke every token on its service account.
+        Requires `api-clients.delete`.
+      operationId: revokeApiClient
+      responses:
+        '200':
+          description: API Client Revoked
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: API Client Revoked Successfully
+                      data:
+                        type: object
+                        required: [id]
+                        properties:
+                          id:
+                            type: integer
+              examples:
+                ClientRevokeSuccess:
+                  $ref: '#/components/examples/ClientRevokeSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /audit-logs:
+    get:
+      tags: [Audit Logs]
+      summary: List Auth Audit Logs
+      description: |
+        Paginated authentication audit log index. **Admin role only** (requires
+        `audit-logs.list` plus interactive Admin — service accounts are rejected
+        even when the permission is present).
+
+        **Sort Whitelist:** `id`, `event`, `email`, `user_id`, `api_client_id`,
+        `created_at` (default `-id` descending).
+
+        **Fields Keys:** `fields[auth_audit_logs]`, `fields[users]` (when `include=user`).
+
+        **Include:** `user` only.
+
+        **Filter:** `filter[search]` partial email match; `filter[event]` exact event;
+        `filter[user_id]`; `filter[api_client_id]`.
+      operationId: listAuthAuditLogs
+      parameters:
+        - $ref: '#/components/parameters/QuerySortAuthAuditLogs'
+        - $ref: '#/components/parameters/QueryFieldsAuthAuditLogs'
+        - $ref: '#/components/parameters/QueryFieldsUsers'
+        - $ref: '#/components/parameters/QueryIncludeAuthAuditLogs'
+        - $ref: '#/components/parameters/QueryFilterSearchAuthAuditLogs'
+        - $ref: '#/components/parameters/QueryFilterAuditEvent'
+        - $ref: '#/components/parameters/QueryFilterUserId'
+        - $ref: '#/components/parameters/QueryFilterApiClientId'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Auth Audit Log Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Auth Audit Logs Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/AuthAuditLog'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/AuditLogsIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /audit-logs/{auth_audit_log}:
+    parameters:
+      - $ref: '#/components/parameters/AuthAuditLogId'
+
+    get:
+      tags: [Audit Logs]
+      summary: Show Auth Audit Log
+      description: |
+        Single authentication audit log row. **Admin role only** (same policy as
+        `GET /audit-logs`).
+
+        Supports `include` and `fields[…]` (same allow-lists as
+        `GET /audit-logs`). No `sort`, `filter`, or pagination.
+      operationId: showAuthAuditLog
+      parameters:
+        - $ref: '#/components/parameters/QueryFieldsAuthAuditLogs'
+        - $ref: '#/components/parameters/QueryFieldsUsers'
+        - $ref: '#/components/parameters/QueryIncludeAuthAuditLogs'
+      responses:
+        '200':
+          description: Auth Audit Log Resource
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Auth Audit Log Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/AuthAuditLog'
+              examples:
+                default:
+                  $ref: '#/components/examples/AuthAuditLogShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
 components:
   examples:
     UsersIndexSuccess:
@@ -594,6 +1197,26 @@ components:
             created_at: '2026-08-05T22:18:41+00:00'
         meta: {}
 
+    MeShowSuccess:
+      summary: Current User Profile
+      value:
+        status: success
+        status_code: 200
+        message: Profile Retrieved Successfully
+        data:
+          id: 3
+          name: Test User
+          email: test@example.com
+          created_at: '2026-08-05T22:18:42+00:00'
+          team:
+            id: 1
+            name: Acme Corp
+          role:
+            id: 3
+            name: User
+            created_at: '2026-08-05T22:18:41+00:00'
+        meta: {}
+
     UserUpdateSuccess:
       summary: Updated User
       value:
@@ -613,6 +1236,61 @@ components:
         status: success
         status_code: 200
         message: User Deleted Successfully
+        data: null
+        meta: {}
+
+    LoginSuccess:
+      summary: Logged In
+      value:
+        status: success
+        status_code: 200
+        message: Logged In Successfully
+        data:
+          user:
+            id: 3
+            name: Test User
+            email: test@example.com
+            created_at: '2026-08-05T23:14:13+00:00'
+          token:
+            id: 10
+            name: API Session
+            abilities:
+              - '*'
+            last_used_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
+            created_at: '2026-08-05T23:16:26+00:00'
+          plain_text_token: '10|example-plaintext-token-value'
+        meta: {}
+
+    RegisterSuccess:
+      summary: Account Created
+      value:
+        status: success
+        status_code: 201
+        message: Account Created Successfully
+        data:
+          user:
+            id: 7
+            name: Alice
+            email: alice@example.com
+            created_at: '2026-08-05T23:16:26+00:00'
+          token:
+            id: 11
+            name: API Session
+            abilities:
+              - '*'
+            last_used_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
+            created_at: '2026-08-05T23:16:26+00:00'
+          plain_text_token: '11|example-plaintext-token-value'
+        meta: {}
+
+    LogoutSuccess:
+      summary: Logged Out
+      value:
+        status: success
+        status_code: 200
+        message: Logged Out Successfully
         data: null
         meta: {}
 
@@ -736,11 +1414,13 @@ components:
                 name: users.list
               - id: 4
                 name: users.update
+              - id: 17
+                name: permissions.list
         meta:
           pagination:
             current_page: 1
             per_page: 2
-            total: 3
+            total: 4
             last_page: 2
 
     RoleShowSuccess:
@@ -777,6 +1457,160 @@ components:
               name: users.view-email
         meta: {}
 
+    PermissionsIndexSuccess:
+      summary: Paginated Permission Collection
+      value:
+        status: success
+        status_code: 200
+        message: Permissions Retrieved Successfully
+        data:
+          - id: 1
+            name: users.list
+          - id: 2
+            name: users.list-all
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 2
+            total: 17
+            last_page: 9
+
+    ClientTokenExchangeSuccess:
+      summary: Client Credentials Token Issued
+      value:
+        status: success
+        status_code: 200
+        message: Token Issued Successfully
+        data:
+          token:
+            id: 12
+            name: Demo Integration Client Credentials
+            abilities:
+              - users.list
+              - users.list-all
+              - roles.list
+            last_used_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
+            created_at: '2026-08-05T23:16:26+00:00'
+          plain_text_token: '12|example-plaintext-token-value'
+          expires_in: 2592000
+        meta: {}
+
+    ClientsIndexSuccess:
+      summary: Paginated API Client Collection
+      value:
+        status: success
+        status_code: 200
+        message: API Clients Retrieved Successfully
+        data:
+          - id: 1
+            name: Demo Integration
+            client_id: demo-integration-client
+            abilities:
+              - users.list
+              - users.list-all
+              - roles.list
+            is_active: true
+            last_used_at: '2026-08-14T16:14:48+00:00'
+            created_at: '2026-08-14T16:11:53+00:00'
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 25
+            total: 1
+            last_page: 1
+
+    ClientShowSuccess:
+      summary: API Client Resource
+      value:
+        status: success
+        status_code: 200
+        message: API Client Retrieved Successfully
+        data:
+          id: 1
+          name: Demo Integration
+          client_id: demo-integration-client
+          abilities:
+            - users.list
+            - users.list-all
+            - roles.list
+          is_active: true
+          last_used_at: '2026-08-14T16:14:48+00:00'
+          created_at: '2026-08-14T16:11:53+00:00'
+        meta: {}
+
+    AuditLogsIndexSuccess:
+      summary: Paginated Auth Audit Log Collection
+      value:
+        status: success
+        status_code: 200
+        message: Auth Audit Logs Retrieved Successfully
+        data:
+          - id: 23
+            user_id: 1
+            event: Login
+            email: admin@example.com
+            ip_address: 127.0.0.1
+            user_agent: OpenAPI Verify
+            personal_access_token_id: 4
+            api_client_id: null
+            remember_me: false
+            created_at: '2026-08-14T16:12:25+00:00'
+            user:
+              id: 1
+              name: Admin User
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 1
+            total: 36
+            last_page: 36
+
+    AuthAuditLogShowSuccess:
+      summary: Auth Audit Log Resource
+      value:
+        status: success
+        status_code: 200
+        message: Auth Audit Log Retrieved Successfully
+        data:
+          id: 23
+          user_id: 1
+          event: Login
+          email: admin@example.com
+          api_client_id: null
+          remember_me: false
+          created_at: '2026-08-14T16:12:25+00:00'
+        meta: {}
+
+    ClientCreateSuccess:
+      summary: API Client Created
+      value:
+        status: success
+        status_code: 201
+        message: API Client Created Successfully
+        data:
+          client:
+            id: 2
+            name: Billing Sync
+            client_id: 550e8400-e29b-41d4-a716-446655440000
+            abilities:
+              - users.list
+              - users.list-all
+            is_active: true
+            last_used_at: null
+            created_at: '2026-08-05T23:16:26+00:00'
+          client_secret: DemoClientSecret12
+        meta: {}
+
+    ClientRevokeSuccess:
+      summary: API Client Revoked
+      value:
+        status: success
+        status_code: 200
+        message: API Client Revoked Successfully
+        data: null
+        meta: {}
+
     UnauthorizedError:
       summary: Missing or Invalid Bearer Token
       value:
@@ -792,6 +1626,15 @@ components:
         status: error
         status_code: 403
         message: Forbidden
+        data: null
+        meta: {}
+
+    AccountSuspendedError:
+      summary: Suspended Account
+      value:
+        status: error
+        status_code: 403
+        message: Account Suspended
         data: null
         meta: {}
 
@@ -833,6 +1676,9 @@ components:
           allowed:
             abilities:
               - '*'
+              - api-clients.create
+              - api-clients.delete
+              - api-clients.list
               - roles.list
               - tokens.create-for-user
               - tokens.create-own
@@ -879,6 +1725,24 @@ components:
         format: int64
       description: Role Primary Key
 
+    ApiClientId:
+      name: client
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: API Client Primary Key
+
+    AuthAuditLogId:
+      name: auth_audit_log
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: Auth Audit Log Primary Key
+
     QueryPage:
       name: page
       in: query
@@ -907,6 +1771,46 @@ components:
       description: |
         Partial Match on `name`. For Users, Also Matches `email`. Only `search` Is
         Allowed Under `filter[…]`; Other Keys Return `422`.
+
+    QueryFilterSearchAuthAuditLogs:
+      name: filter[search]
+      in: query
+      schema:
+        type: string
+        maxLength: 255
+      description: |
+        Partial Match on `email`. Allowed `filter[…]` Keys: `search`, `event`,
+        `user_id`, `api_client_id`.
+
+    QueryFilterAuditEvent:
+      name: filter[event]
+      in: query
+      schema:
+        type: string
+        enum:
+          - Login
+          - Login Failed
+          - Logout
+          - Forced Logout
+          - Register
+          - Remember Me Login
+          - Client Token Exchange
+          - Client Token Exchange Failed
+      description: Exact Match on the Persisted Event Value.
+
+    QueryFilterUserId:
+      name: filter[user_id]
+      in: query
+      schema:
+        type: integer
+      description: Exact Match on `user_id`.
+
+    QueryFilterApiClientId:
+      name: filter[api_client_id]
+      in: query
+      schema:
+        type: integer
+      description: Exact Match on `api_client_id`.
 
     QuerySortUsers:
       name: sort
@@ -939,6 +1843,18 @@ components:
           - -created_at
         default: id
 
+    QuerySortPermissions:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - name
+          - -name
+        default: id
+
     QuerySortTokens:
       name: sort
       in: query
@@ -957,6 +1873,42 @@ components:
           - -expires_at
         default: id
 
+    QuerySortApiClients:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - name
+          - -name
+          - created_at
+          - -created_at
+          - last_used_at
+          - -last_used_at
+        default: id
+
+    QuerySortAuthAuditLogs:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - event
+          - -event
+          - email
+          - -email
+          - user_id
+          - -user_id
+          - api_client_id
+          - -api_client_id
+          - created_at
+          - -created_at
+        default: -id
+
     QueryIncludeUsers:
       name: include
       in: query
@@ -974,6 +1926,14 @@ components:
         type: string
         example: permissions
       description: Comma-Separated Eager Loads. Allowed Permissions.
+
+    QueryIncludeAuthAuditLogs:
+      name: include
+      in: query
+      schema:
+        type: string
+        example: user
+      description: Comma-Separated Eager Loads. Allowed `user`.
 
     QueryFieldsUsers:
       name: fields[users]
@@ -1010,8 +1970,8 @@ components:
         type: string
         example: id,name
       description: |
-        Sparse Fieldset for Nested `permissions` When `include=permissions`.
-        Allowed: `id`, `name`.
+        Sparse Fieldset for Permission Columns (Permission Index or nested
+        `permissions` on Roles). Allowed: `id`, `name`.
 
     QueryFieldsTokens:
       name: fields[tokens]
@@ -1022,6 +1982,27 @@ components:
       description: |
         Sparse Fieldset for Token Columns. Allowed: `id`, `name`, `abilities`,
         `last_used_at`, `expires_at`, `created_at`.
+
+    QueryFieldsApiClients:
+      name: fields[api_clients]
+      in: query
+      schema:
+        type: string
+        example: id,name,client_id,abilities,is_active
+      description: |
+        Sparse Fieldset for API Client Columns. Allowed: `id`, `name`, `client_id`,
+        `abilities`, `is_active`, `last_used_at`, `created_at`.
+
+    QueryFieldsAuthAuditLogs:
+      name: fields[auth_audit_logs]
+      in: query
+      schema:
+        type: string
+        example: id,event,email,created_at
+      description: |
+        Sparse Fieldset for Auth Audit Log Columns. Allowed: `id`, `user_id`, `event`,
+        `email`, `ip_address`, `user_agent`, `personal_access_token_id`,
+        `api_client_id`, `remember_me`, `created_at`.
 
   schemas:
     SuccessEnvelope:
@@ -1212,6 +2193,136 @@ components:
         created_at:
           $ref: '#/components/schemas/ApiDateTime'
 
+    ApiClient:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        client_id:
+          type: string
+        abilities:
+          type: array
+          items:
+            type: string
+        is_active:
+          type: boolean
+        last_used_at:
+          oneOf:
+            - $ref: '#/components/schemas/ApiDateTime'
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/ApiDateTime'
+
+    AuthAuditLog:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        event:
+          type: string
+        email:
+          oneOf:
+            - type: string
+            - type: 'null'
+        ip_address:
+          oneOf:
+            - type: string
+            - type: 'null'
+        user_agent:
+          oneOf:
+            - type: string
+            - type: 'null'
+        personal_access_token_id:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        api_client_id:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        remember_me:
+          type: boolean
+        created_at:
+          $ref: '#/components/schemas/ApiDateTime'
+        user:
+          $ref: '#/components/schemas/User'
+
+    ClientTokenExchangeRequest:
+      type: object
+      required: [grant_type, client_id, client_secret]
+      properties:
+        grant_type:
+          type: string
+          enum: [client_credentials]
+        client_id:
+          type: string
+          maxLength: 255
+        client_secret:
+          type: string
+          maxLength: 255
+
+    CreateApiClientRequest:
+      type: object
+      required: [name, abilities]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        abilities:
+          type: array
+          minItems: 1
+          items:
+            type: string
+
+    ClientTokenExchangeData:
+      type: object
+      required: [token, plain_text_token, expires_in]
+      properties:
+        token:
+          $ref: '#/components/schemas/PersonalAccessToken'
+        plain_text_token:
+          type: string
+          description: Plaintext Bearer Value; Returned Once at Exchange Only
+        expires_in:
+          oneOf:
+            - type: integer
+              description: Token Lifetime in Seconds
+            - type: 'null'
+
+    ApiClientCreatedData:
+      type: object
+      required: [client, client_secret]
+      properties:
+        client:
+          $ref: '#/components/schemas/ApiClient'
+        client_secret:
+          type: string
+          description: Plaintext Client Secret; Returned Once at Creation Only
+
+    ClientTokenExchangeSuccess:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/ClientTokenExchangeData'
+
+    ApiClientCreatedSuccess:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            status_code:
+              example: 201
+            data:
+              $ref: '#/components/schemas/ApiClientCreatedData'
+
     TokenCreatedData:
       type: object
       required: [token, plain_text_token]
@@ -1221,6 +2332,41 @@ components:
         plain_text_token:
           type: string
           description: Plaintext Bearer Value; Returned Once at Creation Only
+
+    AuthenticatedUser:
+      type: object
+      required: [id, name, email, created_at]
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+          description: Always Present for the Session Owner on Login and Registration
+        created_at:
+          $ref: '#/components/schemas/ApiDateTime'
+
+    AuthSessionData:
+      type: object
+      required: [user, token, plain_text_token]
+      properties:
+        user:
+          $ref: '#/components/schemas/AuthenticatedUser'
+        token:
+          $ref: '#/components/schemas/PersonalAccessToken'
+        plain_text_token:
+          type: string
+          description: Plaintext Bearer Value; Returned Once at Creation Only
+
+    AuthSessionSuccess:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/AuthSessionData'
 
     CreateTokenRequest:
       type: object

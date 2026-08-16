@@ -37,7 +37,7 @@ final class PersonalAccessTokenPolicy
      */
     public function create(User $user): bool
     {
-        return $user->can('tokens.create-own');
+        return $user->can('tokens.create-own') && ! $user->isServiceAccount();
     }
 
     /**

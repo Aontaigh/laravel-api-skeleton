@@ -45,11 +45,19 @@ final class StoreTokenController
 
         $input = $request->safe();
 
-        $newToken = $action->execute(new CreateTokenData(
+        $data = new CreateTokenData(
             forUser: $request->viewer(),
             name: $input->string('name')->toString(),
             abilities: $request->tokenAbilities(),
-        ));
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Action
+        |--------------------------------------------------------------------------
+        */
+
+        $newToken = $action->execute($data);
 
         /*
         |--------------------------------------------------------------------------

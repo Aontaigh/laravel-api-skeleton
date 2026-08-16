@@ -6,6 +6,7 @@ namespace App\Http\Requests\Users;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\Tokens\ValidatesTokenPayload;
+use App\Models\User;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
@@ -34,7 +35,11 @@ final class StoreUserTokenRequest extends ApiFormRequest
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('createForUser', PersonalAccessToken::class) === true;
+        $user = $this->route('user');
+
+        return $this->user()?->can('createForUser', PersonalAccessToken::class) === true
+            && $user instanceof User
+            && ! $user->isServiceAccount();
     }
 
     /**

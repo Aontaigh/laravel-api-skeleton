@@ -7,13 +7,13 @@ namespace Tests\Unit\Support;
 use App\Support\AllowListValidation;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for allow-list validation message helpers.
  */
 #[CoversClass(AllowListValidation::class)]
-final class AllowListValidationTest extends TestCase
+final class AllowListValidationTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

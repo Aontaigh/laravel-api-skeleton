@@ -20,13 +20,17 @@ final readonly class CreateTokenData
     /**
      * Create a new CreateTokenData value object.
      *
-     * @param User         $forUser   the User the Token is issued to
-     * @param string       $name      a human-readable label for the Token
-     * @param list<string> $abilities the Token's granted abilities
+     * @param User                            $forUser   the User the Token is issued to
+     * @param string                          $name      a human-readable label for the Token
+     * @param list<string>                    $abilities the Token's granted abilities
+     * @param bool                            $remember  whether to apply the extended remember-me lifetime
+     * @param \Illuminate\Support\Carbon|null $expiresAt explicit expiration when set
      */
     public function __construct(
         public User $forUser,
         public string $name,
         public array $abilities = ['*'],
+        public bool $remember = false,
+        public ?\Illuminate\Support\Carbon $expiresAt = null,
     ) {}
 }

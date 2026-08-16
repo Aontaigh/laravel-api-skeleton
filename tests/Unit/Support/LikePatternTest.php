@@ -8,7 +8,7 @@ use App\Support\LikePattern;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for LikePattern.
@@ -16,7 +16,7 @@ use Tests\TestCase;
  * Pure string logic, so these run without a database.
  */
 #[CoversClass(LikePattern::class)]
-final class LikePatternTest extends TestCase
+final class LikePatternTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

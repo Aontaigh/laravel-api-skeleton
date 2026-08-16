@@ -41,11 +41,17 @@ final class RolesAndPermissionsSeeder extends Seeder
         'users.update',            // PATCH /api/users/{user}
         'users.reassign-team',     // team_id changes on PATCH /api/users/{user}
         'users.delete',            // DELETE /api/users/{user} (soft delete)
+        'users.force-logout',      // POST /api/users/logout (admin session termination)
         'roles.list',              // GET /api/roles and GET /api/roles/{role}
         'tokens.list-own',         // GET /api/tokens (own tokens only)
         'tokens.create-own',       // POST /api/tokens
         'tokens.revoke-own',       // DELETE /api/tokens/{token} (own tokens only)
         'tokens.create-for-user',  // POST /api/users/{user}/tokens
+        'api-clients.list',        // GET /api/clients and GET /api/clients/{client}
+        'api-clients.create',      // POST /api/clients
+        'api-clients.delete',      // DELETE /api/clients/{client}
+        'audit-logs.list',         // GET /api/audit-logs
+        'permissions.list',        // GET /api/permissions
     ];
 
     /**
@@ -63,11 +69,17 @@ final class RolesAndPermissionsSeeder extends Seeder
             'users.update',
             'users.reassign-team',
             'users.delete',
+            'users.force-logout',
             'roles.list',
             'tokens.list-own',
             'tokens.create-own',
             'tokens.revoke-own',
             'tokens.create-for-user',
+            'api-clients.list',
+            'api-clients.create',
+            'api-clients.delete',
+            'audit-logs.list',
+            'permissions.list',
         ],
         RoleName::Manager->value => [
             'users.list',
@@ -77,11 +89,19 @@ final class RolesAndPermissionsSeeder extends Seeder
             'tokens.list-own',
             'tokens.create-own',
             'tokens.revoke-own',
+            'permissions.list',
         ],
         RoleName::User->value => [
             'tokens.list-own',
             'tokens.create-own',
             'tokens.revoke-own',
+            'permissions.list',
+        ],
+        RoleName::Service->value => [
+            'users.list',
+            'users.list-all',
+            'users.view-email',
+            'roles.list',
         ],
     ];
 

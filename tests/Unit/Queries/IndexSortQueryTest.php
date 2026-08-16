@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Builder;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for the shared IndexSortQuery.
@@ -21,7 +21,7 @@ use Tests\TestCase;
  * with no database.
  */
 #[CoversClass(IndexSortQuery::class)]
-final class IndexSortQueryTest extends TestCase
+final class IndexSortQueryTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Queries\Tokens;
 
 use App\DataTransferObjects\Tokens\TokenFilters;
+use App\Models\User;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -23,13 +24,18 @@ final class TokenFilterQuery
     /**
      * Compose filter and row-scope constraints onto the query.
      *
-     * Row scoping constrains tokens to those owned by the viewer.
+     * Row scoping constrains tokens to those owned by the viewer's User model.
      *
      * @param Builder<PersonalAccessToken> $query   the Token query builder
      * @param TokenFilters                 $filters the validated filter DTO
      */
     public function apply(Builder $query, TokenFilters $filters): void
     {
+        $query->where(
+            TokenQueryConstraints::TABLE.'.tokenable_type',
+            User::class,
+        );
+
         $query->where(
             TokenQueryConstraints::TABLE.'.tokenable_id',
             $filters->viewer->id,

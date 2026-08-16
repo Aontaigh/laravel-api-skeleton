@@ -9,13 +9,13 @@ use App\Support\IndexSortParser;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for `sort` query-param parsing.
  */
 #[CoversClass(IndexSortParser::class)]
-final class IndexSortParserTest extends TestCase
+final class IndexSortParserTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

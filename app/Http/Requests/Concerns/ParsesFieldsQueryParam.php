@@ -16,6 +16,12 @@ use Illuminate\Contracts\Validation\Validator;
  */
 trait ParsesFieldsQueryParam
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use ReadsRequestInput;
 
     /*

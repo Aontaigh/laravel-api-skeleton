@@ -17,6 +17,12 @@ use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
  */
 trait ValidatesTokenPayload
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use ReadsRequestInput;
     use SanitisesPlainTextAttributes;
 

@@ -110,7 +110,7 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
             abilities: ['read'],
         );
 
-        // Act & Assert
+        // Act + Assert
 
         $this->expectException(InvalidTokenAbilitiesException::class);
 

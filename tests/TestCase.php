@@ -9,5 +9,11 @@ use Tests\Concerns\AssertsApiEnvelope;
 
 abstract class TestCase extends BaseTestCase
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use AssertsApiEnvelope;
 }

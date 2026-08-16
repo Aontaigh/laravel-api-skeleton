@@ -8,7 +8,7 @@ use App\Exceptions\InvalidTokenAbilitiesException;
 use App\Services\Permissions\PermissionAbilityCatalog;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for PermissionAbilityCatalog.
@@ -16,7 +16,7 @@ use Tests\TestCase;
  * Uses an in-memory permission list — no database, no Spatie queries.
  */
 #[CoversClass(PermissionAbilityCatalog::class)]
-final class PermissionAbilityCatalogTest extends TestCase
+final class PermissionAbilityCatalogTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------
@@ -79,7 +79,7 @@ final class PermissionAbilityCatalogTest extends TestCase
 
         $catalog = $this->catalog();
 
-        // Act & Assert
+        // Act + Assert
 
         $this->assertTrue($catalog->exists('roles.list'));
         $this->assertFalse($catalog->exists('not-a-permission'));
@@ -95,7 +95,7 @@ final class PermissionAbilityCatalogTest extends TestCase
 
         $catalog = $this->catalog();
 
-        // Act & Assert
+        // Act + Assert
 
         $this->assertTrue($catalog->isUnrestricted(['*']));
         $this->assertFalse($catalog->isUnrestricted(['tokens.list-own']));
@@ -162,7 +162,7 @@ final class PermissionAbilityCatalogTest extends TestCase
 
         $catalog = $this->catalog();
 
-        // Act & Assert
+        // Act + Assert
 
         $this->expectException(InvalidTokenAbilitiesException::class);
 
@@ -185,7 +185,7 @@ final class PermissionAbilityCatalogTest extends TestCase
 
         $catalog = $this->catalog();
 
-        // Act & Assert
+        // Act + Assert
 
         $this->expectException(InvalidTokenAbilitiesException::class);
 
@@ -208,7 +208,7 @@ final class PermissionAbilityCatalogTest extends TestCase
 
         $catalog = $this->catalog();
 
-        // Act & Assert
+        // Act + Assert
 
         $this->expectException(InvalidTokenAbilitiesException::class);
 

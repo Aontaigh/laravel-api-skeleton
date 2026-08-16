@@ -11,13 +11,13 @@ use Illuminate\Support\Carbon;
 use Laravel\Sanctum\PersonalAccessToken;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for PersonalAccessTokenResource serialisation.
  */
 #[CoversClass(PersonalAccessTokenResource::class)]
-final class PersonalAccessTokenResourceTest extends TestCase
+final class PersonalAccessTokenResourceTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------​

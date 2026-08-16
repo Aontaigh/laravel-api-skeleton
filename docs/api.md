@@ -131,7 +131,7 @@ When you add or change an endpoint:
 5. Update [permissions.md](permissions.md) when a new permission is introduced
 6. Run [ApiDocsTest](../tests/Feature/Http/ApiDocsTest.php) and the full test suite
 7. Re-verify response examples against a running app:
-   `./scripts/verify-openapi-examples.sh` (requires Sail + seeded DB)
+   `./vendor/bin/sail bash scripts/verify-openapi-examples.sh` (requires Sail + seeded DB)
 8. Optional: lint the spec in CI with [Spectral](https://stoplight.io/open-source/spectral)
 
 The spec deliberately documents the shared index query contract (`sort`,

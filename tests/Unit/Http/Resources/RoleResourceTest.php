@@ -12,13 +12,13 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for RoleResource serialisation.
  */
 #[CoversClass(RoleResource::class)]
-final class RoleResourceTest extends TestCase
+final class RoleResourceTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------​

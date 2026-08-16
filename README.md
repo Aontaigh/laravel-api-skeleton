@@ -81,7 +81,15 @@ lives in [docs/permissions.md](docs/permissions.md).
 | `manager@example.com` | Manager |
 | `test@example.com` | User |
 
-Issue a bearer token:
+Issue a bearer token via login, registration, or Tinker:
+
+```bash
+curl -s -X POST http://localhost/api/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password"}' | jq -r '.data.plain_text_token'
+```
+
+Or with Tinker:
 
 ```bash
 ./vendor/bin/sail artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('local')->plainTextToken;"
@@ -100,6 +108,49 @@ curl -s -H "Authorization: Bearer YOUR_TOKEN" \
 ```
 
 All routes below require `Authorization: Bearer {token}` unless noted.
+
+### Authentication (public)
+
+```http
+POST /api/login           # {"email": "...", "password": "...", "remember": optional, "device_name": optional}
+POST /api/login/remember  # Stateful SPA re-auth via remember-me cookie or session
+POST /api/register        # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}
+POST /api/oauth/token     # {"grant_type":"client_credentials","client_id":"...","client_secret":"..."}
+POST /api/logout          # Bearer token required — revokes every token and server session
+```
+
+No prior token required for login, register, and client-credentials exchange. Login and register are
+rate-limited per email+IP (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) backed by a broad per-IP
+ceiling (`API_AUTH_IP_CEILING_PER_MINUTE`, default **20**). Client-credentials exchange is rate-limited
+per `client_id`+IP (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling
+pattern. The per-IP ceiling is skipped in `local` so the dev suite never self-throttles. After seed,
+use demo client `demo-integration-client` / `DemoClientSecret12`. Admins manage clients via
+`GET|POST|DELETE /api/clients` and `GET /api/clients/{client}`. Registration assigns the default `User` role with `team_id` null and returns a Sanctum bearer token;
+email verification is not required. Invalid login credentials return a generic
+`Invalid Credentials` message on the `email` field. Login, logout, registration,
+failed logins, and remember-me restores are recorded to `auth_audit_logs` — written by a
+**queued listener** ([RecordAuthAuditLog](app/Listeners/RecordAuthAuditLog.php)) off the
+request hot path, so a queue worker must be running in non-`sync` environments.
+
+Set `remember: true` on login for industry-standard remember-me — extended Sanctum
+token lifetime (`API_REMEMBER_TOKEN_EXPIRATION_DAYS`, default **365**), a rotated
+`remember_token`, and a web-guard remember cookie for stateful SPAs. Call
+`POST /api/login/remember` to obtain a fresh bearer token without re-entering credentials.
+The session id is **regenerated at the privilege boundary** on both remember-me login and
+remember-me restore, so a fixated pre-auth session id can never survive authentication.
+
+`POST /api/logout` requires a bearer token and ends the session everywhere: all Sanctum
+tokens for the User are revoked, remember-me state is cleared, the User's `session_version`
+is bumped, and every server-side session row for that User is deleted. The version bump is
+the driver-agnostic part — the `session.version` middleware
+([EnsureSessionVersionMatches](app/Http/Middleware/EnsureSessionVersionMatches.php)) turns
+away any web session stamped with a superseded version on its next request, so "log out
+everywhere" holds whether sessions live in the database, Redis, or files.
+
+**Source of Truth:** [LoginController](app/Http/Controllers/Auth/LoginController.php),
+[RegisterController](app/Http/Controllers/Auth/RegisterController.php),
+[LogoutController](app/Http/Controllers/Auth/LogoutController.php),
+[RememberLoginController](app/Http/Controllers/Auth/RememberLoginController.php).
 
 ## How the Query-Driven API Works
 
@@ -137,7 +188,7 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | --- | --- | --- |
 | [Laravel 13](https://laravel.com/docs) | API framework | [laravel.com/docs](https://laravel.com/docs) |
 | [Laravel Sanctum](https://laravel.com/docs/sanctum) | Bearer token authentication | [Sanctum](https://laravel.com/docs/sanctum) |
-| [Spatie Laravel Permission](https://github.com/spatie/laravel-permission) | Roles (`Admin`, `Manager`, `User`) and fine-grained permissions | [Package docs](https://spatie.be/docs/laravel-permission) |
+| [Spatie Laravel Permission](https://github.com/spatie/laravel-permission) | Roles (`Admin`, `Manager`, `User`, `Service`) and fine-grained permissions | [Package docs](https://spatie.be/docs/laravel-permission) |
 | Larastan + Pint | Static analysis (level 9) and formatting | [Larastan](https://github.com/larastan/larastan) |
 | PHPUnit | Unit and feature tests with a 90% line-coverage gate | [PHPUnit](https://phpunit.de) |
 | [Laravel Sail](https://laravel.com/docs/sail) | Dockerised local development | [Sail](https://laravel.com/docs/sail) |
@@ -182,11 +233,16 @@ GET /api/users?filter[search]=acme&fields[users]=id,name,email&include=team,role
 **Field Visibility:** `email` is omitted unless the viewer holds `users.view-email` —
 enforced in [UserResource](app/Http/Resources/UserResource.php), not only the query.
 
+**Profile:** `GET /api/me` returns the authenticated User's own record — no `users.list`
+required. Supports the same `fields`/`include` allow-lists as show. Service accounts
+receive `403`.
+
 **Source of Truth:** [UserQueryConstraints](app/Queries/Users/UserQueryConstraints.php),
-[UserPolicy](app/Policies/UserPolicy.php).
+[UserPolicy](app/Policies/UserPolicy.php), [MeShowController](app/Http/Controllers/Users/MeShowController.php).
 
 | Method | Path | Notes |
 | --- | --- | --- |
+| `GET` | `/api/me` | Current user's profile — any token holder except service accounts |
 | `GET` | `/api/users` | Paginated index |
 | `GET` | `/api/users/{user}` | Show — same `fields`/`include` as index |
 | `PATCH` | `/api/users/{user}` | Update `name`; Admins may reassign `team_id` |
@@ -203,6 +259,20 @@ Requires `roles.list` (Admin and Manager). Scoped to the `web` guard Spatie stor
 
 **Source of Truth:** [RoleQueryConstraints](app/Queries/Roles/RoleQueryConstraints.php),
 [RolePolicy](app/Policies/RolePolicy.php).
+
+### Permissions
+
+```http
+GET /api/permissions?filter[search]=tokens&fields[permissions]=id,name&sort=name
+```
+
+Requires `permissions.list` (Admin, Manager, and User). Scoped to the `web` guard.
+Powers token and API client ability pickers — the same catalog
+[PermissionAbilityCatalog](app/Services/Permissions/PermissionAbilityCatalog.php)
+validates on create.
+
+**Source of Truth:** [PermissionQueryConstraints](app/Queries/Permissions/PermissionQueryConstraints.php),
+[PermissionPolicy](app/Policies/PermissionPolicy.php).
 
 ### Tokens
 
@@ -222,6 +292,21 @@ token is returned once on `POST` and never stored. New tokens expire after
 **Source of Truth:** [TokenQueryConstraints](app/Queries/Tokens/TokenQueryConstraints.php),
 [PersonalAccessTokenPolicy](app/Policies/PersonalAccessTokenPolicy.php).
 
+### Auth Audit Logs
+
+```http
+GET /api/audit-logs
+GET /api/audit-logs/{auth_audit_log}
+```
+
+Admin-only read-only index of rows in `auth_audit_logs`. Requires the `Admin`
+role (and `audit-logs.list`). Supports `filter[search]` (email),
+`filter[event]`, `filter[user_id]`, `filter[api_client_id]`, sparse `fields[auth_audit_logs]`,
+`include=user`, and the standard sort and pagination params.
+
+**Source of Truth:** [AuthAuditLogQueryConstraints](app/Queries/AuthAuditLogs/AuthAuditLogQueryConstraints.php),
+[AuthAuditLogPolicy](app/Policies/AuthAuditLogPolicy.php).
+
 ## API Reference
 
 **Interactive docs (Scalar):** [http://localhost/api/docs](http://localhost/api/docs) — try
@@ -239,7 +324,7 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
 | --- | --- | --- |
 | Authentication | Sanctum bearer tokens (90-day default expiry) | [routes/api.php](routes/api.php) (`auth:sanctum`), `config/api.php` |
 | Authorisation | Spatie permissions + Policies | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/) |
-| Rate limiting | 500 req/min API; 10 req/min token creation | `config/api.php`, `bootstrap/app.php` |
+| Rate limiting | 500 req/min API; 5 req/min auth (email+IP, 20/min per-IP ceiling); 10 req/min token creation | `config/api.php`, `bootstrap/app.php` |
 | CORS | Env-driven allowed origins; local dev-server defaults | `config/cors.php` |
 | Input validation | FormRequests; `422` envelope via `ApiResponse` | [app/Support/ApiResponse.php](app/Support/ApiResponse.php) |
 | XSS hardening | Plain-text attribute sanitisation on name updates and token names | [SanitisesPlainTextAttributes](app/Http/Requests/Concerns/SanitisesPlainTextAttributes.php) |
@@ -339,7 +424,8 @@ Local (Sail — matches PHP 8.5 when host PHP is older):
 
 > [!NOTE]
 > `composer ci` does not run OpenAPI example verification. After a seeded DB is up, run
-> `bash scripts/verify-openapi-examples.sh` locally — CI runs it as a separate parallel job.
+> `./vendor/bin/sail composer verify:openapi` (or `bash scripts/verify-openapi-examples.sh`
+> on the host) — CI runs it as a separate parallel job.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, Larastan, PHPUnit with
 coverage, `composer audit`, and OpenAPI verification on every pull request and push to
@@ -373,7 +459,7 @@ stubs.
 
 This starter deliberately omits features you would add per product:
 
-- User registration, password reset, and email verification
+- Password reset and email verification
 - OAuth / social login
 - Multi-tenancy beyond team row scoping
 - File uploads, queues, or real-time broadcasting

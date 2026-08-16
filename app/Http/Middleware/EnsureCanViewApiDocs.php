@@ -25,7 +25,9 @@ final class EnsureCanViewApiDocs
     /**
      * Handle an incoming request.
      *
-     * @param Closure(Request): Response $next
+     * @param  Request                    $request the incoming request
+     * @param  Closure(Request): Response $next    the next pipeline stage
+     * @return Response                   the docs response, or a 401 challenge when basic auth fails
      */
     public function handle(Request $request, Closure $next): Response
     {
@@ -76,6 +78,11 @@ final class EnsureCanViewApiDocs
 
     /**
      * Compare the request credentials to the configured values in constant time.
+     *
+     * @param  Request $request          the incoming request carrying basic-auth credentials
+     * @param  string  $expectedUser     the configured docs username
+     * @param  string  $expectedPassword the configured docs password
+     * @return bool    true when both the username and password match
      */
     private function credentialsMatch(
         Request $request,

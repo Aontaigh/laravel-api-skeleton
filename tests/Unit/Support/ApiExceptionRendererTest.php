@@ -9,13 +9,13 @@ use Illuminate\Http\Request;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for API exception routing decisions.
  */
 #[CoversClass(ApiExceptionRenderer::class)]
-final class ApiExceptionRendererTest extends TestCase
+final class ApiExceptionRendererTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------
@@ -27,14 +27,12 @@ final class ApiExceptionRendererTest extends TestCase
      * Identify which paths receive API JSON envelopes.
      */
     #[Test]
-    /**
-     * Identify which paths receive API JSON envelopes.
-     */
     #[DataProvider('apiRequestProvider')]
     public function it_identifies_which_paths_receive_api_json_envelopes(
         string $path,
         bool $expectsApiEnvelope,
     ): void {
+
         // Arrange
 
         $request = Request::create($path, 'GET');

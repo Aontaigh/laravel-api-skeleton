@@ -8,13 +8,13 @@ use App\Support\CommaSeparatedList;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for comma-separated query-param parsing.
  */
 #[CoversClass(CommaSeparatedList::class)]
-final class CommaSeparatedListTest extends TestCase
+final class CommaSeparatedListTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

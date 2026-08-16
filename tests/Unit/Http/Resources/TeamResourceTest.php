@@ -9,13 +9,13 @@ use App\Models\Team;
 use Illuminate\Http\Request;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for TeamResource serialisation.
  */
 #[CoversClass(TeamResource::class)]
-final class TeamResourceTest extends TestCase
+final class TeamResourceTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------​

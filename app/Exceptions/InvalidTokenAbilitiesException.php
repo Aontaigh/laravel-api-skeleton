@@ -11,6 +11,12 @@ use InvalidArgumentException;
  */
 final class InvalidTokenAbilitiesException extends InvalidArgumentException
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Create a new InvalidTokenAbilitiesException.
      *

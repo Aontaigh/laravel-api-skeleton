@@ -32,6 +32,20 @@ final class UserPolicy
     }
 
     /**
+     * Whether the User may view their own profile via `GET /me`.
+     *
+     * Open to every interactive account with a bearer token. Service accounts
+     * are machine identities — they use client credentials, not profile screens.
+     *
+     * @param  User $user the authenticated User
+     * @return bool true when the User may call `GET /me`
+     */
+    public function viewMe(User $user): bool
+    {
+        return ! $user->isServiceAccount();
+    }
+
+    /**
      * Whether the User may view a single User record.
      *
      * Requires `users.list`. Row scope matches the index: callers without
@@ -89,6 +103,19 @@ final class UserPolicy
     public function reassignTeam(User $user): bool
     {
         return $user->can('users.reassign-team');
+    }
+
+    /**
+     * Whether the User may force-logout other Users everywhere.
+     *
+     * Requires `users.force-logout`. Only Admins hold this permission.
+     *
+     * @param  User $user the authenticated User
+     * @return bool true when the User may terminate sessions for other Users
+     */
+    public function forceLogout(User $user): bool
+    {
+        return $user->can('users.force-logout');
     }
 
     /**

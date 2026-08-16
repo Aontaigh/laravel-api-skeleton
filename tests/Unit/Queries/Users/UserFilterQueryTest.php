@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for UserFilterQuery row scoping and filters.
@@ -20,7 +20,7 @@ use Tests\TestCase;
  * so these run with no database.
  */
 #[CoversClass(UserFilterQuery::class)]
-final class UserFilterQueryTest extends TestCase
+final class UserFilterQueryTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

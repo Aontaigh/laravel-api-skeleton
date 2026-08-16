@@ -46,7 +46,9 @@ final class UserFactory extends Factory
             'email' => fake()->unique()->safeEmail(),
             'email_verified_at' => now(),
             'password' => self::$password ??= Hash::make('password'),
-            'remember_token' => Str::random(10),
+            'remember_token' => Str::random(60),
+            'is_service_account' => false,
+            'suspended_at' => null,
         ];
     }
 
@@ -107,5 +109,37 @@ final class UserFactory extends Factory
         return $this->afterCreating(static function (User $user): void {
             $user->assignRole(RoleName::User->value);
         });
+    }
+
+    /**
+     * Indicate that the User is a non-interactive service account.
+     *
+     * @return static the factory with the service-account state applied
+     */
+    public function serviceAccount(): static
+    {
+        return $this->state(['is_service_account' => true]);
+    }
+
+    /**
+     * Indicate that the User holds the Service Spatie role.
+     *
+     * @return static the factory that assigns the Service role after creation
+     */
+    public function service(): static
+    {
+        return $this->afterCreating(static function (User $user): void {
+            $user->assignRole(RoleName::Service->value);
+        });
+    }
+
+    /**
+     * Indicate that the User's account is suspended.
+     *
+     * @return static the factory with the suspension marker set
+     */
+    public function suspended(): static
+    {
+        return $this->state(['suspended_at' => now()]);
     }
 }

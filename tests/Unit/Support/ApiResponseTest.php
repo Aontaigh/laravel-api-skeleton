@@ -7,7 +7,7 @@ namespace Tests\Unit\Support;
 use App\Support\ApiResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for the ApiResponse envelope.
@@ -15,7 +15,7 @@ use Tests\TestCase;
  * Pure response-building logic, so these run with no database.
  */
 #[CoversClass(ApiResponse::class)]
-final class ApiResponseTest extends TestCase
+final class ApiResponseTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

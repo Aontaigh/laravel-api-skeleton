@@ -122,6 +122,26 @@ final class ApiAuthenticationTest extends TestCase
     }
 
     /**
+     * Never redirect unauthenticated API requests to a web login route.
+     */
+    #[Test]
+    public function it_never_redirects_unauthenticated_api_requests_to_a_login_route(): void
+    {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->call('GET', '/api/tokens');
+
+        // Assert
+
+        $response->assertUnauthorized();
+        $response->assertJsonPath('status', 'error');
+        $response->assertJsonPath('status_code', 401);
+        $response->assertJsonPath('message', 'Unauthenticated');
+        $this->assertNotSame(302, $response->getStatusCode());
+    }
+
+    /**
      * Return the standard envelope for plain curl requests without an Accept header.
      */
     #[Test]

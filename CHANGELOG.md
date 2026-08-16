@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-08-16
+
+### Added
+
+- Public `POST /api/login` and `POST /api/register` endpoints — password auth with Sanctum
+  bearer tokens, generic invalid-credential responses, and `api-auth` rate limiting
+  (10 requests / minute per IP and email)
+- `POST /api/logout` — revokes every Sanctum token, clears remember-me state, deletes all
+  server-side session rows for the User, and invalidates the current request session when
+  present
+- `auth_audit_logs` table and `RecordAuthAuditAction` — audit trail for login, failed
+  login, logout, registration, and remember-me session restoration
+- Remember-me on `POST /api/login` (`remember: true`) — extended PAT lifetime, rotated
+  `remember_token`, web-guard remember cookie; `POST /api/login/remember` for SPA re-auth
+- `POST /api/users/logout` — admin-only force-logout by User id; revokes every Sanctum
+  token, clears remember-me state, and deletes all server-side session rows for each target
+- OAuth2 client-credentials flow — `POST /api/oauth/token` exchanges `client_id` and
+  `client_secret` for scoped Sanctum tokens; `api_clients` table, `Service` role, service
+  User accounts (`is_service_account`), admin `GET|POST|DELETE /api/clients`, `GET /api/clients/{client}`,
+  and demo seeded
+  client `demo-integration-client`
+- `GET /api/audit-logs` and `GET /api/audit-logs/{auth_audit_log}` — admin read-only
+  auth audit log index and show with search, event, user, and API client filters
+  plus `include=user` on list and show
+- `GET /api/permissions` — read-only Spatie permission catalog for token and API
+  client ability pickers (`permissions.list` on Admin, Manager, and User)
+- `GET /api/me` — caller profile without `users.list`
+- `AuthenticatedUserResource` for login and registration responses (always includes email
+  for the session owner)
+- Account suspension (`suspended_at`) with `active.account` middleware and adversarial
+  `scripts/pen-test-auth.sh` coverage
+
+### Changed
+
+- OpenAPI spec synced with current routes (`GET /permissions`, audit log show,
+  client show), suspension behaviour, and live response examples
+- Suspended accounts are rejected at login and OAuth client-credentials exchange
+  with the same generic `Invalid Credentials` message as wrong passwords — they
+  no longer receive a bearer token that only fails on the next API call
+- Registration duplicate-email validation returns the generic `Invalid Credentials` message
+  (same as login) so callers cannot enumerate accounts via `/register`
+- Login credential checks run a dummy password hash when the email is unknown to reduce
+  timing side-channels that reveal account existence
+- Stateful remember-me login refreshes the User before `Auth::login()` so the remember
+  recaller cookie is queued on the response
+
 ## [1.3.1] - 2026-08-12
 
 ### Added
@@ -86,7 +132,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.1...v1.3.0
 [1.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.0...v1.2.1

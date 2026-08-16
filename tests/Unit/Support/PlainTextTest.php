@@ -8,13 +8,13 @@ use App\Support\PlainText;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for PlainText sanitisation.
  */
 #[CoversClass(PlainText::class)]
-final class PlainTextTest extends TestCase
+final class PlainTextTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

@@ -83,8 +83,16 @@ final class UpdateUserRequest extends ApiFormRequest
         });
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Protected
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * {@inheritDoc}
+     *
+     * @return list<string> the attribute names to sanitise
      */
     protected function plainTextAttributeKeys(): array
     {

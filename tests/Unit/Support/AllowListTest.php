@@ -7,13 +7,13 @@ namespace Tests\Unit\Support;
 use App\Support\AllowList;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for allow-list comparison helpers.
  */
 #[CoversClass(AllowList::class)]
-final class AllowListTest extends TestCase
+final class AllowListTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

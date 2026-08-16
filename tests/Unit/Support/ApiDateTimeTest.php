@@ -8,13 +8,13 @@ use App\Support\ApiDateTime;
 use Carbon\CarbonImmutable;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for API Datetime serialisation.
  */
 #[CoversClass(ApiDateTime::class)]
-final class ApiDateTimeTest extends TestCase
+final class ApiDateTimeTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

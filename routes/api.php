@@ -16,7 +16,30 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
+Route::middleware(['throttle:api-auth'])->group(function (): void {
+
+    Route::post('/login', \App\Http\Controllers\Auth\LoginController::class)
+        ->name('auth.login');
+
+    Route::post('/login/remember', \App\Http\Controllers\Auth\RememberLoginController::class)
+        ->name('auth.login.remember');
+
+    Route::post('/register', \App\Http\Controllers\Auth\RegisterController::class)
+        ->name('auth.register');
+
+    Route::post('/oauth/token', \App\Http\Controllers\Auth\ClientTokenExchangeController::class)
+        ->middleware('throttle:api-client-auth')
+        ->name('oauth.token');
+
+});
+
+Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttle:api'])->group(function (): void {
+
+    Route::post('/logout', \App\Http\Controllers\Auth\LogoutController::class)
+        ->name('auth.logout');
+
+    Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)
+        ->name('me.show');
 
     /*
     |--------------------------------------------------------------------------
@@ -31,6 +54,9 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
 
     Route::get('/users', \App\Http\Controllers\Users\UserIndexController::class)
         ->name('users.index');
+
+    Route::post('/users/logout', \App\Http\Controllers\Users\ForceLogoutUsersController::class)
+        ->name('users.force-logout');
 
     Route::get('/users/{user}', \App\Http\Controllers\Users\UserShowController::class)
         ->name('users.show');
@@ -66,6 +92,43 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
 
     /*
     |--------------------------------------------------------------------------
+    | API Clients
+    |--------------------------------------------------------------------------
+    |
+    | Admin-managed machine-to-machine client credentials.
+    |
+    */
+
+    Route::get('/clients', \App\Http\Controllers\Clients\ClientIndexController::class)
+        ->name('clients.index');
+
+    Route::post('/clients', \App\Http\Controllers\Clients\StoreClientController::class)
+        ->middleware('throttle:api-tokens')
+        ->name('clients.store');
+
+    Route::get('/clients/{client}', \App\Http\Controllers\Clients\ClientShowController::class)
+        ->name('clients.show');
+
+    Route::delete('/clients/{client}', \App\Http\Controllers\Clients\DestroyClientController::class)
+        ->name('clients.destroy');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Auth Audit Logs
+    |--------------------------------------------------------------------------
+    |
+    | Admin read-only index of authentication audit events.
+    |
+    */
+
+    Route::get('/audit-logs', \App\Http\Controllers\AuthAuditLogs\AuthAuditLogIndexController::class)
+        ->name('audit-logs.index');
+
+    Route::get('/audit-logs/{auth_audit_log}', \App\Http\Controllers\AuthAuditLogs\AuthAuditLogShowController::class)
+        ->name('audit-logs.show');
+
+    /*
+    |--------------------------------------------------------------------------
     | Roles
     |--------------------------------------------------------------------------
     |
@@ -79,5 +142,18 @@ Route::middleware(['auth:sanctum', 'throttle:api'])->group(function (): void {
 
     Route::get('/roles/{role}', \App\Http\Controllers\Roles\RoleShowController::class)
         ->name('roles.show');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Permissions
+    |--------------------------------------------------------------------------
+    |
+    | Read-only catalog of registered Spatie permission strings for token and
+    | API client ability pickers.
+    |
+    */
+
+    Route::get('/permissions', \App\Http\Controllers\Permissions\PermissionIndexController::class)
+        ->name('permissions.index');
 
 });

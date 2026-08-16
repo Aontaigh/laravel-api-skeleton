@@ -12,13 +12,13 @@ use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Role;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for RoleFilterQuery guard scoping and filters.
  */
 #[CoversClass(RoleFilterQuery::class)]
-final class RoleFilterQueryTest extends TestCase
+final class RoleFilterQueryTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

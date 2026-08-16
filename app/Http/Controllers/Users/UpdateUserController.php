@@ -47,11 +47,19 @@ final class UpdateUserController
 
         $input = $request->safe();
 
-        $updatedUser = $action->execute(new UpdateUserData(
+        $data = new UpdateUserData(
             user: $user,
             name: $input->has('name') ? $input->string('name')->toString() : null,
             teamId: $input->has('team_id') ? $input->integer('team_id') : null,
-        ));
+        );
+
+        /*
+        |--------------------------------------------------------------------------
+        | Action
+        |--------------------------------------------------------------------------
+        */
+
+        $updatedUser = $action->execute($data);
 
         /*
         |--------------------------------------------------------------------------

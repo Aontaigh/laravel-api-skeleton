@@ -13,6 +13,12 @@ use App\Support\SearchTermParser;
  */
 trait ParsesSearchQueryParam
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use ReadsRequestInput;
 
     /*

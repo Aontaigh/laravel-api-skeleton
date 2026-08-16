@@ -9,13 +9,13 @@ use Illuminate\Http\Request;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Spatie\Permission\Models\Permission;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for PermissionResource serialisation.
  */
 #[CoversClass(PermissionResource::class)]
-final class PermissionResourceTest extends TestCase
+final class PermissionResourceTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------​

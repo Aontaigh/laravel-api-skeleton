@@ -98,6 +98,12 @@ final class RoleIndexControllerTest extends TestCase
     }
 
     /*
+    |--------------------------------------------------------------------------
+    | Tests
+    |--------------------------------------------------------------------------
+    */
+
+    /*
      * Listing Tests
      * -------------
      */
@@ -125,12 +131,13 @@ final class RoleIndexControllerTest extends TestCase
             RoleName::Admin->value,
             RoleName::Manager->value,
             RoleName::User->value,
+            RoleName::Service->value,
         ]);
         $response->assertJsonPath(
             'data.*.id',
             Role::query()->orderBy('id')->pluck('id')->all(),
         );
-        $response->assertJsonPath('meta.pagination.total', 3);
+        $response->assertJsonPath('meta.pagination.total', 4);
     }
 
     /**
@@ -180,11 +187,12 @@ final class RoleIndexControllerTest extends TestCase
         // Assert
 
         $response->assertOk();
-        $response->assertJsonCount(1, 'data');
+        $response->assertJsonCount(2, 'data');
         $response->assertJsonPath('data.0.name', RoleName::User->value);
+        $response->assertJsonPath('data.1.name', RoleName::Service->value);
         $response->assertJsonPath('meta.pagination.current_page', 2);
         $response->assertJsonPath('meta.pagination.per_page', 2);
-        $response->assertJsonPath('meta.pagination.total', 3);
+        $response->assertJsonPath('meta.pagination.total', 4);
         $response->assertJsonPath('meta.pagination.last_page', 2);
     }
 
@@ -239,6 +247,7 @@ final class RoleIndexControllerTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('data.*.name', [
             RoleName::User->value,
+            RoleName::Service->value,
             RoleName::Manager->value,
             RoleName::Admin->value,
         ]);

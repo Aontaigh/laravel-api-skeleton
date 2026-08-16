@@ -59,6 +59,12 @@ final class ApiSecurityProbeTest extends TestCase
     }
 
     /*
+    |--------------------------------------------------------------------------
+    | Tests
+    |--------------------------------------------------------------------------
+    */
+
+    /*
      * Injection-Shaped Search Tests
      * -----------------------------
      */
@@ -250,10 +256,70 @@ final class ApiSecurityProbeTest extends TestCase
     }
 
     /*
+     * Authentication Writable Endpoint Tests
+     * ----------------------------------------
+     */
+
+    /**
+     * Survive hostile login and registration payloads without server error.
+     *
+     * @param array<string, mixed> $payload
+     */
+    #[Test]
+    #[DataProvider('hostileAuthPayloadProvider')]
+    public function it_survives_hostile_auth_payloads_without_server_error(string $endpoint, array $payload): void
+    {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson($endpoint, $payload);
+
+        // Assert
+
+        $this->assertNotSame(500, $response->getStatusCode());
+        $this->assertContains($response->json('status'), ['success', 'error']);
+    }
+
+    /*
     |--------------------------------------------------------------------------
     | Data Providers
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Hostile payloads for public authentication endpoints.
+     *
+     * @return array<string, array{0: string, 1: array<string, mixed>}>
+     */
+    public static function hostileAuthPayloadProvider(): array
+    {
+        $injection = "'; DROP TABLE users;--";
+
+        return [
+            'login sql injection email' => [
+                '/api/login',
+                ['email' => $injection, 'password' => 'Xq7#mK2$vL9pTzW4'],
+            ],
+            'register sql injection name' => [
+                '/api/register',
+                [
+                    'name' => $injection,
+                    'email' => 'probe@example.com',
+                    'password' => 'Xq7#mK2$vL9pTzW4',
+                    'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
+                ],
+            ],
+            'register oversized email' => [
+                '/api/register',
+                [
+                    'name' => 'Alice',
+                    'email' => str_repeat('a', 300).'@example.com',
+                    'password' => 'Xq7#mK2$vL9pTzW4',
+                    'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
+                ],
+            ],
+        ];
+    }
 
     /**
      * Index endpoints that accept `filter[search]`.

@@ -14,7 +14,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for the shared IndexFieldsQuery.
@@ -23,7 +23,7 @@ use Tests\TestCase;
  * with no database.
  */
 #[CoversClass(IndexFieldsQuery::class)]
-final class IndexFieldsQueryTest extends TestCase
+final class IndexFieldsQueryTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

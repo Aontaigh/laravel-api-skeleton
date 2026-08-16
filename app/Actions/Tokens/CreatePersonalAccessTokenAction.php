@@ -47,8 +47,10 @@ final class CreatePersonalAccessTokenAction
     {
         $abilities = $this->abilityCatalog->normalizeTokenAbilities($data->abilities);
 
-        $days = config()->integer('api.token_expiration_days');
-        $expiresAt = $days > 0 ? now()->addDays($days) : null;
+        $days = $data->remember
+            ? config()->integer('api.remember_token_expiration_days')
+            : config()->integer('api.token_expiration_days');
+        $expiresAt = $data->expiresAt ?? ($days > 0 ? now()->addDays($days) : null);
 
         return $data->forUser->createToken($data->name, $abilities, $expiresAt);
     }

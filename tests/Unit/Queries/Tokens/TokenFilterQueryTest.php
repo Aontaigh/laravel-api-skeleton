@@ -13,7 +13,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for TokenFilterQuery row scoping and filters.
@@ -22,21 +22,21 @@ use Tests\TestCase;
  * so these run with no database.
  */
 #[CoversClass(TokenFilterQuery::class)]
-final class TokenFilterQueryTest extends TestCase
+final class TokenFilterQueryTest extends UnitTestCase
 {
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Constants
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     /** The authenticated viewer's ID. */
     private const VIEWER_ID = 42;
 
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Setup
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     /**
@@ -53,13 +53,13 @@ final class TokenFilterQueryTest extends TestCase
     }
 
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Tests
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     /**
-     * Scope Tokens to the viewer.
+     * Scope Tokens to the viewer's User morph type and id.
      */
     #[Test]
     public function it_scopes_tokens_to_the_viewer(): void
@@ -79,10 +79,14 @@ final class TokenFilterQueryTest extends TestCase
         // Assert
 
         $this->assertSame(
-            TokenQueryConstraints::TABLE.'.tokenable_id',
+            TokenQueryConstraints::TABLE.'.tokenable_type',
             $query->getQuery()->wheres[0]['column'],
         );
-        $this->assertSame([self::VIEWER_ID], $query->getBindings());
+        $this->assertSame(
+            TokenQueryConstraints::TABLE.'.tokenable_id',
+            $query->getQuery()->wheres[1]['column'],
+        );
+        $this->assertSame([User::class, self::VIEWER_ID], $query->getBindings());
     }
 
     /**
@@ -106,19 +110,16 @@ final class TokenFilterQueryTest extends TestCase
         // Assert
 
         /*
-         * Exactly one where clause (the row scope), no search where.
+         * Exactly two where clauses (morph type + id), no search where.
          */
 
-        $this->assertCount(1, $query->getQuery()->wheres);
+        $this->assertCount(2, $query->getQuery()->wheres);
     }
 
     /**
      * Escape LIKE wildcards in the search term.
      */
     #[Test]
-    /**
-     * Escape LIKE wildcards in the search term.
-     */
     #[DataProvider('searchTermProvider')]
     public function it_escapes_like_wildcards_in_the_search_term(string $term, string $expectedPattern): void
     {
@@ -146,21 +147,21 @@ final class TokenFilterQueryTest extends TestCase
         // Assert
 
         /*
-         * The row-scope binding comes first, the search pattern second.
+         * Morph-type and row-scope bindings come first, the search pattern last.
          */
 
-        $this->assertSame([self::VIEWER_ID, $expectedPattern], $query->getBindings());
+        $this->assertSame([User::class, self::VIEWER_ID, $expectedPattern], $query->getBindings());
 
         $this->assertStringContainsString(
             'ESCAPE',
-            (string) ($query->getQuery()->wheres[1]['sql'] ?? ''),
+            (string) ($query->getQuery()->wheres[2]['sql'] ?? ''),
         );
     }
 
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Data Providers
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     /**

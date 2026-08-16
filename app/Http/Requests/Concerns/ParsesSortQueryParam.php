@@ -17,6 +17,12 @@ use Illuminate\Contracts\Validation\Validator;
  */
 trait ParsesSortQueryParam
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use ReadsRequestInput;
 
     /*

@@ -150,4 +150,44 @@ final class UserPolicyTest extends TestCase
 
         $this->assertTrue($allowed);
     }
+
+    /**
+     * Allow interactive Users to view their own profile via `GET /me`.
+     */
+    #[Test]
+    public function it_allows_interactive_users_to_view_their_own_profile(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->user()->create();
+
+        // Act
+
+        $allowed = $this->policy->viewMe($user);
+
+        // Assert
+
+        $this->assertTrue($allowed);
+    }
+
+    /**
+     * Deny service accounts from the profile endpoint.
+     */
+    #[Test]
+    public function it_denies_service_accounts_from_the_profile_endpoint(): void
+    {
+        // Arrange
+
+        /** @var User $serviceUser */
+        $serviceUser = User::factory()->serviceAccount()->service()->create();
+
+        // Act
+
+        $allowed = $this->policy->viewMe($serviceUser);
+
+        // Assert
+
+        $this->assertFalse($allowed);
+    }
 }

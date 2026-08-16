@@ -8,13 +8,13 @@ use App\Support\SearchTermParser;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for `filter[search]` normalisation.
  */
 #[CoversClass(SearchTermParser::class)]
-final class SearchTermParserTest extends TestCase
+final class SearchTermParserTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------
