@@ -6,6 +6,7 @@ namespace App\Actions\Auth;
 
 use App\DataTransferObjects\Auth\ClientCredentialsData;
 use App\Models\ApiClient;
+use App\Models\User;
 use Closure;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -66,7 +67,9 @@ final class AuthenticateClientCredentialsAction
             ]);
         }
 
-        if ($client->user?->isSuspended()) {
+        $user = $client->getRelationValue('user');
+
+        if (! $user instanceof User || $user->trashed() || $user->isSuspended()) {
             throw ValidationException::withMessages([
                 'client_id' => ['Invalid Credentials'],
             ]);

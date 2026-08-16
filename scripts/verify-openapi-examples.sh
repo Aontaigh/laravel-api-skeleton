@@ -57,6 +57,11 @@ check UserShowSuccess "$(openapi_example UserShowSuccess)" \
 check MeShowSuccess "$(openapi_example MeShowSuccess)" \
   "$(api GET '/me?include=team,role' "$TEST_TOKEN")"
 
+# Fresh CI databases have no audit rows until a login occurs
+curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"password"}' \
+  "${BASE}/login" > /dev/null
+
 check AuditLogsIndexSuccess "$(openapi_example AuditLogsIndexSuccess)" \
   "$(api GET '/audit-logs?per_page=1&sort=id&filter%5Bevent%5D=Login&filter%5Bsearch%5D=admin%40&include=user&fields%5Busers%5D=id,name,email')"
 
