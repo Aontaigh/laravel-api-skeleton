@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Actions\Auth;
+namespace Tests\Feature\Actions\Auth;
 
 use App\Actions\Auth\IssueTwoFactorChallengeAction;
 use App\Actions\Auth\VerifyTwoFactorCodeAction;
@@ -16,7 +16,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Unit tests for VerifyTwoFactorCodeAction.
+ * Feature tests for VerifyTwoFactorCodeAction against the database and cache.
  */
 #[CoversClass(VerifyTwoFactorCodeAction::class)]
 final class VerifyTwoFactorCodeActionTest extends TestCase
@@ -55,8 +55,11 @@ final class VerifyTwoFactorCodeActionTest extends TestCase
 
         // Act + Assert
 
-        $this->expectException(TwoFactorChallengeException::class);
-
-        app(VerifyTwoFactorCodeAction::class)->execute($user, '123456');
+        try {
+            app(VerifyTwoFactorCodeAction::class)->execute($user, '123456');
+            $this->fail('Expected TwoFactorChallengeException was not thrown.');
+        } catch (TwoFactorChallengeException $exception) {
+            $this->assertSame('Invalid or Expired Code', $exception->getMessage());
+        }
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Controllers\Users;
 
+use App\Actions\Auth\LogoutUserAction;
 use App\Actions\Users\SuspendUserAction;
 use App\Http\Controllers\Users\SuspendUserController;
 use App\Http\Requests\Users\SuspendUserRequest;
@@ -13,6 +14,7 @@ use App\Support\ApiResponse;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -24,6 +26,7 @@ use Tests\TestCase;
 #[CoversClass(SuspendUserController::class)]
 #[CoversClass(SuspendUserRequest::class)]
 #[CoversClass(SuspendUserAction::class)]
+#[CoversClass(LogoutUserAction::class)]
 #[CoversClass(UserPolicy::class)]
 #[CoversClass(ApiResponse::class)]
 final class SuspendUserControllerTest extends TestCase
@@ -116,6 +119,37 @@ final class SuspendUserControllerTest extends TestCase
         // Assert
 
         $this->assertApiErrorEnvelope($response, 403, 'Account Suspended');
+    }
+
+    /**
+     * Revoke every Personal Access Token so a suspended User cannot keep using Bearer auth.
+     */
+    #[Test]
+    public function it_revokes_personal_access_tokens_for_the_suspended_user(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var User $target */
+        $target = User::factory()->user()->create();
+
+        $token = $target->createToken('suspended-device');
+
+        // Act
+
+        $this->actingAs($admin)->postJson("/api/users/{$target->id}/suspend")->assertOk();
+
+        // Assert
+
+        $this->assertDatabaseCount('personal_access_tokens', 0);
+
+        Auth::forgetGuards();
+
+        $this->withToken($token->plainTextToken)
+            ->getJson('/api/tokens')
+            ->assertUnauthorized();
     }
 
     /**

@@ -62,6 +62,15 @@ curl -s -X POST -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"password"}' \
   "${BASE}/login" > /dev/null
 
+MFA_STATUS_EMAIL="$(artisan tinker --execute="echo App\\Models\\User::factory()->create(['email' => 'mfa-status-'.uniqid().'@example.com', 'mfa_method' => App\\Enums\\MfaMethod::Email])->email;" 2>/dev/null | tail -1)"
+MFA_STATUS_LOGIN="$(curl -s -X POST -H "Content-Type: application/json" \
+  -d "{\"email\":\"${MFA_STATUS_EMAIL}\",\"password\":\"password\"}" \
+  "${BASE}/login")"
+MFA_STATUS_TOKEN="$("$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["two_factor_token"] ?? "";' <<< "$MFA_STATUS_LOGIN")"
+
+check TwoFactorStatusSuccess "$(openapi_example TwoFactorStatusSuccess)" \
+  "$(curl -s "${BASE}/two-factor/status?two_factor_token=${MFA_STATUS_TOKEN}")"
+
 check AuditLogsIndexSuccess "$(openapi_example AuditLogsIndexSuccess)" \
   "$(api GET '/audit-logs?per_page=1&sort=id&filter%5Bevent%5D=Login&filter%5Bsearch%5D=admin%40&include=user&fields%5Busers%5D=id,name,email')"
 

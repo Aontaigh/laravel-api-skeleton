@@ -67,6 +67,10 @@ final class FinaliseAuthenticatedSessionAction
             remember: $data->remember,
         ));
 
+        if (session()->isStarted()) {
+            session()->put('session_version', $user->session_version);
+        }
+
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::Login,
             userId: $user->id,

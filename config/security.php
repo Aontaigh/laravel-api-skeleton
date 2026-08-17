@@ -22,18 +22,30 @@ return [
     | Content Security Policy
     |--------------------------------------------------------------------------
     |
-    | The CSP is enforced by default. `style-src` allows `'unsafe-inline'` for
-    | inline styles; `script-src` allows `'unsafe-inline'` and the jsDelivr CDN
-    | because the Scalar API-docs page loads its bundle and an inline bootstrap
-    | from there. The rest of the app serves JSON, so the policy primarily
-    | protects the HTML docs and welcome pages. Set SECURITY_CSP_ENFORCE=false
-    | to fall back to report-only while iterating.
+    | Two policies: a strict default for JSON API responses, and a relaxed
+    | docs policy for the Scalar page at `GET /api/docs` which loads its bundle
+    | and inline bootstrap from jsDelivr. Set SECURITY_CSP_ENFORCE=false to fall
+    | back to report-only while iterating. In `local`, CSP is omitted entirely
+    | while Vite hot-reload is active.
     |
     */
 
     'csp_enforce' => (bool) env('SECURITY_CSP_ENFORCE', true),
 
     'csp_policy' => implode('; ', [
+        "default-src 'self'",
+        "base-uri 'self'",
+        "frame-ancestors 'none'",
+        "object-src 'none'",
+        "img-src 'self' data:",
+        "font-src 'self' data:",
+        "style-src 'self'",
+        "script-src 'self'",
+        "connect-src 'self'",
+        "form-action 'self'",
+    ]),
+
+    'csp_docs_policy' => implode('; ', [
         "default-src 'self'",
         "base-uri 'self'",
         "frame-ancestors 'none'",

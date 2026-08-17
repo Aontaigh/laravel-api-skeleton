@@ -14,6 +14,17 @@ final class RecordAuthAuditAction
 {
     /*
     |--------------------------------------------------------------------------
+    | Properties
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * The maximum length of an attacker-controlled User-Agent stored in audit logs.
+     */
+    private const MAX_USER_AGENT_LENGTH = 1024;
+
+    /*
+    |--------------------------------------------------------------------------
     | Public
     |--------------------------------------------------------------------------
     */
@@ -35,12 +46,30 @@ final class RecordAuthAuditAction
             'event' => $data->event,
             'email' => $data->email,
             'ip_address' => $data->ipAddress,
-            'user_agent' => $data->userAgent,
+            'user_agent' => $this->normalizedUserAgent($data->userAgent),
             'personal_access_token_id' => $data->personalAccessTokenId,
             'api_client_id' => $data->apiClientId,
             'remember_me' => $data->rememberMe,
         ]);
 
         return $log;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Private
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Cap attacker-controlled request metadata before the audit row is persisted.
+     */
+    private function normalizedUserAgent(?string $userAgent): ?string
+    {
+        if ($userAgent === null || mb_strlen($userAgent) <= self::MAX_USER_AGENT_LENGTH) {
+            return $userAgent;
+        }
+
+        return mb_substr($userAgent, 0, self::MAX_USER_AGENT_LENGTH);
     }
 }

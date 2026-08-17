@@ -1,7 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "aontaigh/laravel-api-skeleton",
-    "version": "1.6.0",
+    "version": "1.7.0",
     "type": "project",
     "description": "Production-ready Laravel 13 API skeleton with Sanctum, Spatie permissions, and a consistent query-driven index pattern.",
     "keywords": [

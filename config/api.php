@@ -37,6 +37,19 @@ return [
 
     'auth_ip_ceiling_per_minute' => (int) env('API_AUTH_IP_CEILING_PER_MINUTE', 20),
 
+    'two_factor_send_rate_limit_per_minute' => (int) env('API_TWO_FACTOR_SEND_RATE_LIMIT_PER_MINUTE', 5),
+
+    'two_factor_send_ip_ceiling_per_minute' => (int) env('API_TWO_FACTOR_SEND_IP_CEILING_PER_MINUTE', 20),
+
+    'two_factor_verify_rate_limit_per_minute' => (int) env('API_TWO_FACTOR_VERIFY_RATE_LIMIT_PER_MINUTE', 5),
+
+    'two_factor_verify_ip_ceiling_per_minute' => (int) env('API_TWO_FACTOR_VERIFY_IP_CEILING_PER_MINUTE', 20),
+
+    /*
+     * Generous allowance for SPA polling while a challenge is pending.
+     */
+    'two_factor_status_rate_limit_per_minute' => (int) env('API_TWO_FACTOR_STATUS_RATE_LIMIT_PER_MINUTE', 60),
+
     'client_auth_rate_limit_per_minute' => (int) env('API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE', 5),
 
     'client_auth_ip_ceiling_per_minute' => (int) env('API_CLIENT_AUTH_IP_CEILING_PER_MINUTE', 20),

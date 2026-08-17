@@ -7,6 +7,7 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
+use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -52,11 +53,45 @@ final class SecurityHeaders
             );
         }
 
+        if (! $this->shouldAttachCsp()) {
+            return $response;
+        }
+
         $cspHeader = config()->boolean('security.csp_enforce')
             ? 'Content-Security-Policy'
             : 'Content-Security-Policy-Report-Only';
-        $headers->set($cspHeader, config()->string('security.csp_policy'));
+        $headers->set($cspHeader, $this->resolveCspPolicy($request));
 
         return $response;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Private
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Whether the CSP should be attached to this response.
+     *
+     * Vite hot-reload injects scripts from the dev server that a strict CSP
+     * would block, so local hot runs skip the header entirely. Locally-built
+     * assets and every non-local environment still get the policy.
+     */
+    private function shouldAttachCsp(): bool
+    {
+        return ! (App::environment('local') && Vite::isRunningHot());
+    }
+
+    /**
+     * Resolve the CSP for the current request path.
+     */
+    private function resolveCspPolicy(Request $request): string
+    {
+        if ($request->is('api/docs')) {
+            return config()->string('security.csp_docs_policy');
+        }
+
+        return config()->string('security.csp_policy');
     }
 }

@@ -8,13 +8,13 @@ use App\Providers\AppServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
-use Tests\TestCase;
+use Tests\UnitTestCase;
 
 /**
  * Unit tests for the application-wide password policy wired by the service provider.
  */
 #[CoversClass(AppServiceProvider::class)]
-final class PasswordDefaultsTest extends TestCase
+final class PasswordDefaultsTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------

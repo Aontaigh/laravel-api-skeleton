@@ -2,17 +2,22 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.6.0
+  version: 1.7.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
 
     ## Authentication
 
-    Issue a bearer token with `POST /login`, `POST /register`, or
-    `POST /oauth/token` (client credentials). Stateful SPAs may restore a
-    remember-me session via `POST /login/remember` (session cookie + CSRF).
-    All other routes require `Authorization: Bearer {token}`.
+    Password sign-in starts with `POST /login` or `POST /register`. When the User
+    has email MFA enrolled (`mfa_method` set), the response is
+    `two_factor_required` plus an opaque `two_factor_token` — complete
+    `POST /two-factor/send` and `POST /two-factor/verify` before a bearer token
+    is issued. Users without MFA receive a Sanctum token immediately from login.
+
+    Machine clients use `POST /oauth/token` (client credentials). Stateful SPAs
+    may restore a remember-me session via `POST /login/remember` (session cookie
+    + CSRF). All other routes require `Authorization: Bearer {token}`.
 
     ## Response Envelope
 
@@ -82,7 +87,10 @@ info:
     | Scope | Default limit |
     | --- | --- |
     | General API (`throttle:api`) | 500 requests / minute / user (or IP when unauthenticated) |
-    | Login and registration (`POST /login`, `POST /register`, `POST /two-factor/send`, `POST /two-factor/verify`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
+    | Login and registration (`POST /login`, `POST /register`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
+    | Two-factor send (`POST /two-factor/send`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
+    | Two-factor verify (`POST /two-factor/verify`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
+    | Two-factor status (`GET /two-factor/status`) | 60 requests / minute / pending-challenge+IP |
     | Client credentials (`POST /oauth/token`) | 5 requests / minute / `client_id`+IP, plus a 20 requests / minute per-IP ceiling |
     | Token creation (`POST /tokens`, `POST /users/{user}/tokens`, `POST /clients`) | 10 requests / minute / user |
 
@@ -294,6 +302,42 @@ paths:
               examples:
                 default:
                   $ref: '#/components/examples/LoginSuccess'
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /two-factor/status:
+    get:
+      tags: [Authentication]
+      summary: Two-Factor Status
+      description: |
+        Report whether a pending two-factor challenge is still active. Intended for
+        SPA polling while the visitor is on the verification screen. The pending
+        challenge is resolved from the session cookie or optional
+        `two_factor_token` query parameter — never from email input.
+
+        Returns `422` with `Your Sign-In Session Has Expired` when no pending
+        challenge exists. Suspended accounts receive `403 Account Suspended`.
+      operationId: twoFactorStatus
+      security: []
+      parameters:
+        - name: two_factor_token
+          in: query
+          required: false
+          schema:
+            type: string
+            maxLength: 255
+          description: Opaque token from login/register when session cookies are unavailable
+      responses:
+        '200':
+          description: Pending Challenge Active
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorStatusSuccess'
+              examples:
+                default:
+                  $ref: '#/components/examples/TwoFactorStatusSuccess'
         '403': { $ref: '#/components/responses/Forbidden' }
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
@@ -1750,6 +1794,17 @@ components:
           two_factor_required: true
         meta: {}
 
+    TwoFactorStatusSuccess:
+      summary: Pending Challenge Active
+      value:
+        status: success
+        status_code: 200
+        message: Two-Factor Status Retrieved Successfully
+        data:
+          two_factor_required: true
+          expires_at: '2026-08-17T12:05:00+00:00'
+        meta: {}
+
     LogoutSuccess:
       summary: Logged Out
       value:
@@ -2259,7 +2314,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.6.0
+          version: 1.7.0
         meta: {}
 
     HealthUnavailable:
@@ -2730,7 +2785,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.6.0
+          example: 1.7.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     ApiDateTime:
@@ -2964,6 +3019,23 @@ components:
                 two_factor_token:
                   type: string
                   description: Opaque token for stateless send/verify when cookies are not retained
+
+    TwoFactorStatusSuccess:
+      allOf:
+        - $ref: '#/components/schemas/SuccessEnvelope'
+        - type: object
+          properties:
+            data:
+              type: object
+              required: [two_factor_required, expires_at]
+              properties:
+                two_factor_required:
+                  type: boolean
+                  const: true
+                expires_at:
+                  type: string
+                  format: date-time
+                  description: When the pending challenge expires
 
     UpdateApiClientRequest:
       type: object

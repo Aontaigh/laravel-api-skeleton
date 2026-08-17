@@ -132,6 +132,29 @@ final class AppServiceProvider extends ServiceProvider
                 ...$this->perIpCeiling(config()->integer('api.client_auth_ip_ceiling_per_minute'), $request),
             ];
         });
+
+        RateLimiter::for('api-auth-two-factor-send', function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.two_factor_send_rate_limit_per_minute'))
+                    ->by($this->twoFactorCompositeKey($request)),
+                ...$this->perIpCeiling(config()->integer('api.two_factor_send_ip_ceiling_per_minute'), $request),
+            ];
+        });
+
+        RateLimiter::for('api-auth-two-factor-verify', function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.two_factor_verify_rate_limit_per_minute'))
+                    ->by($this->twoFactorCompositeKey($request)),
+                ...$this->perIpCeiling(config()->integer('api.two_factor_verify_ip_ceiling_per_minute'), $request),
+            ];
+        });
+
+        RateLimiter::for('api-auth-two-factor-status', function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.two_factor_status_rate_limit_per_minute'))
+                    ->by($this->twoFactorCompositeKey($request)),
+            ];
+        });
     }
 
     /**
@@ -146,6 +169,27 @@ final class AppServiceProvider extends ServiceProvider
         $value = $request->string($field, '')->lower()->toString();
 
         return $value.'|'.$request->ip();
+    }
+
+    /**
+     * Build a composite rate-limit key for two-factor endpoints.
+     *
+     * Stateless clients pass `two_factor_token`; session clients fall back to the
+     * session id so resend and verify budgets stay scoped to one challenge.
+     */
+    private function twoFactorCompositeKey(Request $request): string
+    {
+        $token = $request->string('two_factor_token', '')->toString();
+
+        if ($token !== '') {
+            return hash('sha256', $token).'|'.$request->ip();
+        }
+
+        if ($request->hasSession()) {
+            return $request->session()->getId().'|'.$request->ip();
+        }
+
+        return 'anonymous|'.$request->ip();
     }
 
     /**

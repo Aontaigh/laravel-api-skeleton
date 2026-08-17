@@ -27,17 +27,23 @@ Route::middleware(['throttle:api-auth'])->group(function (): void {
     Route::post('/register', \App\Http\Controllers\Auth\RegisterController::class)
         ->name('auth.register');
 
-    Route::post('/two-factor/send', \App\Http\Controllers\Auth\SendTwoFactorController::class)
-        ->name('two-factor.send');
-
-    Route::post('/two-factor/verify', \App\Http\Controllers\Auth\VerifyTwoFactorController::class)
-        ->name('two-factor.verify');
-
     Route::post('/oauth/token', \App\Http\Controllers\Auth\ClientTokenExchangeController::class)
         ->middleware('throttle:api-client-auth')
         ->name('oauth.token');
 
 });
+
+Route::post('/two-factor/send', \App\Http\Controllers\Auth\SendTwoFactorController::class)
+    ->middleware('throttle:api-auth-two-factor-send')
+    ->name('two-factor.send');
+
+Route::post('/two-factor/verify', \App\Http\Controllers\Auth\VerifyTwoFactorController::class)
+    ->middleware('throttle:api-auth-two-factor-verify')
+    ->name('two-factor.verify');
+
+Route::get('/two-factor/status', \App\Http\Controllers\Auth\TwoFactorStatusController::class)
+    ->middleware('throttle:api-auth-two-factor-status')
+    ->name('two-factor.status');
 
 Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttle:api'])->group(function (): void {
 

@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Support\ApiResponse;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -48,18 +49,21 @@ final class EnsureSessionVersionMatches
             return $next($request);
         }
 
-        $session = $request->session();
-        $stamped = $session->get('session_version');
-
-        // An unstamped session predates versioning — stamp it once and proceed.
-        if ($stamped === null) {
-            $session->put('session_version', $user->session_version);
-
+        /*
+         * A stateful Origin can bind a session even when the caller authenticated
+         * with a Bearer token. Session versioning only applies to cookie sessions.
+         */
+        if ($request->bearerToken() !== null) {
             return $next($request);
         }
 
-        if (is_numeric($stamped) && (int) $stamped !== $user->session_version) {
+        $session = $request->session();
+        $stamped = $session->get('session_version');
+
+        if (! is_numeric($stamped) || (int) $stamped !== $user->session_version) {
+            Auth::guard('web')->logout();
             $session->invalidate();
+            $session->regenerateToken();
 
             return ApiResponse::error(message: 'Session Expired', statusCode: 401);
         }

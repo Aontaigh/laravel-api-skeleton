@@ -9,6 +9,7 @@ use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -57,10 +58,10 @@ final class EnsureSessionVersionMatchesTest extends TestCase
     */
 
     /**
-     * Stamp an unstamped session with the current version and let it through.
+     * Turn away a session with no version stamp or a superseded stamp.
      */
     #[Test]
-    public function it_stamps_an_unstamped_session_and_passes(): void
+    public function it_rejects_an_unstamped_session(): void
     {
         // Arrange
 
@@ -70,12 +71,41 @@ final class EnsureSessionVersionMatchesTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($user)->getJson('/api/users');
+        $response = $this
+            ->actingAs($user)
+            ->withHeader('Origin', config()->string('app.url'))
+            ->getJson('/api/users');
+
+        // Assert
+
+        $this->assertApiErrorEnvelope($response, 401, 'Session Expired');
+    }
+
+    /**
+     * Pass through when the stamped version matches the User's current version.
+     */
+    #[Test]
+    public function it_passes_when_the_session_version_matches(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->admin()->create();
+
+        $user->rotateSessions();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this
+            ->actingAs($user)
+            ->withSession(['session_version' => $user->session_version])
+            ->withHeader('Origin', config()->string('app.url'))
+            ->getJson('/api/users');
 
         // Assert
 
         $response->assertOk();
-        $this->assertSame($user->session_version, session()->get('session_version'));
     }
 
     /**
@@ -114,6 +144,59 @@ final class EnsureSessionVersionMatchesTest extends TestCase
     }
 
     /**
+     * Log out, invalidate, and rotate the CSRF token when the stamped version is stale.
+     *
+     * Mirrors the session teardown in LogoutUserAction so a superseded session cannot
+     * keep the User authenticated or reuse the old CSRF token on the next request.
+     */
+    #[Test]
+    public function it_logs_out_invalidates_and_regenerates_the_csrf_token_when_the_version_is_stale(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->admin()->create();
+
+        $staleCsrfToken = 'stale-csrf-token';
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this
+            ->actingAs($user)
+            ->withSession([
+                'session_version' => $user->session_version - 1,
+                '_token' => $staleCsrfToken,
+            ])
+            ->withHeader('Origin', config()->string('app.url'))
+            ->getJson('/api/users');
+
+        // Assert
+
+        $this->assertApiErrorEnvelope($response, 401, 'Session Expired');
+
+        $regeneratedCsrfToken = session()->token();
+
+        $this->assertNotSame($staleCsrfToken, $regeneratedCsrfToken);
+        $this->assertNotEmpty($regeneratedCsrfToken);
+
+        /*
+         * actingAs() leaves the User on the auth singleton after the request
+         * returns, so prove logout with a follow-up call that only carries the
+         * invalidated session forward.
+         */
+
+        Auth::forgetGuards();
+
+        /** @var TestResponse<JsonResponse> $followUp */
+        $followUp = $this
+            ->withHeader('Origin', config()->string('app.url'))
+            ->getJson('/api/users');
+
+        $followUp->assertUnauthorized();
+    }
+
+    /**
      * Leave a Bearer-token caller untouched: no session means nothing to gate.
      */
     #[Test]
@@ -136,6 +219,34 @@ final class EnsureSessionVersionMatchesTest extends TestCase
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->getJson('/api/users');
+
+        // Assert
+
+        $response->assertOk();
+    }
+
+    /**
+     * Leave Bearer-token callers untouched even when a stateful Origin binds a session.
+     */
+    #[Test]
+    public function it_ignores_bearer_token_callers_when_a_stateful_origin_binds_a_session(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->admin()->create();
+
+        $token = $user->createToken('device')->plainTextToken;
+
+        $user->rotateSessions();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this
+            ->withToken($token)
+            ->withHeader('Origin', config()->string('app.url'))
+            ->getJson('/api/users');
 
         // Assert
 

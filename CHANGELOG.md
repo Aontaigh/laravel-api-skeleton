@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-08-17
+
+### Added
+
+- `GET /api/two-factor/status` — poll pending two-factor challenge expiry for session-bound and stateless clients (`GetTwoFactorStatusAction`)
+- Separate rate limiters for two-factor send, verify, and status polling (`API_TWO_FACTOR_SEND_*`, `API_TWO_FACTOR_VERIFY_*`, `API_TWO_FACTOR_STATUS_RATE_LIMIT_PER_MINUTE`)
+- Per-route Content Security Policy — strict default for API responses, relaxed Scalar/jsDelivr policy for `GET /api/docs`; CSP omitted in `local` while Vite hot-reload is active
+
+### Changed
+
+- Suspending a User now revokes every Sanctum token, bumps `session_version`, and clears sessions inside the same database transaction
+- Stale `session_version` on cookie sessions logs the User out, invalidates the session, and regenerates the CSRF token
+- `session_version` is stamped when authentication completes rather than auto-stamped by middleware on first request
+- Bearer-authenticated requests skip the session-version gate even when an `Origin` header binds a session cookie
+- PHPUnit enforces CSP in the testing environment (`SECURITY_CSP_ENFORCE=true`)
+
+### Fixed
+
+- User-Agent values in auth audit logs are capped at 1024 characters in `RecordAuthAuditAction` (single normalisation path for direct and queued writes)
+- DB-touching Action and listener tests moved from `tests/Unit/` to `tests/Feature/` to match the no-database unit-test contract
+
 ## [1.6.0] - 2026-08-17
 
 ### Added
@@ -170,7 +191,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.1...v1.4.0

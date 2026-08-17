@@ -96,6 +96,7 @@ final class RememberLoginController
 
         if ($request->hasSession()) {
             $request->session()->regenerate();
+            $request->session()->put('session_version', $user->session_version);
         }
 
         $newToken = $issueToken->execute(new CreateTokenData(

@@ -115,6 +115,7 @@ All routes below require `Authorization: Bearer {token}` unless noted.
 ```http
 POST /api/login           # {"email": "...", "password": "...", "remember": optional, "device_name": optional}
 POST /api/two-factor/send # {"channel": "email", "two_factor_token": optional}
+GET  /api/two-factor/status # ?two_factor_token=optional — poll pending challenge expiry
 POST /api/two-factor/verify # {"code": "123456", "device_name": optional, "two_factor_token": optional}
 POST /api/login/remember  # Stateful SPA re-auth via remember-me cookie or session
 POST /api/register        # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}

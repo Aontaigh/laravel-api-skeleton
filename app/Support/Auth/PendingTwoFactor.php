@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
 /**
  * Holds the pending two-factor challenge between the credential step and
  * verification. Stateful clients use the session; stateless clients pass the
- * opaque {@see begin()} token on send and verify.
+ * opaque {@see begin()} token on send, verify, and status.
  */
 final class PendingTwoFactor
 {
@@ -41,6 +41,11 @@ final class PendingTwoFactor
      * Session key holding the device label submitted at login/register.
      */
     public const string DEVICE_NAME_KEY = 'auth.two_factor.device_name';
+
+    /**
+     * Session key holding when the pending challenge expires.
+     */
+    public const string EXPIRES_AT_KEY = 'auth.two_factor.expires_at';
 
     /**
      * Cache key prefix for pending challenge payloads keyed by opaque token.
@@ -85,10 +90,12 @@ final class PendingTwoFactor
         }
 
         $token = Str::random(40);
+        $expiresAt = now()->addSeconds(config()->integer('api.two_factor_pending_ttl_seconds'))->timestamp;
 
         session()->put(self::USER_ID_KEY, $userId);
         session()->put(self::REMEMBER_KEY, $shouldRemember);
         session()->put(self::TOKEN_KEY, $token);
+        session()->put(self::EXPIRES_AT_KEY, $expiresAt);
 
         if ($deviceName !== null) {
             session()->put(self::DEVICE_NAME_KEY, $deviceName);
@@ -100,6 +107,7 @@ final class PendingTwoFactor
                 'user_id' => $userId,
                 'remember' => $shouldRemember,
                 'device_name' => $deviceName,
+                'expires_at' => $expiresAt,
             ],
             config()->integer('api.two_factor_pending_ttl_seconds'),
         );
@@ -158,6 +166,46 @@ final class PendingTwoFactor
     }
 
     /**
+     * Read the pending challenge expiry as a Unix timestamp.
+     *
+     * Session-bound clients store the expiry in the session payload; stateless
+     * clients rely on the opaque-token cache. When a session expiry stamp is
+     * present it always wins — even if a caller also passes an opaque token —
+     * so polling and send/verify stay aligned with the active browser session.
+     *
+     * @param  string|null $token optional token from status/send/verify when no session cookie is used
+     * @return int|null    the expiry timestamp, or null when no pending challenge exists
+     */
+    public static function expiresAt(?string $token = null): ?int
+    {
+        $sessionExpiresAt = session()->get(self::EXPIRES_AT_KEY);
+
+        if (is_numeric($sessionExpiresAt)) {
+            return (int) $sessionExpiresAt;
+        }
+
+        if ($token === null || $token === '') {
+            $sessionToken = session()->get(self::TOKEN_KEY);
+
+            if (is_string($sessionToken)) {
+                $token = $sessionToken;
+            }
+        }
+
+        if ($token === null || $token === '') {
+            return null;
+        }
+
+        $payload = Cache::get(self::pendingCacheKey($token));
+
+        if (! is_array($payload) || ! is_numeric($payload['expires_at'] ?? null)) {
+            return null;
+        }
+
+        return (int) $payload['expires_at'];
+    }
+
+    /**
      * Get the pending challenge's User id, or null when none is pending.
      *
      * @return int|null the pending User id
@@ -212,7 +260,13 @@ final class PendingTwoFactor
             Cache::forget(self::pendingCacheKey($token));
         }
 
-        session()->forget([self::USER_ID_KEY, self::REMEMBER_KEY, self::TOKEN_KEY, self::DEVICE_NAME_KEY]);
+        session()->forget([
+            self::USER_ID_KEY,
+            self::REMEMBER_KEY,
+            self::TOKEN_KEY,
+            self::DEVICE_NAME_KEY,
+            self::EXPIRES_AT_KEY,
+        ]);
     }
 
     /*

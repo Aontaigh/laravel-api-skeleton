@@ -90,6 +90,38 @@ final class RecordAuthAuditLogTest extends TestCase
     }
 
     /**
+     * Cap an oversized User-Agent when the queued listener persists the audit row.
+     */
+    #[Test]
+    public function it_caps_an_oversized_user_agent_when_the_queued_listener_persists_the_audit_row(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->user()->create();
+
+        $oversizedUserAgent = str_repeat('A', 1025);
+
+        // Act
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::Login,
+            userId: $user->id,
+            email: $user->email,
+            ipAddress: '127.0.0.1',
+            userAgent: $oversizedUserAgent,
+        ));
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'user_id' => $user->id,
+            'event' => AuthAuditEvent::Login->value,
+            'user_agent' => str_repeat('A', 1024),
+        ]);
+    }
+
+    /**
      * Run the audit write on the queue, off the request hot path.
      */
     #[Test]

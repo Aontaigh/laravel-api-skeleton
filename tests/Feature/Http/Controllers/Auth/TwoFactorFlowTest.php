@@ -21,11 +21,14 @@ use App\Models\User;
 use App\Notifications\Auth\TwoFactorCodeNotification;
 use App\Support\Auth\PendingTwoFactor;
 use Database\Seeders\RolesAndPermissionsSeeder;
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -71,14 +74,6 @@ final class TwoFactorFlowTest extends TestCase
         parent::setUp();
 
         $this->seed(RolesAndPermissionsSeeder::class);
-    }
-
-    /**
-     * Lift the auth rate limit so lockout tests aren't throttled mid-flow.
-     */
-    private function liftAuthRateLimit(): void
-    {
-        config(['api.auth_rate_limit_per_minute' => 100]);
     }
 
     /*
@@ -424,7 +419,9 @@ final class TwoFactorFlowTest extends TestCase
 
         // Act
 
-        $this->liftAuthRateLimit();
+        RateLimiter::for('api-auth-two-factor-verify', static function (Request $request) {
+            return Limit::perMinute(100)->by((string) $request->ip());
+        });
 
         for ($i = 0; $i < 5; $i++) {
             $this->postJson('/api/two-factor/verify', ['code' => '000000']);

@@ -43,5 +43,6 @@
         <env name="PULSE_ENABLED" value="false"/>
         <env name="TELESCOPE_ENABLED" value="false"/>
         <env name="NIGHTWATCH_ENABLED" value="false"/>
+        <env name="SECURITY_CSP_ENFORCE" value="true"/>
     </php>
 </phpunit>

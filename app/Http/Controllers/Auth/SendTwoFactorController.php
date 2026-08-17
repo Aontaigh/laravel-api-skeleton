@@ -7,7 +7,6 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\Auth\IssueTwoFactorChallengeAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\Enums\AuthAuditEvent;
-use App\Enums\MfaMethod;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\SendTwoFactorRequest;
 use App\Models\User;
@@ -50,9 +49,7 @@ final class SendTwoFactorController
         |--------------------------------------------------------------------------
         */
 
-        $input = $request->safe();
-
-        $channel = $input->enum('channel', MfaMethod::class);
+        $channel = $request->channel();
 
         /*
         |--------------------------------------------------------------------------

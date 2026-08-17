@@ -4,15 +4,13 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Auth;
 
-use App\Enums\MfaMethod;
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\Auth\ResolvesTwoFactorPending;
-use Illuminate\Validation\Rule;
 
 /**
- * Validates the two-factor channel request.
+ * Validates the two-factor status request.
  */
-final class SendTwoFactorRequest extends ApiFormRequest
+final class TwoFactorStatusRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
@@ -29,38 +27,13 @@ final class SendTwoFactorRequest extends ApiFormRequest
     */
 
     /**
-     * Public endpoint — the pending challenge lives in the session, not here.
+     * Public endpoint — the pending challenge lives in the session or token.
      *
      * @return bool always true
      */
     public function authorize(): bool
     {
         return true;
-    }
-
-    /**
-     * Normalise the requested channel before validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        $channel = $this->input('channel');
-
-        if (is_string($channel)) {
-            $this->merge(['channel' => mb_strtolower(trim($channel))]);
-        }
-    }
-
-    /**
-     * Get the validated delivery channel.
-     *
-     * @return MfaMethod the requested channel
-     */
-    public function channel(): MfaMethod
-    {
-        /** @var MfaMethod $channel */
-        $channel = $this->safe()->enum('channel', MfaMethod::class);
-
-        return $channel;
     }
 
     /**
@@ -71,7 +44,6 @@ final class SendTwoFactorRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'channel' => ['required', Rule::enum(MfaMethod::class)],
             'two_factor_token' => ['sometimes', 'string', 'max:255'],
         ];
     }

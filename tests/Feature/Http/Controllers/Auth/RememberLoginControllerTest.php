@@ -88,6 +88,7 @@ final class RememberLoginControllerTest extends TestCase
         $response->assertOk();
         $response->assertJsonPath('message', 'Session Restored Successfully');
         $this->assertNotEmpty($response->json('data.plain_text_token'));
+        $this->assertSame($user->session_version, session()->get('session_version'));
         $this->assertDatabaseHas('auth_audit_logs', [
             'user_id' => $user->id,
             'event' => AuthAuditEvent::RememberMeLogin->value,

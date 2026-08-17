@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Actions\Users;
+namespace Tests\Feature\Actions\Users;
 
 use App\Actions\Users\CreateUserAction;
 use App\DataTransferObjects\Users\CreateUserData;
@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Unit tests for CreateUserAction.
+ * Feature tests for CreateUserAction against the database.
  */
 #[CoversClass(CreateUserAction::class)]
 final class CreateUserActionTest extends TestCase

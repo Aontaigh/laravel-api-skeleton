@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Actions\Auth;
+namespace Tests\Feature\Actions\Auth;
 
 use App\Actions\Auth\IssueTwoFactorChallengeAction;
 use App\Events\TwoFactorChallengeIssued;
@@ -17,7 +17,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Unit tests for IssueTwoFactorChallengeAction.
+ * Feature tests for IssueTwoFactorChallengeAction against the database and cache.
  */
 #[CoversClass(IssueTwoFactorChallengeAction::class)]
 final class IssueTwoFactorChallengeActionTest extends TestCase
@@ -97,6 +97,34 @@ final class IssueTwoFactorChallengeActionTest extends TestCase
     }
 
     /**
+     * Report whether a cached challenge already exists for the User.
+     */
+    #[Test]
+    public function it_reports_when_a_cached_challenge_already_exists(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        // Assert
+
+        $this->assertFalse(IssueTwoFactorChallengeAction::hasChallenge($user));
+
+        // Act
+
+        Cache::put(IssueTwoFactorChallengeAction::cacheKey($user), [
+            'code_hash' => 'hash',
+            'attempts' => 0,
+            'expires_at' => now()->addMinute()->timestamp,
+        ], 300);
+
+        // Assert
+
+        $this->assertTrue(IssueTwoFactorChallengeAction::hasChallenge($user));
+    }
+
+    /**
      * Deliver the code notification when the queued listener handles the event.
      */
     #[Test]
@@ -115,6 +143,14 @@ final class IssueTwoFactorChallengeActionTest extends TestCase
 
         // Assert
 
-        Notification::assertSentTo($user, TwoFactorCodeNotification::class);
+        Notification::assertSentTo(
+            $user,
+            TwoFactorCodeNotification::class,
+            function (TwoFactorCodeNotification $notification) use ($user): bool {
+                $mail = $notification->toMail($user);
+
+                return preg_match('/\d{6}/', (string) ($mail->introLines[0] ?? '')) === 1;
+            },
+        );
     }
 }

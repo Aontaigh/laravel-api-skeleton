@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Tests\Unit\Listeners;
+namespace Tests\Feature\Listeners;
 
 use App\Events\TwoFactorChallengeIssued;
 use App\Listeners\SendTwoFactorCodeNotification;
@@ -17,7 +17,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Unit tests for SendTwoFactorCodeNotification.
+ * Feature tests for the queued two-factor code notification listener.
  */
 #[CoversClass(TwoFactorChallengeIssued::class)]
 #[CoversClass(SendTwoFactorCodeNotification::class)]
@@ -61,7 +61,11 @@ final class SendTwoFactorCodeNotificationTest extends TestCase
         Notification::assertSentTo(
             $user,
             TwoFactorCodeNotification::class,
-            fn (TwoFactorCodeNotification $notification): bool => true,
+            function (TwoFactorCodeNotification $notification) use ($user): bool {
+                $mail = $notification->toMail($user);
+
+                return str_contains((string) ($mail->introLines[0] ?? ''), '123456');
+            },
         );
     }
 
