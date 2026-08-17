@@ -47,6 +47,30 @@ check() {
     "$PHP_BIN" "$ROOT/scripts/openapi-compare-envelope.php" "$1" "$2" "$3"
 }
 
+verify_two_factor_status_success() {
+    local mfa_email mfa_login mfa_token response
+
+  # Seed the User in the shared database, then log in over HTTP so the pending
+  # challenge lands in the API server's cache (CI uses CACHE_STORE=array).
+    mfa_email="$(artisan tinker --execute="echo App\\Models\\User::factory()->create(['email' => 'mfa-status-'.uniqid().'@example.com', 'mfa_method' => App\\Enums\\MfaMethod::Email])->email;" 2>/dev/null | tail -1)"
+
+    mfa_login="$(curl -s -X POST -H "Content-Type: application/json" \
+        -d "{\"email\":\"${mfa_email}\",\"password\":\"password\"}" \
+        "${BASE}/login")"
+
+    mfa_token="$("$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["two_factor_token"] ?? "";' <<< "$mfa_login")"
+
+    if [[ -z "$mfa_token" ]]; then
+        echo "FAIL TwoFactorStatusSuccess setup: login did not return two_factor_token" >&2
+        echo "$mfa_login" >&2
+        exit 1
+    fi
+
+    response="$(curl -s -G "${BASE}/two-factor/status" --data-urlencode "two_factor_token=${mfa_token}")"
+
+    check TwoFactorStatusSuccess "$(openapi_example TwoFactorStatusSuccess)" "$response"
+}
+
 # Success envelopes
 check UsersIndexSuccess "$(openapi_example UsersIndexSuccess)" \
   "$(api GET '/users?per_page=2&include=team,role&fields%5Busers%5D=id,name&fields%5Bteams%5D=id,name&fields%5Broles%5D=id,name')"
@@ -61,11 +85,6 @@ check MeShowSuccess "$(openapi_example MeShowSuccess)" \
 curl -s -X POST -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"password"}' \
   "${BASE}/login" > /dev/null
-
-MFA_STATUS_TOKEN="$(artisan tinker --execute="\$user = App\\Models\\User::factory()->create(['email' => 'mfa-status-'.uniqid().'@example.com', 'mfa_method' => App\\Enums\\MfaMethod::Email]); echo App\\Support\\Auth\\PendingTwoFactor::begin(\$user->id, false, null);" 2>/dev/null | tail -1)"
-
-check TwoFactorStatusSuccess "$(openapi_example TwoFactorStatusSuccess)" \
-  "$(curl -s "${BASE}/two-factor/status?two_factor_token=${MFA_STATUS_TOKEN}")"
 
 check AuditLogsIndexSuccess "$(openapi_example AuditLogsIndexSuccess)" \
   "$(api GET '/audit-logs?per_page=1&sort=id&filter%5Bevent%5D=Login&filter%5Bsearch%5D=admin%40&include=user&fields%5Busers%5D=id,name,email')"
@@ -124,5 +143,7 @@ check UserDeleteSuccess "$(openapi_example UserDeleteSuccess)" \
 REVOKE_ID="$(echo "$TOKEN_CREATE" | "$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["token"]["id"];')"
 check TokenRevokeSuccess "$(openapi_example TokenRevokeSuccess)" \
   "$(api DELETE "/tokens/${REVOKE_ID}")"
+
+verify_two_factor_status_success
 
 echo "All OpenAPI examples verified"
