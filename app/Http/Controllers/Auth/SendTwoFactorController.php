@@ -18,7 +18,7 @@ use Illuminate\Http\JsonResponse;
  * Dispatches a two-factor code over the chosen channel for the pending login.
  *
  * @example
- * POST /api/two-factor/send {"channel":"email","two_factor_token":"..."}
+ * POST /api/auth/two-factor/send {"channel":"email","two_factor_token":"..."}
  */
 final class SendTwoFactorController
 {

@@ -2,6 +2,9 @@
 # Verify OpenAPI component examples match live API response shape and envelope fields.
 # Local: Sail + seeded DB (default), or `php artisan serve` with OPENAPI_VERIFY_BASE.
 # CI: sets ARTISAN_CMD=php artisan and OPENAPI_VERIFY_BASE=http://127.0.0.1:8000/api.
+#
+# Diagnostic copy follows php-quality (CLI and Diagnostic Errors): Title Case
+# headlines, no trailing full stop; detail after a colon when needed.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -56,17 +59,17 @@ verify_two_factor_status_success() {
 
     mfa_login="$(curl -s -X POST -H "Content-Type: application/json" \
         -d "{\"email\":\"${mfa_email}\",\"password\":\"password\"}" \
-        "${BASE}/login")"
+        "${BASE}/auth/login")"
 
     mfa_token="$("$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["two_factor_token"] ?? "";' <<< "$mfa_login")"
 
     if [[ -z "$mfa_token" ]]; then
-        echo "FAIL TwoFactorStatusSuccess setup: login did not return two_factor_token" >&2
+        echo "Two-Factor Status Setup Failed: login did not return two_factor_token" >&2
         echo "$mfa_login" >&2
         exit 1
     fi
 
-    response="$(curl -s -G "${BASE}/two-factor/status" --data-urlencode "two_factor_token=${mfa_token}")"
+    response="$(curl -s -G "${BASE}/auth/two-factor/status" --data-urlencode "two_factor_token=${mfa_token}")"
 
     check TwoFactorStatusSuccess "$(openapi_example TwoFactorStatusSuccess)" "$response"
 }
@@ -84,7 +87,7 @@ check MeShowSuccess "$(openapi_example MeShowSuccess)" \
 # Fresh CI databases have no audit rows until a login occurs
 curl -s -X POST -H "Content-Type: application/json" \
   -d '{"email":"admin@example.com","password":"password"}' \
-  "${BASE}/login" > /dev/null
+  "${BASE}/auth/login" > /dev/null
 
 check AuditLogsIndexSuccess "$(openapi_example AuditLogsIndexSuccess)" \
   "$(api GET '/audit-logs?per_page=1&sort=id&filter%5Bevent%5D=Login&filter%5Bsearch%5D=admin%40&include=user&fields%5Busers%5D=id,name,email')"
@@ -146,4 +149,4 @@ check TokenRevokeSuccess "$(openapi_example TokenRevokeSuccess)" \
 
 verify_two_factor_status_success
 
-echo "All OpenAPI examples verified"
+echo "All OpenAPI Examples Verified"

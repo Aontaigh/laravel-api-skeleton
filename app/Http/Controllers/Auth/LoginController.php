@@ -24,7 +24,7 @@ use Illuminate\Validation\ValidationException;
  * Authenticates a User with email and password and issues a Sanctum token.
  *
  * @example
- * POST /api/login {"email": "alice@example.com", "password": "SecretPass12", "remember": true}
+ * POST /api/auth/login {"email": "alice@example.com", "password": "SecretPass12", "remember": true}
  */
 final class LoginController
 {

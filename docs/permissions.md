@@ -14,7 +14,8 @@ Policy or request concern.
 [PersonalAccessTokenPolicy](../app/Policies/PersonalAccessTokenPolicy.php),
 [ApiClientPolicy](../app/Policies/ApiClientPolicy.php),
 [AuthAuditLogPolicy](../app/Policies/AuthAuditLogPolicy.php),
-[PermissionPolicy](../app/Policies/PermissionPolicy.php).
+[PermissionPolicy](../app/Policies/PermissionPolicy.php),
+[WebSessionPolicy](../app/Policies/WebSessionPolicy.php).
 
 ## Permissions
 
@@ -34,6 +35,10 @@ Policy or request concern.
 | `tokens.create-own` | Access to `POST /api/tokens` | `PersonalAccessTokenPolicy::create()` |
 | `tokens.revoke-own` | Access to `DELETE /api/tokens/{token}` when the token belongs to the caller | `PersonalAccessTokenPolicy::delete()` |
 | `tokens.create-for-user` | Access to `POST /api/users/{user}/tokens` (issue a token for another user) | `PersonalAccessTokenPolicy::createForUser()` |
+| `sessions.list-own` | Access to `GET /api/sessions` (own sessions only) | `WebSessionPolicy::viewAny()` |
+| `sessions.list-all` | List web sessions across every User (not just the caller's) | [AppliesSessionFilters](../app/Http/Requests/Concerns/Sessions/AppliesSessionFilters.php) → [SessionFilterQuery](../app/Queries/Sessions/SessionFilterQuery.php) |
+| `sessions.revoke-own` | Access to `DELETE /api/sessions/{web_session}` and `DELETE /api/sessions/current` when the session belongs to the caller | `WebSessionPolicy::delete()` |
+| `sessions.revoke-any` | Revoke any User's web session via `DELETE /api/sessions/{web_session}` | `WebSessionPolicy::delete()` |
 | `api-clients.list` | Access to `GET /api/clients` and `GET /api/clients/{client}` | `ApiClientPolicy::viewAny()` and `ApiClientPolicy::view()` |
 | `api-clients.create` | Access to `POST /api/clients` | `ApiClientPolicy::create()` |
 | `api-clients.update` | Access to `PATCH /api/clients/{client}` | `ApiClientPolicy::update()` |
@@ -61,6 +66,14 @@ response always includes the caller's `email` and supports the same `include` an
 Even when `fields[users]` is omitted (default column projection), `email` is stripped
 from the response unless the viewer holds this permission. The check lives in
 `UserResource`, not only in the query allow-list.
+
+#### `sessions.list-all` and session telemetry
+
+`user_id` is only exposed when the viewer holds `sessions.list-all`. `ip_address` and
+`user_agent` are always returned for the caller's own sessions; cross-user telemetry
+requires `sessions.list-all` (admin session management). The checks live in
+`WebSessionResource`, not only in the query allow-list — omitting `fields[sessions]`
+runs an unqualified `SELECT *` and would otherwise leak those columns.
 
 #### `users.create`
 

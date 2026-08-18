@@ -13,7 +13,7 @@ use Illuminate\Http\JsonResponse;
  * Reports whether a pending two-factor challenge is still active.
  *
  * @example
- * GET /api/two-factor/status?two_factor_token=...
+ * GET /api/auth/two-factor/status?two_factor_token=...
  */
 final class TwoFactorStatusController
 {

@@ -86,7 +86,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Alice',
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -124,7 +124,7 @@ final class RegisterControllerTest extends TestCase
         Notification::fake();
 
         /** @var TestResponse<JsonResponse> $register */
-        $register = $this->postJson('/api/register', [
+        $register = $this->postJson('/api/auth/register', [
             'name' => 'Alice',
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -135,7 +135,7 @@ final class RegisterControllerTest extends TestCase
         $twoFactorToken = $register->json('data.two_factor_token');
         $this->assertIsString($twoFactorToken);
 
-        $this->postJson('/api/two-factor/send', [
+        $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -153,7 +153,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => $code,
             'device_name' => 'Mobile App',
             'two_factor_token' => $twoFactorToken,
@@ -197,7 +197,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Alice',
             'email' => 'ALICE@EXAMPLE.COM',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -219,7 +219,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => '<script>alert(1)</script>Alice',
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -244,7 +244,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Alice',
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -284,7 +284,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Alice Two',
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -310,7 +310,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Probe',
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -336,7 +336,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Alice Two',
             'email' => 'ALICE@EXAMPLE.COM',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -363,7 +363,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', $payload);
+        $response = $this->postJson('/api/auth/register', $payload);
 
         // Assert
 
@@ -384,7 +384,7 @@ final class RegisterControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Alice',
             'email' => 'weak@example.com',
             'password' => $password,

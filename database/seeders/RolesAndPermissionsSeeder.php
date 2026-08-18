@@ -56,6 +56,10 @@ final class RolesAndPermissionsSeeder extends Seeder
         'audit-logs.list',         // GET /api/audit-logs
         'teams.list',              // GET /api/teams and GET /api/teams/{team}
         'permissions.list',        // GET /api/permissions
+        'sessions.list-own',       // GET /api/sessions (own sessions only)
+        'sessions.list-all',       // cross-user row scope on the session index
+        'sessions.revoke-own',     // DELETE /api/sessions/{web_session} and /api/sessions/current
+        'sessions.revoke-any',     // DELETE /api/sessions/{web_session} for any User
     ];
 
     /**
@@ -88,6 +92,10 @@ final class RolesAndPermissionsSeeder extends Seeder
             'audit-logs.list',
             'teams.list',
             'permissions.list',
+            'sessions.list-own',
+            'sessions.list-all',
+            'sessions.revoke-own',
+            'sessions.revoke-any',
         ],
         RoleName::Manager->value => [
             'users.list',
@@ -99,12 +107,16 @@ final class RolesAndPermissionsSeeder extends Seeder
             'tokens.revoke-own',
             'teams.list',
             'permissions.list',
+            'sessions.list-own',
+            'sessions.revoke-own',
         ],
         RoleName::User->value => [
             'tokens.list-own',
             'tokens.create-own',
             'tokens.revoke-own',
             'permissions.list',
+            'sessions.list-own',
+            'sessions.revoke-own',
         ],
         RoleName::Service->value => [
             'users.list',

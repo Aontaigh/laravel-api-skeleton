@@ -245,12 +245,12 @@ jobs:
               run: |
                   for attempt in $(seq 1 30); do
                       if curl -sf -o /dev/null -w "%{http_code}" http://127.0.0.1:8000/api/users | grep -qE '401|403'; then
-                          echo "API server is ready"
+                          echo "API Server Is Ready"
                           exit 0
                       fi
                       sleep 1
                   done
-                  echo "::error::API server did not become ready"
+                  echo "::error::API Server Did Not Become Ready"
                   exit 1
 
             - name: Verify OpenAPI Examples

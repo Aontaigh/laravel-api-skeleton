@@ -117,8 +117,8 @@ final class PermissionIndexControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('message', 'Permissions Retrieved Successfully');
-        $response->assertJsonPath('meta.pagination.total', 21);
-        $response->assertJsonCount(21, 'data');
+        $response->assertJsonPath('meta.pagination.total', 25);
+        $response->assertJsonCount(25, 'data');
     }
 
     /**
@@ -166,7 +166,7 @@ final class PermissionIndexControllerTest extends TestCase
         // Assert
 
         $response->assertOk();
-        $response->assertJsonPath('meta.pagination.total', 21);
+        $response->assertJsonPath('meta.pagination.total', 25);
     }
 
     /*

@@ -85,7 +85,7 @@ lives in [docs/permissions.md](docs/permissions.md).
 Issue a bearer token via login, registration, or Tinker:
 
 ```bash
-curl -s -X POST http://localhost/api/login \
+curl -s -X POST http://localhost/api/auth/login \
   -H "Content-Type: application/json" \
   -d '{"email":"test@example.com","password":"password"}' | jq -r '.data.plain_text_token'
 ```
@@ -113,12 +113,12 @@ All routes below require `Authorization: Bearer {token}` unless noted.
 ### Authentication (public)
 
 ```http
-POST /api/login           # {"email": "...", "password": "...", "remember": optional, "device_name": optional}
-POST /api/two-factor/send # {"channel": "email", "two_factor_token": optional}
-GET  /api/two-factor/status # ?two_factor_token=optional — poll pending challenge expiry
-POST /api/two-factor/verify # {"code": "123456", "device_name": optional, "two_factor_token": optional}
-POST /api/login/remember  # Stateful SPA re-auth via remember-me cookie or session
-POST /api/register        # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}
+POST /api/auth/login           # {"email": "...", "password": "...", "remember": optional, "device_name": optional}
+POST /api/auth/two-factor/send # {"channel": "email", "two_factor_token": optional}
+GET  /api/auth/two-factor/status # ?two_factor_token=optional — poll pending challenge expiry
+POST /api/auth/two-factor/verify # {"code": "123456", "device_name": optional, "two_factor_token": optional}
+POST /api/auth/login/remember  # Stateful SPA re-auth via remember-me cookie or session
+POST /api/auth/register        # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}
 POST /api/oauth/token     # {"grant_type":"client_credentials","client_id":"...","client_secret":"..."}
 POST /api/logout          # Bearer token required — revokes every token and server session
 ```
@@ -133,7 +133,7 @@ use demo client `demo-integration-client` / `DemoClientSecret12`. Admins manage 
 email verification is not required. Invalid login credentials return a generic
 `Invalid Credentials` message on the `email` field. Users with email MFA enrolled
 receive `two_factor_required: true` and `two_factor_token` after valid credentials — complete
-`POST /api/two-factor/send` then `POST /api/two-factor/verify` on the same session
+`POST /api/auth/two-factor/send` then `POST /api/auth/two-factor/verify` on the same session
 (or pass `two_factor_token` on stateless clients) before a bearer token is issued. Login, logout, registration,
 failed logins, and remember-me restores are recorded to `auth_audit_logs` — written by a
 **queued listener** ([RecordAuthAuditLog](app/Listeners/RecordAuthAuditLog.php)) off the
@@ -142,7 +142,7 @@ request hot path, so a queue worker must be running in non-`sync` environments.
 Set `remember: true` on login for industry-standard remember-me — extended Sanctum
 token lifetime (`API_REMEMBER_TOKEN_EXPIRATION_DAYS`, default **365**), a rotated
 `remember_token`, and a web-guard remember cookie for stateful SPAs. Call
-`POST /api/login/remember` to obtain a fresh bearer token without re-entering credentials.
+`POST /api/auth/login/remember` to obtain a fresh bearer token without re-entering credentials.
 The session id is **regenerated at the privilege boundary** on both remember-me login and
 remember-me restore, so a fixated pre-auth session id can never survive authentication.
 

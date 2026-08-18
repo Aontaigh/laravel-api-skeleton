@@ -79,5 +79,10 @@ final class FinaliseAuthenticatedSessionActionTest extends TestCase
         // Assert
 
         $this->assertSame($user->session_version, session()->get('session_version'));
+        $this->assertDatabaseHas('web_sessions', [
+            'user_id' => $user->id,
+            'session_id' => session()->getId(),
+            'revoked_at' => null,
+        ]);
     }
 }

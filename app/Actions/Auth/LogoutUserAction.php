@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Actions\Auth;
 
+use App\Actions\Sessions\RevokeAllWebSessionsForUserAction;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -14,6 +15,19 @@ use Illuminate\Support\Facades\DB;
  */
 final class LogoutUserAction
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * @param RevokeAllWebSessionsForUserAction $revokeAllWebSessions clears the per-user session registry
+     */
+    public function __construct(
+        private readonly RevokeAllWebSessionsForUserAction $revokeAllWebSessions,
+    ) {}
+
     /*
     |--------------------------------------------------------------------------
     | Public
@@ -41,6 +55,8 @@ final class LogoutUserAction
         $user->forceFill(['remember_token' => null])->save();
 
         $user->rotateSessions();
+
+        $this->revokeAllWebSessions->execute($user);
 
         DB::table(config()->string('session.table'))
             ->where('user_id', $user->id)

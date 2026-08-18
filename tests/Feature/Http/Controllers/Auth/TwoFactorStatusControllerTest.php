@@ -87,7 +87,7 @@ final class TwoFactorStatusControllerTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'status@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ])->assertOk();
@@ -95,7 +95,7 @@ final class TwoFactorStatusControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->getJson('/api/two-factor/status');
+        $response = $this->getJson('/api/auth/two-factor/status');
 
         // Assert
 
@@ -123,7 +123,7 @@ final class TwoFactorStatusControllerTest extends TestCase
         ]);
 
         /** @var TestResponse<JsonResponse> $login */
-        $login = $this->postJson('/api/login', [
+        $login = $this->postJson('/api/auth/login', [
             'email' => 'stateless-status@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -136,7 +136,7 @@ final class TwoFactorStatusControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->getJson('/api/two-factor/status?two_factor_token='.$twoFactorToken);
+        $response = $this->getJson('/api/auth/two-factor/status?two_factor_token='.$twoFactorToken);
 
         // Assert
 
@@ -154,7 +154,7 @@ final class TwoFactorStatusControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->getJson('/api/two-factor/status');
+        $response = $this->getJson('/api/auth/two-factor/status');
 
         // Assert
 
@@ -184,7 +184,7 @@ final class TwoFactorStatusControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->getJson('/api/two-factor/status?two_factor_token='.$twoFactorToken);
+        $response = $this->getJson('/api/auth/two-factor/status?two_factor_token='.$twoFactorToken);
 
         // Assert
 
@@ -206,7 +206,7 @@ final class TwoFactorStatusControllerTest extends TestCase
         ]);
 
         /** @var TestResponse<JsonResponse> $firstLogin */
-        $firstLogin = $this->postJson('/api/login', [
+        $firstLogin = $this->postJson('/api/auth/login', [
             'email' => 'stale-status@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -216,7 +216,7 @@ final class TwoFactorStatusControllerTest extends TestCase
 
         $this->flushSession();
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'stale-status@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ])->assertOk();
@@ -226,7 +226,7 @@ final class TwoFactorStatusControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->getJson('/api/two-factor/status?two_factor_token='.$staleToken);
+        $response = $this->getJson('/api/auth/two-factor/status?two_factor_token='.$staleToken);
 
         // Assert
 

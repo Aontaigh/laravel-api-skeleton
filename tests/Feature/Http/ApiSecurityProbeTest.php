@@ -297,11 +297,11 @@ final class ApiSecurityProbeTest extends TestCase
 
         return [
             'login sql injection email' => [
-                '/api/login',
+                '/api/auth/login',
                 ['email' => $injection, 'password' => 'Xq7#mK2$vL9pTzW4'],
             ],
             'register sql injection name' => [
-                '/api/register',
+                '/api/auth/register',
                 [
                     'name' => $injection,
                     'email' => 'probe@example.com',
@@ -310,7 +310,7 @@ final class ApiSecurityProbeTest extends TestCase
                 ],
             ],
             'register oversized email' => [
-                '/api/register',
+                '/api/auth/register',
                 [
                     'name' => 'Alice',
                     'email' => str_repeat('a', 300).'@example.com',
@@ -332,6 +332,7 @@ final class ApiSecurityProbeTest extends TestCase
             'users index' => ['/api/users'],
             'tokens index' => ['/api/tokens'],
             'roles index' => ['/api/roles'],
+            'sessions index' => ['/api/sessions'],
         ];
     }
 }

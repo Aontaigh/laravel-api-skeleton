@@ -51,7 +51,7 @@ final class SecurityHeadersTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'nobody@example.com',
             'password' => 'x',
         ]);

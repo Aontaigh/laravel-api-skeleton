@@ -75,11 +75,11 @@ final class ApiAuthRateLimitingTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/login', $payload)->assertUnprocessable();
-        $this->postJson('/api/login', $payload)->assertUnprocessable();
+        $this->postJson('/api/auth/login', $payload)->assertUnprocessable();
+        $this->postJson('/api/auth/login', $payload)->assertUnprocessable();
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', $payload);
+        $response = $this->postJson('/api/auth/login', $payload);
 
         // Assert
 
@@ -103,11 +103,11 @@ final class ApiAuthRateLimitingTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/register', $payload)->assertCreated();
-        $this->postJson('/api/register', $payload)->assertUnprocessable();
+        $this->postJson('/api/auth/register', $payload)->assertCreated();
+        $this->postJson('/api/auth/register', $payload)->assertUnprocessable();
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', $payload);
+        $response = $this->postJson('/api/auth/register', $payload);
 
         // Assert
 
@@ -135,12 +135,12 @@ final class ApiAuthRateLimitingTest extends TestCase
          * different email from the same IP still reaches validation.
          */
 
-        $this->postJson('/api/login', $firstPayload)->assertUnprocessable();
-        $this->postJson('/api/login', $firstPayload)->assertUnprocessable();
-        $this->postJson('/api/login', $firstPayload)->assertStatus(429);
+        $this->postJson('/api/auth/login', $firstPayload)->assertUnprocessable();
+        $this->postJson('/api/auth/login', $firstPayload)->assertUnprocessable();
+        $this->postJson('/api/auth/login', $firstPayload)->assertStatus(429);
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'second@example.com',
             'password' => 'WrongPass1',
         ]);
@@ -176,14 +176,14 @@ final class ApiAuthRateLimitingTest extends TestCase
         // Act
 
         foreach (['a@example.com', 'b@example.com', 'c@example.com'] as $email) {
-            $this->postJson('/api/login', [
+            $this->postJson('/api/auth/login', [
                 'email' => $email,
                 'password' => 'WrongPass1',
             ])->assertUnprocessable();
         }
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'd@example.com',
             'password' => 'WrongPass1',
         ]);

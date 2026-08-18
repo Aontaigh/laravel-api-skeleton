@@ -76,12 +76,14 @@ final class RememberLoginControllerTest extends TestCase
 
         /** @var User $user */
         $user = User::factory()->user()->create();
+
+        $this->startSession();
         Auth::guard('web')->login($user, true);
 
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login/remember');
+        $response = $this->postJson('/api/auth/login/remember');
 
         // Assert
 
@@ -89,6 +91,10 @@ final class RememberLoginControllerTest extends TestCase
         $response->assertJsonPath('message', 'Session Restored Successfully');
         $this->assertNotEmpty($response->json('data.plain_text_token'));
         $this->assertSame($user->session_version, session()->get('session_version'));
+        $this->assertDatabaseHas('web_sessions', [
+            'user_id' => $user->id,
+            'revoked_at' => null,
+        ]);
         $this->assertDatabaseHas('auth_audit_logs', [
             'user_id' => $user->id,
             'event' => AuthAuditEvent::RememberMeLogin->value,
@@ -111,7 +117,7 @@ final class RememberLoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login/remember', [
+        $response = $this->postJson('/api/auth/login/remember', [
             'device_name' => '<script>alert(1)</script>Mobile App',
         ]);
 
@@ -134,7 +140,7 @@ final class RememberLoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login/remember');
+        $response = $this->postJson('/api/auth/login/remember');
 
         // Assert
 
@@ -156,7 +162,7 @@ final class RememberLoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login/remember');
+        $response = $this->postJson('/api/auth/login/remember');
 
         // Assert
 
@@ -192,7 +198,7 @@ final class RememberLoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login/remember');
+        $response = $this->postJson('/api/auth/login/remember');
 
         // Assert
 

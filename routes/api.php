@@ -16,7 +16,7 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware(['throttle:api-auth'])->group(function (): void {
+Route::prefix('auth')->middleware(['throttle:api-auth'])->group(function (): void {
 
     Route::post('/login', \App\Http\Controllers\Auth\LoginController::class)
         ->name('auth.login');
@@ -27,28 +27,47 @@ Route::middleware(['throttle:api-auth'])->group(function (): void {
     Route::post('/register', \App\Http\Controllers\Auth\RegisterController::class)
         ->name('auth.register');
 
-    Route::post('/oauth/token', \App\Http\Controllers\Auth\ClientTokenExchangeController::class)
-        ->middleware('throttle:api-client-auth')
-        ->name('oauth.token');
-
 });
 
-Route::post('/two-factor/send', \App\Http\Controllers\Auth\SendTwoFactorController::class)
+Route::post('/auth/two-factor/send', \App\Http\Controllers\Auth\SendTwoFactorController::class)
     ->middleware('throttle:api-auth-two-factor-send')
     ->name('two-factor.send');
 
-Route::post('/two-factor/verify', \App\Http\Controllers\Auth\VerifyTwoFactorController::class)
+Route::post('/auth/two-factor/verify', \App\Http\Controllers\Auth\VerifyTwoFactorController::class)
     ->middleware('throttle:api-auth-two-factor-verify')
     ->name('two-factor.verify');
 
-Route::get('/two-factor/status', \App\Http\Controllers\Auth\TwoFactorStatusController::class)
+Route::get('/auth/two-factor/status', \App\Http\Controllers\Auth\TwoFactorStatusController::class)
     ->middleware('throttle:api-auth-two-factor-status')
     ->name('two-factor.status');
+
+Route::post('/oauth/token', \App\Http\Controllers\Auth\ClientTokenExchangeController::class)
+    ->middleware('throttle:api-client-auth')
+    ->name('oauth.token');
 
 Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttle:api'])->group(function (): void {
 
     Route::post('/logout', \App\Http\Controllers\Auth\LogoutController::class)
         ->name('auth.logout');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sessions
+    |--------------------------------------------------------------------------
+    |
+    | Cookie-bound web session registry — list, revoke one device, or end the
+    | current browser without revoking bearer tokens.
+    |
+    */
+
+    Route::get('/sessions', \App\Http\Controllers\Sessions\SessionIndexController::class)
+        ->name('sessions.index');
+
+    Route::delete('/sessions/current', \App\Http\Controllers\Sessions\DestroyCurrentSessionController::class)
+        ->name('sessions.current.destroy');
+
+    Route::delete('/sessions/{web_session}', \App\Http\Controllers\Sessions\DestroySessionController::class)
+        ->name('sessions.destroy');
 
     Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)
         ->name('me.show');

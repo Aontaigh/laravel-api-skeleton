@@ -57,7 +57,7 @@ final class AuthenticatedUserResourceTest extends UnitTestCase
         // Act
 
         /** @var array<string, mixed> $data */
-        $data = (new AuthenticatedUserResource($user))->resolve(Request::create('/api/login'));
+        $data = (new AuthenticatedUserResource($user))->resolve(Request::create('/api/auth/login'));
 
         // Assert
 

@@ -6,10 +6,12 @@ namespace Tests\Feature\Http\Controllers\Auth;
 
 use App\Actions\Auth\LogoutUserAction;
 use App\Actions\Auth\RecordAuthAuditAction;
+use App\Actions\Sessions\RevokeAllWebSessionsForUserAction;
 use App\Enums\AuthAuditEvent;
 use App\Http\Controllers\Auth\LogoutController;
 use App\Http\Requests\Auth\LogoutRequest;
 use App\Models\User;
+use App\Models\WebSession;
 use App\Support\ApiResponse;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -28,6 +30,7 @@ use Tests\TestCase;
 #[CoversClass(LogoutRequest::class)]
 #[CoversClass(RecordAuthAuditAction::class)]
 #[CoversClass(LogoutUserAction::class)]
+#[CoversClass(RevokeAllWebSessionsForUserAction::class)]
 #[CoversClass(ApiResponse::class)]
 final class LogoutControllerTest extends TestCase
 {
@@ -114,6 +117,10 @@ final class LogoutControllerTest extends TestCase
         $firstToken = $user->createToken('device-one');
         $secondToken = $user->createToken('device-two');
 
+        $webSession = WebSession::factory()->for($user)->create([
+            'session_id' => 'session-one',
+        ]);
+
         DB::table(config()->string('session.table'))->insert([
             'id' => 'session-one',
             'user_id' => $user->id,
@@ -145,6 +152,7 @@ final class LogoutControllerTest extends TestCase
         $this->assertDatabaseMissing(config()->string('session.table'), [
             'user_id' => $user->id,
         ]);
+        $this->assertNotNull($webSession->fresh()?->revoked_at);
 
         Auth::forgetGuards();
 

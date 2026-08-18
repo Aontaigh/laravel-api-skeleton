@@ -7,11 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-08-18
+
+### Added
+
+- `GET /api/sessions`, `DELETE /api/sessions/{web_session}`, and `DELETE /api/sessions/current` — cookie-bound web session registry with admin `sessions.list-all` / `sessions.revoke-any` support
+- `web_sessions` table, `WebSession` model, and `RegisterWebSessionAction` — sessions registered at the privilege boundary (login, two-factor completion, remember-me restore)
+- `sessions.list-own`, `sessions.list-all`, `sessions.revoke-own`, and `sessions.revoke-any` permissions (permission catalog count is now 25)
+- Session telemetry gating in `WebSessionResource` — `user_id` and cross-user `ip_address` / `user_agent` require `sessions.list-all`
+- Adversarial pen-test coverage for the sessions surface in `scripts/pen-test-auth.sh`
+
+### Changed
+
+- Auth routes moved under `/api/auth/*` (`/login`, `/register`, `/two-factor/*`, `/login/remember`); global logout remains `POST /api/logout`
+- Global logout revokes every `web_sessions` registry row via `RevokeAllWebSessionsForUserAction`
+- CLI and CI diagnostic copy uses Title Case headlines per project conventions
+
+### Fixed
+
+- `scripts/verify-openapi-examples.sh` restores `${BASE}` on auth path curls so the OpenAPI examples job does not abort on malformed URLs
+
 ## [1.7.0] - 2026-08-17
 
 ### Added
 
-- `GET /api/two-factor/status` — poll pending two-factor challenge expiry for session-bound and stateless clients (`GetTwoFactorStatusAction`)
+- `GET /api/auth/two-factor/status` — poll pending two-factor challenge expiry for session-bound and stateless clients (`GetTwoFactorStatusAction`)
 - Separate rate limiters for two-factor send, verify, and status polling (`API_TWO_FACTOR_SEND_*`, `API_TWO_FACTOR_VERIFY_*`, `API_TWO_FACTOR_STATUS_RATE_LIMIT_PER_MINUTE`)
 - Per-route Content Security Policy — strict default for API responses, relaxed Scalar/jsDelivr policy for `GET /api/docs`; CSP omitted in `local` while Vite hot-reload is active
 
@@ -32,7 +52,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Email two-factor authentication — `POST /api/two-factor/send` and `POST /api/two-factor/verify` complete sign-in after valid credentials when `mfa_method` is set; opaque `two_factor_token` supports stateless clients
+- Email two-factor authentication — `POST /api/auth/two-factor/send` and `POST /api/auth/two-factor/verify` complete sign-in after valid credentials when `mfa_method` is set; opaque `two_factor_token` supports stateless clients
 - `POST /api/users` — admin user creation with role and optional `team_id` (`users.create`); new accounts auto-enrol in email MFA
 - `PATCH /api/clients/{client}` — update API client name, abilities, and active status (`api-clients.update`)
 - `users.create` and `api-clients.update` permissions; permission catalog count is now 21
@@ -43,7 +63,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- `POST /api/register` and MFA-enrolled `POST /api/login` return `two_factor_required` and `two_factor_token` instead of an immediate bearer token — complete send/verify before a session is issued
+- `POST /api/auth/register` and MFA-enrolled `POST /api/auth/login` return `two_factor_required` and `two_factor_token` instead of an immediate bearer token — complete send/verify before a session is issued
 - Email addresses are normalised to lowercase on register, login, admin user creation, and API client service-user emails
 - OpenAPI, README, and `docs/permissions.md` updated for two-factor flow, user creation, and client PATCH
 
@@ -70,7 +90,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Public `POST /api/login` and `POST /api/register` endpoints — password auth with Sanctum
+- Public `POST /api/auth/login` and `POST /api/auth/register` endpoints — password auth with Sanctum
   bearer tokens, generic invalid-credential responses, and `api-auth` rate limiting
   (10 requests / minute per IP and email)
 - `POST /api/logout` — revokes every Sanctum token, clears remember-me state, deletes all
@@ -78,8 +98,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   present
 - `auth_audit_logs` table and `RecordAuthAuditAction` — audit trail for login, failed
   login, logout, registration, and remember-me session restoration
-- Remember-me on `POST /api/login` (`remember: true`) — extended PAT lifetime, rotated
-  `remember_token`, web-guard remember cookie; `POST /api/login/remember` for SPA re-auth
+- Remember-me on `POST /api/auth/login` (`remember: true`) — extended PAT lifetime, rotated
+  `remember_token`, web-guard remember cookie; `POST /api/auth/login/remember` for SPA re-auth
 - `POST /api/users/logout` — admin-only force-logout by User id; revokes every Sanctum
   token, clears remember-me state, and deletes all server-side session rows for each target
 - OAuth2 client-credentials flow — `POST /api/oauth/token` exchanges `client_id` and
@@ -191,7 +211,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.4.0...v1.5.0

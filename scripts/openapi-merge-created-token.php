@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 if ($argc < 3) {
-    fwrite(STDERR, "Usage: php scripts/openapi-merge-created-token.php <expectedJson> <liveJson>\n");
+    fwrite(STDERR, "Usage Missing Arguments: php scripts/openapi-merge-created-token.php <expectedJson> <liveJson>\n");
     exit(1);
 }
 

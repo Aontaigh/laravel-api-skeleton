@@ -12,6 +12,9 @@ declare(strict_types=1);
 | overall line-coverage percentage drops below the threshold supplied
 | as the first CLI argument.
 |
+| Diagnostic copy follows php-quality (CLI and Diagnostic Errors): Title Case
+| headlines, no trailing full stop; detail after a colon when needed.
+|
 | Usage (locally and in CI):
 |
 |     composer test:coverage

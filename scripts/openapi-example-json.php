@@ -7,7 +7,7 @@ use Symfony\Component\Yaml\Yaml;
 require __DIR__.'/../vendor/autoload.php';
 
 if ($argc < 2) {
-    fwrite(STDERR, "Usage: php scripts/openapi-example-json.php <ExampleName>\n");
+    fwrite(STDERR, "Usage Missing Arguments: php scripts/openapi-example-json.php <ExampleName>\n");
     exit(1);
 }
 
@@ -21,7 +21,7 @@ $document = Yaml::parseFile(__DIR__.'/../docs/openapi.yaml');
 $examples = $document['components']['examples'];
 
 if (! isset($examples[$exampleName]['value'])) {
-    fwrite(STDERR, "OpenAPI example not found: {$exampleName}\n");
+    fwrite(STDERR, "OpenAPI Example Not Found: {$exampleName}\n");
     exit(1);
 }
 

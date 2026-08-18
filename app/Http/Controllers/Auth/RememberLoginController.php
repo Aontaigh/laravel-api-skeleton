@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\RestoreUserFromRememberAction;
+use App\Actions\Sessions\RegisterWebSessionAction;
 use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\DataTransferObjects\Sessions\RegisterWebSessionData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
@@ -22,7 +24,7 @@ use Illuminate\Support\ValidatedInput;
  * Restores a User from a remember-me cookie or session and issues a fresh token.
  *
  * @example
- * POST /api/login/remember
+ * POST /api/auth/login/remember
  */
 final class RememberLoginController
 {
@@ -38,12 +40,14 @@ final class RememberLoginController
      * @param  RememberLoginRequest            $request    the authorised remember request
      * @param  RestoreUserFromRememberAction   $restore    the session restoration Action
      * @param  CreatePersonalAccessTokenAction $issueToken the token issuance Action
+     * @param  RegisterWebSessionAction        $register   the web session registry Action
      * @return JsonResponse                    the standardised success envelope
      */
     public function __invoke(
         RememberLoginRequest $request,
         RestoreUserFromRememberAction $restore,
         CreatePersonalAccessTokenAction $issueToken,
+        RegisterWebSessionAction $register,
     ): JsonResponse {
         /*
         |--------------------------------------------------------------------------
@@ -96,7 +100,19 @@ final class RememberLoginController
 
         if ($request->hasSession()) {
             $request->session()->regenerate();
-            $request->session()->put('session_version', $user->session_version);
+        }
+
+        if (session()->isStarted()) {
+            session()->put('session_version', $user->session_version);
+
+            $register->execute(new RegisterWebSessionData(
+                user: $user,
+                sessionId: session()->getId(),
+                deviceName: $this->deviceName($input),
+                ipAddress: (string) $request->ip(),
+                userAgent: $request->userAgent(),
+                rememberMe: true,
+            ));
         }
 
         $newToken = $issueToken->execute(new CreateTokenData(

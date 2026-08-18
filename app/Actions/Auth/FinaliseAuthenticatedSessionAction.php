@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Actions\Auth;
 
+use App\Actions\Sessions\RegisterWebSessionAction;
 use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\DataTransferObjects\Sessions\RegisterWebSessionData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
@@ -27,12 +29,14 @@ final class FinaliseAuthenticatedSessionAction
     /**
      * Create a new FinaliseAuthenticatedSessionAction.
      *
-     * @param ApplyRememberMeAction           $applyRemember applies remember-me cookies and tokens
-     * @param CreatePersonalAccessTokenAction $issueToken    issues the Sanctum bearer token
+     * @param ApplyRememberMeAction           $applyRemember      applies remember-me cookies and tokens
+     * @param CreatePersonalAccessTokenAction $issueToken         issues the Sanctum bearer token
+     * @param RegisterWebSessionAction        $registerWebSession records cookie-bound sessions in the registry
      */
     public function __construct(
         private readonly ApplyRememberMeAction $applyRemember,
         private readonly CreatePersonalAccessTokenAction $issueToken,
+        private readonly RegisterWebSessionAction $registerWebSession,
     ) {}
 
     /*
@@ -69,6 +73,15 @@ final class FinaliseAuthenticatedSessionAction
 
         if (session()->isStarted()) {
             session()->put('session_version', $user->session_version);
+
+            $this->registerWebSession->execute(new RegisterWebSessionData(
+                user: $user,
+                sessionId: session()->getId(),
+                deviceName: $data->deviceName,
+                ipAddress: $data->ipAddress,
+                userAgent: $data->userAgent,
+                rememberMe: $data->remember,
+            ));
         }
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(

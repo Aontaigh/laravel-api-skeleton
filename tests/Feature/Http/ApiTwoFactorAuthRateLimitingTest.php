@@ -93,11 +93,11 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/two-factor/send', $sendPayload)->assertOk();
-        $this->postJson('/api/two-factor/send', $sendPayload)->assertOk();
+        $this->postJson('/api/auth/two-factor/send', $sendPayload)->assertOk();
+        $this->postJson('/api/auth/two-factor/send', $sendPayload)->assertOk();
 
         /** @var TestResponse<JsonResponse> $rateLimitedSend */
-        $rateLimitedSend = $this->postJson('/api/two-factor/send', $sendPayload);
+        $rateLimitedSend = $this->postJson('/api/auth/two-factor/send', $sendPayload);
 
         Cache::put('two-factor:'.$user->id, [
             'code_hash' => Hash::make('123456'),
@@ -106,7 +106,7 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
         ], 300);
 
         /** @var TestResponse<JsonResponse> $verifyResponse */
-        $verifyResponse = $this->postJson('/api/two-factor/verify', [
+        $verifyResponse = $this->postJson('/api/auth/two-factor/verify', [
             'code' => '123456',
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -147,14 +147,14 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/two-factor/verify', $verifyPayload)->assertUnprocessable();
-        $this->postJson('/api/two-factor/verify', $verifyPayload)->assertUnprocessable();
+        $this->postJson('/api/auth/two-factor/verify', $verifyPayload)->assertUnprocessable();
+        $this->postJson('/api/auth/two-factor/verify', $verifyPayload)->assertUnprocessable();
 
         /** @var TestResponse<JsonResponse> $rateLimitedVerify */
-        $rateLimitedVerify = $this->postJson('/api/two-factor/verify', $verifyPayload);
+        $rateLimitedVerify = $this->postJson('/api/auth/two-factor/verify', $verifyPayload);
 
         /** @var TestResponse<JsonResponse> $sendResponse */
-        $sendResponse = $this->postJson('/api/two-factor/send', [
+        $sendResponse = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -188,14 +188,14 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
 
         // Act
 
-        $this->getJson('/api/two-factor/status?two_factor_token='.$twoFactorToken)->assertOk();
-        $this->getJson('/api/two-factor/status?two_factor_token='.$twoFactorToken)->assertOk();
+        $this->getJson('/api/auth/two-factor/status?two_factor_token='.$twoFactorToken)->assertOk();
+        $this->getJson('/api/auth/two-factor/status?two_factor_token='.$twoFactorToken)->assertOk();
 
         /** @var TestResponse<JsonResponse> $rateLimitedStatus */
-        $rateLimitedStatus = $this->getJson('/api/two-factor/status?two_factor_token='.$twoFactorToken);
+        $rateLimitedStatus = $this->getJson('/api/auth/two-factor/status?two_factor_token='.$twoFactorToken);
 
         /** @var TestResponse<JsonResponse> $sendResponse */
-        $sendResponse = $this->postJson('/api/two-factor/send', [
+        $sendResponse = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -218,7 +218,7 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
     private function beginStatelessTwoFactorChallenge(User $user): string
     {
         /** @var TestResponse<JsonResponse> $login */
-        $login = $this->postJson('/api/login', [
+        $login = $this->postJson('/api/auth/login', [
             'email' => $user->email,
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);

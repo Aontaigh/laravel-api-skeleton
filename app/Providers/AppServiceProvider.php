@@ -12,11 +12,13 @@ use App\Listeners\SendTwoFactorCodeNotification;
 use App\Models\ApiClient;
 use App\Models\AuthAuditLog;
 use App\Models\User;
+use App\Models\WebSession;
 use App\Policies\ApiClientPolicy;
 use App\Policies\AuthAuditLogPolicy;
 use App\Policies\PermissionPolicy;
 use App\Policies\PersonalAccessTokenPolicy;
 use App\Policies\RolePolicy;
+use App\Policies\WebSessionPolicy;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
@@ -71,6 +73,7 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(AuthAuditLog::class, AuthAuditLogPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(Permission::class, PermissionPolicy::class);
+        Gate::policy(WebSession::class, WebSessionPolicy::class);
 
         Event::listen(AuthEventOccurred::class, RecordAuthAuditLog::class);
         Event::listen(TwoFactorChallengeIssued::class, SendTwoFactorCodeNotification::class);
@@ -80,6 +83,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->configureApiRateLimiting();
         $this->configureAuthTimingNormalisation();
         $this->registerScopedTokenBinding();
+        $this->registerScopedWebSessionBinding();
     }
 
     /*
@@ -259,6 +263,34 @@ final class AppServiceProvider extends ServiceProvider
             }
 
             return $user->tokens()->whereKey($value)->firstOrFail();
+        });
+    }
+
+    /**
+     * Resolve `{web_session}` within the caller's row scope.
+     *
+     * Callers holding `sessions.list-all` or `sessions.revoke-any` may address
+     * any registry row; everyone else is scoped to their own User id so foreign
+     * ids return 404. The `revoke-any` branch keeps the binding consistent with
+     * WebSessionPolicy::delete, which grants cross-user revoke via `revoke-any`.
+     */
+    private function registerScopedWebSessionBinding(): void
+    {
+        Route::bind('web_session', static function (string $value): WebSession {
+            /** @var User|null $user */
+            $user = auth()->user();
+
+            if ($user === null) {
+                throw (new ModelNotFoundException)->setModel(WebSession::class, [$value]);
+            }
+
+            $query = WebSession::query()->whereKey($value);
+
+            if (! $user->can('sessions.list-all') && ! $user->can('sessions.revoke-any')) {
+                $query->where('user_id', $user->id);
+            }
+
+            return $query->firstOrFail();
         });
     }
 }

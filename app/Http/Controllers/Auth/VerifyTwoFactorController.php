@@ -26,7 +26,7 @@ use Illuminate\Http\JsonResponse;
  * `two_factor_token` returned by login or register.
  *
  * @example
- * POST /api/two-factor/verify {"code":"123456","two_factor_token":"..."}
+ * POST /api/auth/two-factor/verify {"code":"123456","two_factor_token":"..."}
  */
 final class VerifyTwoFactorController
 {

@@ -105,7 +105,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'mfa@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -138,7 +138,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'nomfa@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -175,13 +175,13 @@ final class TwoFactorFlowTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'send@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/send', [
+        $response = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
         ]);
 
@@ -209,7 +209,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/send', [
+        $response = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
         ]);
 
@@ -236,7 +236,7 @@ final class TwoFactorFlowTest extends TestCase
 
         // Open the challenge, then suspend
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'suspended@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -246,7 +246,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/send', [
+        $response = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
         ]);
 
@@ -270,7 +270,7 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'channel@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -283,7 +283,7 @@ final class TwoFactorFlowTest extends TestCase
         $user->forceFill(['mfa_method' => null])->save();
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/send', [
+        $response = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
         ]);
 
@@ -317,12 +317,12 @@ final class TwoFactorFlowTest extends TestCase
 
         // Login + send
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'verify@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Extract the code from the cache to verify against
 
@@ -341,7 +341,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => $code,
         ]);
 
@@ -373,17 +373,17 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'wrong@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => '000000',
         ]);
 
@@ -410,12 +410,12 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'lockout@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Act
 
@@ -424,11 +424,11 @@ final class TwoFactorFlowTest extends TestCase
         });
 
         for ($i = 0; $i < 5; $i++) {
-            $this->postJson('/api/two-factor/verify', ['code' => '000000']);
+            $this->postJson('/api/auth/two-factor/verify', ['code' => '000000']);
         }
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => '000000',
         ]);
 
@@ -450,7 +450,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => '123456',
         ]);
 
@@ -477,12 +477,12 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'midsuspend@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Suspend mid-flight
 
@@ -491,7 +491,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => '123456',
         ]);
 
@@ -518,19 +518,19 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'resend@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
         // Send the first code
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Burn 3 attempts
 
         for ($i = 0; $i < 3; $i++) {
-            $this->postJson('/api/two-factor/verify', ['code' => '000000']);
+            $this->postJson('/api/auth/two-factor/verify', ['code' => '000000']);
         }
 
         $challenge = Cache::get('two-factor:'.$user->id);
@@ -539,7 +539,7 @@ final class TwoFactorFlowTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Assert
 
@@ -565,19 +565,19 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'expired-resend@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
         // Send the first code
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Burn 3 attempts
 
         for ($i = 0; $i < 3; $i++) {
-            $this->postJson('/api/two-factor/verify', ['code' => '000000']);
+            $this->postJson('/api/auth/two-factor/verify', ['code' => '000000']);
         }
 
         $challenge = Cache::get('two-factor:'.$user->id);
@@ -590,7 +590,7 @@ final class TwoFactorFlowTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Assert — a fresh challenge starts with zero attempts
 
@@ -616,25 +616,25 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'freshlogin@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         for ($i = 0; $i < 3; $i++) {
-            $this->postJson('/api/two-factor/verify', ['code' => '000000']);
+            $this->postJson('/api/auth/two-factor/verify', ['code' => '000000']);
         }
 
         // Act
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'freshlogin@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Assert
 
@@ -660,7 +660,7 @@ final class TwoFactorFlowTest extends TestCase
         ]);
 
         /** @var TestResponse<JsonResponse> $firstLogin */
-        $firstLogin = $this->postJson('/api/login', [
+        $firstLogin = $this->postJson('/api/auth/login', [
             'email' => 'supersede@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -670,7 +670,7 @@ final class TwoFactorFlowTest extends TestCase
 
         $this->flushSession();
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'supersede@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -680,7 +680,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/send', [
+        $response = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
             'two_factor_token' => $staleToken,
         ]);
@@ -709,7 +709,7 @@ final class TwoFactorFlowTest extends TestCase
         ]);
 
         /** @var TestResponse<JsonResponse> $login */
-        $login = $this->postJson('/api/login', [
+        $login = $this->postJson('/api/auth/login', [
             'email' => 'stateless@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -719,7 +719,7 @@ final class TwoFactorFlowTest extends TestCase
 
         $this->flushSession();
 
-        $this->postJson('/api/two-factor/send', [
+        $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -734,7 +734,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => $code,
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -764,7 +764,7 @@ final class TwoFactorFlowTest extends TestCase
         ]);
 
         /** @var TestResponse<JsonResponse> $login */
-        $login = $this->postJson('/api/login', [
+        $login = $this->postJson('/api/auth/login', [
             'email' => 'remember@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
             'remember' => true,
@@ -775,7 +775,7 @@ final class TwoFactorFlowTest extends TestCase
 
         $this->flushSession();
 
-        $this->postJson('/api/two-factor/send', [
+        $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -790,7 +790,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/verify', [
+        $response = $this->postJson('/api/auth/two-factor/verify', [
             'code' => $code,
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -828,7 +828,7 @@ final class TwoFactorFlowTest extends TestCase
         ]);
 
         /** @var TestResponse<JsonResponse> $login */
-        $login = $this->postJson('/api/login', [
+        $login = $this->postJson('/api/auth/login', [
             'email' => 'expired@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -845,7 +845,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/two-factor/send', [
+        $response = $this->postJson('/api/auth/two-factor/send', [
             'channel' => 'email',
             'two_factor_token' => $twoFactorToken,
         ]);
@@ -870,7 +870,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Auto Enrol',
             'email' => 'autoenrol@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -896,7 +896,7 @@ final class TwoFactorFlowTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/register', [
+        $response = $this->postJson('/api/auth/register', [
             'name' => 'Auto Enrol',
             'email' => 'autoenrol@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
@@ -934,12 +934,12 @@ final class TwoFactorFlowTest extends TestCase
             'mfa_method' => MfaMethod::Email,
         ]);
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'audit@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        $this->postJson('/api/two-factor/send', ['channel' => 'email']);
+        $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
         // Act
 

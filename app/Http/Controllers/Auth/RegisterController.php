@@ -18,7 +18,7 @@ use Illuminate\Http\JsonResponse;
  * Registers a new User and begins email two-factor verification.
  *
  * @example
- * POST /api/register {"name": "Alice", "email": "alice@example.com", "password": "SecretPass12", "password_confirmation": "SecretPass12"}
+ * POST /api/auth/register {"name": "Alice", "email": "alice@example.com", "password": "SecretPass12", "password_confirmation": "SecretPass12"}
  */
 final class RegisterController
 {

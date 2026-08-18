@@ -12,6 +12,7 @@ use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\LoginCredentialsData;
 use App\Enums\AuthAuditEvent;
+use App\Enums\MfaMethod;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\AuthenticatedUserResource;
@@ -29,6 +30,7 @@ use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\MakesStatefulSpaRequests;
 use Tests\TestCase;
 
 /**
@@ -54,6 +56,7 @@ final class LoginControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    use MakesStatefulSpaRequests;
     use RefreshDatabase;
 
     /*
@@ -99,7 +102,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
             'device_name' => 'Mobile App',
@@ -144,7 +147,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -180,7 +183,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
             'device_name' => '<script>alert(1)</script>Mobile App',
@@ -213,7 +216,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
             'remember' => true,
@@ -260,7 +263,7 @@ final class LoginControllerTest extends TestCase
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->withCredentials()
             ->withHeaders($this->statefulRequestHeaders($xsrfToken))
-            ->postJson('/api/login', [
+            ->postJson('/api/auth/login', [
                 'email' => 'alice@example.com',
                 'password' => 'Xq7#mK2$vL9pTzW4',
                 'remember' => true,
@@ -293,7 +296,7 @@ final class LoginControllerTest extends TestCase
         /** @var TestResponse<JsonResponse> $loginResponse */
         $loginResponse = $this->withCredentials()
             ->withHeaders($this->statefulRequestHeaders($xsrfToken))
-            ->postJson('/api/login', [
+            ->postJson('/api/auth/login', [
                 'email' => 'alice@example.com',
                 'password' => 'Xq7#mK2$vL9pTzW4',
                 'remember' => true,
@@ -319,7 +322,7 @@ final class LoginControllerTest extends TestCase
         $response = $this->withCredentials()
             ->withCookie($recallerName, $recallerValue)
             ->withHeaders($this->statefulRequestHeaders($freshXsrfToken))
-            ->postJson('/api/login/remember');
+            ->postJson('/api/auth/login/remember');
 
         // Assert
 
@@ -335,7 +338,7 @@ final class LoginControllerTest extends TestCase
     {
         // Act
 
-        $this->postJson('/api/login', [
+        $this->postJson('/api/auth/login', [
             'email' => 'missing@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ])->assertUnprocessable();
@@ -365,7 +368,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'ALICE@EXAMPLE.COM',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -392,7 +395,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'WrongPass1',
         ]);
@@ -421,7 +424,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -447,7 +450,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
@@ -456,6 +459,36 @@ final class LoginControllerTest extends TestCase
 
         $this->assertApiValidationErrors($response, ['email']);
         $response->assertJsonPath('meta.errors.email.0', 'Invalid Credentials');
+    }
+
+    /**
+     * Reject suspended MFA-enrolled accounts before opening a two-factor challenge.
+     */
+    #[Test]
+    public function it_rejects_suspended_mfa_enrolled_accounts_before_two_factor(): void
+    {
+        // Arrange
+
+        User::factory()->user()->suspended()->create([
+            'email' => 'mfa-suspended@example.com',
+            'password' => Hash::make('Xq7#mK2$vL9pTzW4'),
+            'mfa_method' => MfaMethod::Email,
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'mfa-suspended@example.com',
+            'password' => 'Xq7#mK2$vL9pTzW4',
+        ]);
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['email']);
+        $response->assertJsonPath('meta.errors.email.0', 'Invalid Credentials');
+        $response->assertJsonMissingPath('data.two_factor_required');
+        $response->assertJsonMissingPath('data.two_factor_token');
     }
 
     /**
@@ -474,13 +507,13 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $unknownEmailResponse */
-        $unknownEmailResponse = $this->postJson('/api/login', [
+        $unknownEmailResponse = $this->postJson('/api/auth/login', [
             'email' => 'missing@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
         /** @var TestResponse<JsonResponse> $wrongPasswordResponse */
-        $wrongPasswordResponse = $this->postJson('/api/login', [
+        $wrongPasswordResponse = $this->postJson('/api/auth/login', [
             'email' => 'alice@example.com',
             'password' => 'WrongPass1',
         ]);
@@ -511,7 +544,7 @@ final class LoginControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', $payload);
+        $response = $this->postJson('/api/auth/login', $payload);
 
         // Assert
 
@@ -523,103 +556,6 @@ final class LoginControllerTest extends TestCase
     | Data Providers
     |--------------------------------------------------------------------------
     */
-
-    /**
-     * Stateful SPA request headers for Sanctum cookie authentication.
-     *
-     * @param  string|null           $xsrfToken optional CSRF token for mutating requests
-     * @return array<string, string> the request headers
-     */
-    private function statefulRequestHeaders(?string $xsrfToken = null): array
-    {
-        $headers = [
-            'Origin' => 'http://localhost',
-            'Referer' => 'http://localhost/',
-        ];
-
-        if ($xsrfToken !== null) {
-            $headers['X-XSRF-TOKEN'] = $xsrfToken;
-        }
-
-        return $headers;
-    }
-
-    /**
-     * Start a stateful SPA session and return the CSRF token for mutating requests.
-     *
-     * @param  array<string, string> $statefulHeaders the SPA origin headers
-     * @return string                the decrypted CSRF token
-     */
-    private function beginStatefulSession(array $statefulHeaders): string
-    {
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->withCredentials()
-            ->withHeaders($statefulHeaders)
-            ->get('/sanctum/csrf-cookie');
-
-        $response->assertNoContent();
-
-        $this->storeResponseCookies($response);
-
-        $cookie = $response->getCookie('XSRF-TOKEN');
-        $this->assertNotNull($cookie);
-
-        $xsrfToken = $this->requireNonEmptyString(
-            $cookie->getValue(),
-            'CSRF cookie value missing',
-        );
-
-        return $xsrfToken;
-    }
-
-    /**
-     * Require a non-empty string for cookie and CSRF assertions.
-     *
-     * @param  string|null $value   the value to validate
-     * @param  string      $message the failure message when empty
-     * @return string      the validated non-empty string
-     */
-    private function requireNonEmptyString(?string $value, string $message): string
-    {
-        if ($value === null || $value === '') {
-            $this->fail($message);
-        }
-
-        return $value;
-    }
-
-    /**
-     * Resolve the web session guard for remember-me cookie assertions.
-     */
-    private function webGuard(): SessionGuard
-    {
-        /** @var SessionGuard $guard */
-        $guard = Auth::guard('web');
-
-        return $guard;
-    }
-
-    /**
-     * Persist decrypted response cookies for subsequent stateful requests.
-     *
-     * @param TestResponse<JsonResponse> $response the HTTP test response
-     */
-    private function storeResponseCookies(TestResponse $response): void
-    {
-        foreach ($response->headers->getCookies() as $cookie) {
-            $decrypted = $response->getCookie($cookie->getName());
-
-            if ($decrypted !== null) {
-                $this->withCookie(
-                    $decrypted->getName(),
-                    $this->requireNonEmptyString(
-                        $decrypted->getValue(),
-                        'Response cookie value missing',
-                    ),
-                );
-            }
-        }
-    }
 
     /**
      * Incomplete or malformed login payloads.
@@ -654,5 +590,22 @@ final class LoginControllerTest extends TestCase
                 ['device_name'],
             ],
         ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Private
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Resolve the web session guard for remember-me cookie assertions.
+     */
+    private function webGuard(): SessionGuard
+    {
+        /** @var SessionGuard $guard */
+        $guard = Auth::guard('web');
+
+        return $guard;
     }
 }

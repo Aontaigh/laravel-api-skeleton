@@ -2,21 +2,21 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.7.0
+  version: 1.8.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
 
     ## Authentication
 
-    Password sign-in starts with `POST /login` or `POST /register`. When the User
+    Password sign-in starts with `POST /auth/login` or `POST /auth/register`. When the User
     has email MFA enrolled (`mfa_method` set), the response is
     `two_factor_required` plus an opaque `two_factor_token` — complete
-    `POST /two-factor/send` and `POST /two-factor/verify` before a bearer token
+    `POST /auth/two-factor/send` and `POST /auth/two-factor/verify` before a bearer token
     is issued. Users without MFA receive a Sanctum token immediately from login.
 
     Machine clients use `POST /oauth/token` (client credentials). Stateful SPAs
-    may restore a remember-me session via `POST /login/remember` (session cookie
+    may restore a remember-me session via `POST /auth/login/remember` (session cookie
     + CSRF). All other routes require `Authorization: Bearer {token}`.
 
     ## Response Envelope
@@ -40,7 +40,7 @@ info:
 
     ## Index Query Contract
 
-    List endpoints (`GET /users`, `GET /roles`, `GET /tokens`, `GET /clients`,
+    List endpoints (`GET /users`, `GET /roles`, `GET /tokens`, `GET /sessions`, `GET /clients`,
     `GET /audit-logs`, `GET /permissions`, `GET /teams`) share the same query-param vocabulary.
     Unknown sort columns, filter keys, field names, or include relations return
     `422`.
@@ -87,10 +87,10 @@ info:
     | Scope | Default limit |
     | --- | --- |
     | General API (`throttle:api`) | 500 requests / minute / user (or IP when unauthenticated) |
-    | Login and registration (`POST /login`, `POST /register`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
-    | Two-factor send (`POST /two-factor/send`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
-    | Two-factor verify (`POST /two-factor/verify`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
-    | Two-factor status (`GET /two-factor/status`) | 60 requests / minute / pending-challenge+IP |
+    | Login and registration (`POST /auth/login`, `POST /auth/register`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
+    | Two-factor send (`POST /auth/two-factor/send`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
+    | Two-factor verify (`POST /auth/two-factor/verify`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
+    | Two-factor status (`GET /auth/two-factor/status`) | 60 requests / minute / pending-challenge+IP |
     | Client credentials (`POST /oauth/token`) | 5 requests / minute / `client_id`+IP, plus a 20 requests / minute per-IP ceiling |
     | Token creation (`POST /tokens`, `POST /users/{user}/tokens`, `POST /clients`) | 10 requests / minute / user |
 
@@ -122,6 +122,8 @@ tags:
     description: User Index, Show, Update, Soft-Delete, Suspension, Self-Service Profile, and Admin-Issued Tokens
   - name: Tokens
     description: Self-Service Personal Access Token Management
+  - name: Sessions
+    description: Cookie-Bound Web Session Registry — List and Revoke
   - name: Roles
     description: Role Index and Show (Read-Only)
   - name: Teams
@@ -177,7 +179,7 @@ paths:
                 default:
                   $ref: '#/components/examples/HealthUnavailable'
 
-  /login:
+  /auth/login:
     post:
       tags: [Authentication]
       summary: Log In
@@ -186,7 +188,7 @@ paths:
         When the User has enrolled in email two-factor authentication (`mfa_method`
         set), valid credentials return `200` with `two_factor_required: true`,
         `two_factor_token`, and no bearer token — the caller must complete
-        `POST /two-factor/send` and `POST /two-factor/verify` before a session is
+        `POST /auth/two-factor/send` and `POST /auth/two-factor/verify` before a session is
         issued. Pass `two_factor_token` on send and verify when the client cannot
         rely on session cookies (stateless API clients).
 
@@ -234,13 +236,13 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
 
-  /two-factor/send:
+  /auth/two-factor/send:
     post:
       tags: [Authentication]
       summary: Send Two-Factor Code
       description: |
         Dispatch a six-digit email code for the pending login challenge. Requires
-        a prior `POST /login` or `POST /register` that returned
+        a prior `POST /auth/login` or `POST /auth/register` that returned
         `two_factor_required: true`. The pending challenge is bound to the caller's
         session **or** the opaque `two_factor_token` returned alongside
         `two_factor_required` — pass the token on stateless clients that do not
@@ -271,13 +273,13 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /two-factor/verify:
+  /auth/two-factor/verify:
     post:
       tags: [Authentication]
       summary: Verify Two-Factor Code
       description: |
         Verify the six-digit code and issue a Sanctum bearer token. Requires the
-        pending challenge opened by `POST /login` or `POST /register` — resolved
+        pending challenge opened by `POST /auth/login` or `POST /auth/register` — resolved
         from the session cookie or optional `two_factor_token`.
 
         Wrong, expired, or over-attempt codes return `422` with
@@ -306,7 +308,7 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /two-factor/status:
+  /auth/two-factor/status:
     get:
       tags: [Authentication]
       summary: Two-Factor Status
@@ -342,14 +344,14 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
-  /login/remember:
+  /auth/login/remember:
     post:
       tags: [Authentication]
       summary: Restore Session (Remember Me)
       description: |
         Re-authenticate a User from an active web session or remember-me cookie and
         issue a fresh long-lived Sanctum bearer token. Intended for stateful SPAs
-        after a prior `POST /login` with `remember: true`. Suspended accounts and
+        after a prior `POST /auth/login` with `remember: true`. Suspended accounts and
         service accounts receive generic `401 Unauthenticated` (same as a bad
         cookie). Records a `Remember Me Login` row in `auth_audit_logs`.
       operationId: loginRemember
@@ -373,7 +375,7 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
-  /register:
+  /auth/register:
     post:
       tags: [Authentication]
       summary: Register
@@ -383,7 +385,7 @@ paths:
         (`mfa_method: email`). Email addresses are normalised to lowercase before
         validation and persistence. Returns `201` with `two_factor_required: true`
         and `two_factor_token` — no bearer token until
-        `POST /two-factor/send` and `POST /two-factor/verify` complete. Email
+        `POST /auth/two-factor/send` and `POST /auth/two-factor/verify` complete. Email
         verification is not required — `email_verified_at` remains null.
 
         Duplicate email addresses return `422` with the same generic `Invalid Credentials`
@@ -482,6 +484,103 @@ paths:
                   $ref: '#/components/examples/LogoutSuccess'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /sessions:
+    get:
+      tags: [Sessions]
+      summary: List Web Sessions
+      description: |
+        Paginated list of registered cookie-bound web sessions. Requires
+        `sessions.list-own`. Callers with `sessions.list-all` see every User's
+        sessions and may filter with `filter[user_id]`.
+
+        **Sort Whitelist:** `id`, `user_id`, `device_name`, `ip_address`,
+        `remember_me`, `last_activity_at`, `created_at` (default
+        `-last_activity_at`).
+
+        **Fields Keys:** `fields[sessions]`, `fields[users]` (when `include=user`).
+        **Includes:** `user`.
+      operationId: listSessions
+      parameters:
+        - $ref: '#/components/parameters/QuerySortSessions'
+        - $ref: '#/components/parameters/QueryFieldsSessions'
+        - $ref: '#/components/parameters/QueryFieldsUsers'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterUserId'
+        - $ref: '#/components/parameters/QueryIncludeSessions'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Web Session Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Sessions Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/WebSession'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /sessions/current:
+    delete:
+      tags: [Sessions]
+      summary: Revoke Current Browser Session
+      description: |
+        End the caller's current cookie-bound session without revoking bearer
+        tokens or bumping `session_version`. Requires `sessions.revoke-own` and
+        an active registry row for the inbound Laravel session id.
+      operationId: revokeCurrentSession
+      responses:
+        '200':
+          description: Session Revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /sessions/{web_session}:
+    delete:
+      tags: [Sessions]
+      summary: Revoke Web Session
+      description: |
+        Revoke one registered cookie-bound session. Requires `sessions.revoke-own`
+        when the session belongs to the caller, or `sessions.revoke-any` for
+        admins revoking another User's session. Does not revoke bearer tokens or
+        bump `session_version`.
+      operationId: revokeSession
+      parameters:
+        - name: web_session
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Session Revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /me:
     get:
@@ -2314,7 +2413,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.7.0
+          version: 1.8.0
         meta: {}
 
     HealthUnavailable:
@@ -2517,6 +2616,28 @@ components:
           - -expires_at
         default: id
 
+    QuerySortSessions:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - user_id
+          - -user_id
+          - device_name
+          - -device_name
+          - ip_address
+          - -ip_address
+          - remember_me
+          - -remember_me
+          - last_activity_at
+          - -last_activity_at
+          - created_at
+          - -created_at
+        default: -last_activity_at
+
     QuerySortApiClients:
       name: sort
       in: query
@@ -2640,6 +2761,26 @@ components:
       description: |
         Sparse Fieldset for Token Columns. Allowed: `id`, `name`, `abilities`,
         `last_used_at`, `expires_at`, `created_at`.
+
+    QueryFieldsSessions:
+      name: fields[sessions]
+      in: query
+      schema:
+        type: string
+        example: id,device_name,ip_address,last_activity_at,is_current
+      description: |
+        Sparse Fieldset for Web Session Columns. Allowed: `id`, `user_id` (admins
+        with `sessions.list-all` only), `device_name`, `ip_address`, `user_agent`,
+        `remember_me`, `last_activity_at`, `created_at`, `is_current`.
+
+    QueryIncludeSessions:
+      name: include
+      in: query
+      schema:
+        type: string
+        example: user
+      description: |
+        Comma-Separated Eager Loads. Allowed: `user`.
 
     QueryFieldsApiClients:
       name: fields[api_clients]
@@ -2785,7 +2926,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.7.0
+          example: 1.8.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     ApiDateTime:
@@ -2863,6 +3004,40 @@ components:
             - type: 'null'
         created_at:
           $ref: '#/components/schemas/ApiDateTime'
+
+    WebSession:
+      type: object
+      properties:
+        id:
+          type: integer
+        user_id:
+          type: integer
+          description: Present for admins with `sessions.list-all`; omitted for own-session callers unless requested
+        device_name:
+          oneOf:
+            - type: string
+            - type: 'null'
+        ip_address:
+          oneOf:
+            - type: string
+            - type: 'null'
+        user_agent:
+          oneOf:
+            - type: string
+            - type: 'null'
+        remember_me:
+          type: boolean
+        last_activity_at:
+          oneOf:
+            - $ref: '#/components/schemas/ApiDateTime'
+            - type: 'null'
+        created_at:
+          $ref: '#/components/schemas/ApiDateTime'
+        is_current:
+          type: boolean
+          description: True when the inbound request session id matches this registry row
+        user:
+          $ref: '#/components/schemas/User'
 
     ApiClient:
       type: object

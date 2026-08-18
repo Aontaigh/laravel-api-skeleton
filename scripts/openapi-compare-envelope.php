@@ -2,8 +2,14 @@
 
 declare(strict_types=1);
 
+/**
+ * Compare a live API response to an OpenAPI example envelope.
+ *
+ * Diagnostic copy follows php-quality (CLI and Diagnostic Errors): Title Case
+ * headlines, no trailing full stop; detail after a colon when needed.
+ */
 if ($argc < 4) {
-    fwrite(STDERR, "Usage: php scripts/openapi-compare-envelope.php <name> <expectedJson> <actualJson>\n");
+    fwrite(STDERR, "Usage Missing Arguments: php scripts/openapi-compare-envelope.php <name> <expectedJson> <actualJson>\n");
     exit(1);
 }
 
@@ -45,20 +51,20 @@ function keys_shape(mixed $object): mixed
 $errors = [];
 
 if (keys_shape($expected) !== keys_shape($actual)) {
-    $errors[] = 'shape mismatch'
+    $errors[] = 'Envelope Shape Mismatch'
         ."\n  expected: ".json_encode(keys_shape($expected), JSON_THROW_ON_ERROR)
         ."\n  actual:   ".json_encode(keys_shape($actual), JSON_THROW_ON_ERROR);
 }
 
 foreach (['status', 'status_code', 'message'] as $key) {
     if (($expected[$key] ?? null) !== ($actual[$key] ?? null)) {
-        $errors[] = "{$key}: expected ".json_encode($expected[$key] ?? null)
+        $errors[] = "Envelope Field Mismatch ({$key}): expected ".json_encode($expected[$key] ?? null)
             .', got '.json_encode($actual[$key] ?? null);
     }
 }
 
 if ($errors !== []) {
-    fwrite(STDERR, "FAIL {$name}\n");
+    fwrite(STDERR, "OpenAPI Example Failed: {$name}\n");
 
     foreach ($errors as $error) {
         fwrite(STDERR, "  - {$error}\n");

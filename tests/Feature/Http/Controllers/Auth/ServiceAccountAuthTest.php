@@ -69,7 +69,7 @@ final class ServiceAccountAuthTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/login', [
+        $response = $this->postJson('/api/auth/login', [
             'email' => $serviceUser->email,
             'password' => 'ServicePass12',
         ]);
