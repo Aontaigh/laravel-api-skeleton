@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.8.0] - 2026-08-18
+## [1.8.0] - 2026-08-19
 
 ### Added
 
@@ -22,10 +22,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Auth routes moved under `/api/auth/*` (`/login`, `/register`, `/two-factor/*`, `/login/remember`); global logout remains `POST /api/logout`
 - Global logout revokes every `web_sessions` registry row via `RevokeAllWebSessionsForUserAction`
 - CLI and CI diagnostic copy uses Title Case headlines per project conventions
+- Dev dependencies: phpunit 13.3.1, laravel/pao 1.1.4, mockery 1.6.13, laravel/pint 1.30.5, laravel/sail 1.67.0
 
 ### Fixed
 
 - `scripts/verify-openapi-examples.sh` restores `${BASE}` on auth path curls so the OpenAPI examples job does not abort on malformed URLs
+- `scripts/pen-test-auth.sh` falls back to seeded registry rows when cookie login cannot complete for MFA-enrolled accounts
 
 ## [1.7.0] - 2026-08-17
 

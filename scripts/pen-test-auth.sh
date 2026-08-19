@@ -348,17 +348,24 @@ echo \$session->id;
 "
 }
 
-# Prefer a real cookie session; fall back to a registry row when SESSION_DRIVER=array.
+# Prefer a real cookie session; fall back to a registry row when SESSION_DRIVER=array
+# or when cookie login cannot complete (e.g. MFA-enrolled accounts awaiting 2FA).
 ensure_web_session_row() {
     local email="$1"
     local password="$2"
     local remember="${3:-true}"
+    local session_id=""
 
     if stateful_sessions_supported; then
         stateful_login "$email" "$password" "$remember" > /dev/null
-    else
-        seed_web_session "$email" "$remember" > /dev/null
+        session_id="$(web_session_id_for_user "$email")"
+        if [[ -n "$session_id" ]]; then
+            echo "$session_id"
+            return 0
+        fi
     fi
+
+    seed_web_session "$email" "$remember" > /dev/null
 
     web_session_id_for_user "$email"
 }
