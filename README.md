@@ -492,9 +492,15 @@ Local (Sail — matches PHP 8.5 when host PHP is older):
 > on the host) — CI runs it as a separate parallel job.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, Larastan, PHPUnit with
-coverage, `composer audit`, and OpenAPI verification on every pull request and push to
-`main`. Require the **All Quality Gates** check for branch protection. CI uses native PHP
-8.5 with a MySQL service container — not Sail.
+coverage, `composer audit`, Semgrep, and OpenAPI verification on every pull request and
+push to `main`. Require the **All Quality Gates** check for branch protection. CI uses
+native PHP 8.5 with a MySQL service container — not Sail.
+
+Run Semgrep locally on the host (Docker or a local CLI — not inside Sail):
+
+```bash
+bash scripts/semgrep.sh
+```
 
 ## Testing
 
