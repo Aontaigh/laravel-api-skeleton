@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.1] - 2026-08-28
+
+### Added
+
+- Semgrep SAST CI job with Laravel security rules (`scripts/semgrep.sh`)
+
+### Changed
+
+- HTTP request classes use semantic section dividers instead of generic Public/Protected blocks
+- Session cookie defaults: `domain` defaults to `null`, `secure` defaults to `true` (`SESSION_SECURE_COOKIE=false` in `.env.example` and `.env.ci` for local HTTP)
+- Dependabot cooldown (`default-days: 7`) and npm `min-release-age=7` for Semgrep supply-chain checks
+- Dev dependencies: laravel/framework 13.29.0, phpunit 13.3.2, mockery 1.6.15, phpstan 2.2.9, Symfony 8.1.5, and related transitive bumps
+
 ## [1.8.0] - 2026-08-19
 
 ### Added
@@ -213,7 +226,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.1...HEAD
+[1.8.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.5.0...v1.6.0
