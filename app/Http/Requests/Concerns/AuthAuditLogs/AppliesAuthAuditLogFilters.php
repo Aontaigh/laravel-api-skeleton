@@ -37,7 +37,7 @@ trait AppliesAuthAuditLogFilters
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -83,10 +83,9 @@ trait AppliesAuthAuditLogFilters
 
         return $this->safe()->integer('filter.api_client_id');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -116,6 +115,12 @@ trait AppliesAuthAuditLogFilters
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
+
     protected function validateFilterKeys(Validator $validator): void
     {
         $validator->after(function (Validator $check): void {
@@ -140,6 +145,12 @@ trait AppliesAuthAuditLogFilters
             }
         });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * @return list<string>

@@ -13,7 +13,7 @@ final class DestroySessionRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -26,6 +26,12 @@ final class DestroySessionRequest extends ApiFormRequest
     {
         return $this->user()?->can('delete', $this->route('web_session')) === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

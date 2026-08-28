@@ -24,7 +24,7 @@ final class AuthAuditLogIndexRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -36,6 +36,12 @@ final class AuthAuditLogIndexRequest extends ApiFormRequest
         return $this->user()?->can('viewAny', AuthAuditLog::class) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -43,6 +49,12 @@ final class AuthAuditLogIndexRequest extends ApiFormRequest
     {
         return $this->authAuditLogFilterRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     public function withValidator(Validator $validator): void
     {

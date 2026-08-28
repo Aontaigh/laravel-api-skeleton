@@ -27,7 +27,7 @@ abstract class ApiFormRequest extends FormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Response
     |--------------------------------------------------------------------------
     */
 
@@ -45,6 +45,12 @@ abstract class ApiFormRequest extends FormRequest
             ),
         );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Hints
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Record supported values for an allow-list validation error.

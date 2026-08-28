@@ -24,7 +24,7 @@ final class AuthAuditLogShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -40,6 +40,12 @@ final class AuthAuditLogShowRequest extends ApiFormRequest
             && $this->user()?->can('view', $authAuditLog) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -47,6 +53,12 @@ final class AuthAuditLogShowRequest extends ApiFormRequest
     {
         return $this->authAuditLogShowRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     public function withValidator(Validator $validator): void
     {

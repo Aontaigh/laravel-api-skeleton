@@ -25,7 +25,7 @@ final class MeShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -42,6 +42,12 @@ final class MeShowRequest extends ApiFormRequest
             && $user->can('viewMe', $user);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Columns the caller may request via `fields[users]=` on their own profile.
      *
@@ -54,6 +60,12 @@ final class MeShowRequest extends ApiFormRequest
         return [...UserQueryConstraints::ALLOWED_FIELDS, 'email'];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -63,6 +75,12 @@ final class MeShowRequest extends ApiFormRequest
     {
         return $this->userShowRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Run allow-list validation for include and fields params.

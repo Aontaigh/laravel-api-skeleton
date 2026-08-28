@@ -24,7 +24,7 @@ final class TokenIndexRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -38,6 +38,12 @@ final class TokenIndexRequest extends ApiFormRequest
         return $this->user()?->can('viewAny', PersonalAccessToken::class) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -47,6 +53,12 @@ final class TokenIndexRequest extends ApiFormRequest
     {
         return $this->tokenFilterRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Run allow-list validation for filter, sort, include, and fields params.

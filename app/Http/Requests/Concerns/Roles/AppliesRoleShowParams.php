@@ -31,7 +31,7 @@ trait AppliesRoleShowParams
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -54,10 +54,9 @@ trait AppliesRoleShowParams
     {
         return $this->fieldsFor('permissions');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -75,6 +74,12 @@ trait AppliesRoleShowParams
             ...$this->fieldsQueryParamRules('permissions'),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Relations callers may request via `?include=`.
@@ -110,6 +115,12 @@ trait AppliesRoleShowParams
             default => [],
         };
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Run allow-list validation for include and fields params.

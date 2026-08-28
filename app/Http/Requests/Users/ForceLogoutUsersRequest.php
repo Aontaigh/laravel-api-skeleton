@@ -24,7 +24,7 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -37,6 +37,12 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
     {
         return $this->user()?->can('users.force-logout') === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.
@@ -53,6 +59,12 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
             'ids.*' => ['integer', 'distinct'],
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Reject ids that do not exist on a non-service account, including soft-deleted rows.

@@ -34,7 +34,7 @@ trait AppliesUserShowParams
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -47,6 +47,12 @@ trait AppliesUserShowParams
     {
         return $this->viewer()->can('users.list-all');
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Columns the viewer may request via `fields[users]=`.
@@ -63,6 +69,12 @@ trait AppliesUserShowParams
 
         return $fields;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query Accessors
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get sparse fieldset columns for Users, or null when omitted.
@@ -93,10 +105,9 @@ trait AppliesUserShowParams
     {
         return $this->fieldsFor('roles');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -115,6 +126,12 @@ trait AppliesUserShowParams
             ...$this->fieldsQueryParamRules('roles'),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Relations callers may request via `?include=`.
@@ -151,6 +168,12 @@ trait AppliesUserShowParams
             default => [],
         };
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Run allow-list validation for include and fields params.

@@ -25,7 +25,7 @@ final class UpdateUserRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -42,6 +42,12 @@ final class UpdateUserRequest extends ApiFormRequest
         return $user instanceof User
             && $this->user()?->can('update', $user) === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.
@@ -64,6 +70,12 @@ final class UpdateUserRequest extends ApiFormRequest
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Configure the validator instance.
      *
@@ -82,10 +94,9 @@ final class UpdateUserRequest extends ApiFormRequest
             );
         });
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Sanitisation
     |--------------------------------------------------------------------------
     */
 

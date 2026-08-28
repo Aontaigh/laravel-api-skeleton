@@ -39,7 +39,7 @@ trait AppliesUserFilters
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -52,6 +52,12 @@ trait AppliesUserFilters
     {
         return $this->viewer()->can('users.list-all');
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Columns the viewer may request via `fields[users]=`.
@@ -72,6 +78,12 @@ trait AppliesUserFilters
 
         return $fields;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query Accessors
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get sparse fieldset columns for Users, or null when omitted.
@@ -102,10 +114,9 @@ trait AppliesUserFilters
     {
         return $this->fieldsFor('roles');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -134,6 +145,12 @@ trait AppliesUserFilters
             ...$this->fieldsQueryParamRules('roles'),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Reject filter keys outside the resource allow-list.
@@ -165,6 +182,12 @@ trait AppliesUserFilters
             }
         });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Filter keys callers may send via `filter[…]`.

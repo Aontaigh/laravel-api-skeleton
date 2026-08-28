@@ -24,7 +24,7 @@ final class VerifyTwoFactorRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -37,6 +37,12 @@ final class VerifyTwoFactorRequest extends ApiFormRequest
     {
         return true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.
@@ -51,10 +57,9 @@ final class VerifyTwoFactorRequest extends ApiFormRequest
             'two_factor_token' => ['sometimes', 'string', 'max:255'],
         ];
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Sanitisation
     |--------------------------------------------------------------------------
     */
 

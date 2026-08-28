@@ -24,7 +24,7 @@ final class TeamShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -40,6 +40,12 @@ final class TeamShowRequest extends ApiFormRequest
             && $this->user()?->can('view', $team) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -47,6 +53,12 @@ final class TeamShowRequest extends ApiFormRequest
     {
         return $this->teamShowRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     public function withValidator(Validator $validator): void
     {

@@ -14,7 +14,7 @@ final class DestroyCurrentSessionRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -32,6 +32,12 @@ final class DestroyCurrentSessionRequest extends ApiFormRequest
             && ! $user->isServiceAccount();
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -41,6 +47,12 @@ final class DestroyCurrentSessionRequest extends ApiFormRequest
     {
         return [];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query Accessors
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Resolve the registry row for the inbound Laravel session id.

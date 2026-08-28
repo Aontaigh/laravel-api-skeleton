@@ -26,7 +26,7 @@ final class StoreUserRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -39,6 +39,12 @@ final class StoreUserRequest extends ApiFormRequest
     {
         return $this->user()?->can('create', User::class) === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.
@@ -56,6 +62,12 @@ final class StoreUserRequest extends ApiFormRequest
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * {@inheritDoc}
      *
@@ -67,10 +79,9 @@ final class StoreUserRequest extends ApiFormRequest
             'role.in' => 'The Selected Role Is Invalid',
         ];
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Sanitisation
     |--------------------------------------------------------------------------
     */
 

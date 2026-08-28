@@ -33,7 +33,7 @@ trait AppliesAuthAuditLogShowParams
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -52,10 +52,9 @@ trait AppliesAuthAuditLogShowParams
     {
         return $this->fieldsFor('users');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -71,6 +70,12 @@ trait AppliesAuthAuditLogShowParams
             ...$this->fieldsQueryParamRules('users'),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * @return list<string>
@@ -100,6 +105,12 @@ trait AppliesAuthAuditLogShowParams
         };
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
+
     protected function validateAuthAuditLogShowParams(Validator $validator): void
     {
         $this->validateFieldsKeys($validator);
@@ -107,6 +118,12 @@ trait AppliesAuthAuditLogShowParams
         $this->validateFieldsQueryParam($validator, 'users');
         $this->validateIncludeQueryParam($validator);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * @return list<string>

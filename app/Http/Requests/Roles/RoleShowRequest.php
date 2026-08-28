@@ -24,7 +24,7 @@ final class RoleShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -42,6 +42,12 @@ final class RoleShowRequest extends ApiFormRequest
             && $this->user()?->can('view', $role) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -51,6 +57,12 @@ final class RoleShowRequest extends ApiFormRequest
     {
         return $this->roleShowRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Run allow-list validation for include and fields params.

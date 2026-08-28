@@ -34,7 +34,7 @@ trait AppliesPermissionFilters
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -47,10 +47,9 @@ trait AppliesPermissionFilters
     {
         return $this->fieldsFor('permissions');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -77,6 +76,12 @@ trait AppliesPermissionFilters
             ...$this->fieldsQueryParamRules('permissions'),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Reject filter keys outside the resource allow-list.
@@ -108,6 +113,12 @@ trait AppliesPermissionFilters
             }
         });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Filter keys callers may send via `filter[…]`.

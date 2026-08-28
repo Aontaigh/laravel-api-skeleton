@@ -24,7 +24,7 @@ final class SendTwoFactorRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -38,6 +38,12 @@ final class SendTwoFactorRequest extends ApiFormRequest
         return true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Preparation
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Normalise the requested channel before validation.
      */
@@ -49,6 +55,12 @@ final class SendTwoFactorRequest extends ApiFormRequest
             $this->merge(['channel' => mb_strtolower(trim($channel))]);
         }
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Query Accessors
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validated delivery channel.
@@ -62,6 +74,12 @@ final class SendTwoFactorRequest extends ApiFormRequest
 
         return $channel;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

@@ -22,7 +22,7 @@ final class RememberLoginRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -36,6 +36,12 @@ final class RememberLoginRequest extends ApiFormRequest
         return true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -47,10 +53,9 @@ final class RememberLoginRequest extends ApiFormRequest
             'device_name' => ['sometimes', 'string', 'max:255'],
         ];
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Sanitisation
     |--------------------------------------------------------------------------
     */
 

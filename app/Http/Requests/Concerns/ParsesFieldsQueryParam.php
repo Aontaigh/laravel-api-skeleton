@@ -26,7 +26,7 @@ trait ParsesFieldsQueryParam
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -55,10 +55,9 @@ trait ParsesFieldsQueryParam
             $this->allowedFieldsFor($resourceKey),
         );
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -74,6 +73,12 @@ trait ParsesFieldsQueryParam
             "fields.{$resourceKey}" => ['sometimes', 'string'],
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Reject sparse fieldset keys outside the resource allow-list.
@@ -145,6 +150,12 @@ trait ParsesFieldsQueryParam
             }
         });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Resource keys callers may use under `fields[…]`.

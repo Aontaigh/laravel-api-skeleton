@@ -23,7 +23,7 @@ final class StoreClientRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -36,6 +36,12 @@ final class StoreClientRequest extends ApiFormRequest
     {
         return $this->user()?->can('create', ApiClient::class) === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

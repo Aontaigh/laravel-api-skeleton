@@ -13,7 +13,7 @@ final class LogoutRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -26,6 +26,12 @@ final class LogoutRequest extends ApiFormRequest
     {
         return $this->user() !== null;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Logout has no input fields.

@@ -14,7 +14,7 @@ final class UpdateMePasswordRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -30,6 +30,12 @@ final class UpdateMePasswordRequest extends ApiFormRequest
         return $user instanceof User
             && $user->can('updateMe', $user);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

@@ -24,7 +24,7 @@ final class UserShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -42,6 +42,12 @@ final class UserShowRequest extends ApiFormRequest
             && $this->user()?->can('view', $user) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -51,6 +57,12 @@ final class UserShowRequest extends ApiFormRequest
     {
         return $this->userShowRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Run allow-list validation for include and fields params.

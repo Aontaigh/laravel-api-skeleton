@@ -24,7 +24,7 @@ final class ClientIndexRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -38,6 +38,12 @@ final class ClientIndexRequest extends ApiFormRequest
         return $this->user()?->can('viewAny', ApiClient::class) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -47,6 +53,12 @@ final class ClientIndexRequest extends ApiFormRequest
     {
         return $this->clientFilterRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Apply additional validation after the base rules pass.

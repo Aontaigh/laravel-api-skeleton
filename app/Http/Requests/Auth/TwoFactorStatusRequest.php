@@ -22,7 +22,7 @@ final class TwoFactorStatusRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -35,6 +35,12 @@ final class TwoFactorStatusRequest extends ApiFormRequest
     {
         return true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

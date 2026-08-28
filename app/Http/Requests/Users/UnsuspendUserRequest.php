@@ -14,7 +14,7 @@ final class UnsuspendUserRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -31,6 +31,12 @@ final class UnsuspendUserRequest extends ApiFormRequest
         return $user instanceof User
             && $this->user()?->can('unsuspend', $user) === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

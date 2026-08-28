@@ -24,7 +24,7 @@ final class StoreUserTokenRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -41,6 +41,12 @@ final class StoreUserTokenRequest extends ApiFormRequest
             && $user instanceof User
             && ! $user->isServiceAccount();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

@@ -23,7 +23,7 @@ final class UpdateClientRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -40,6 +40,12 @@ final class UpdateClientRequest extends ApiFormRequest
             && $this->user()?->can('update', $client) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -55,6 +61,12 @@ final class UpdateClientRequest extends ApiFormRequest
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * {@inheritDoc}
      *
@@ -66,6 +78,12 @@ final class UpdateClientRequest extends ApiFormRequest
             'abilities.min' => 'Abilities Must Not Be Empty',
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Reject an entirely empty request body.

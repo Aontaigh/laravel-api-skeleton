@@ -22,7 +22,7 @@ final class LoginRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -35,6 +35,12 @@ final class LoginRequest extends ApiFormRequest
     {
         return true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.
@@ -50,10 +56,9 @@ final class LoginRequest extends ApiFormRequest
             'device_name' => ['sometimes', 'string', 'max:255'],
         ];
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Sanitisation
     |--------------------------------------------------------------------------
     */
 

@@ -30,7 +30,7 @@ trait AppliesApiClientShowParams
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -41,10 +41,9 @@ trait AppliesApiClientShowParams
     {
         return $this->fieldsFor('api_clients');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -59,6 +58,12 @@ trait AppliesApiClientShowParams
             ...$this->fieldsQueryParamRules('api_clients'),
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * @return list<string>
@@ -86,6 +91,12 @@ trait AppliesApiClientShowParams
             default => [],
         };
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
 
     protected function validateApiClientShowParams(Validator $validator): void
     {

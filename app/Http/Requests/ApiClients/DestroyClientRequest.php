@@ -14,7 +14,7 @@ final class DestroyClientRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -30,6 +30,12 @@ final class DestroyClientRequest extends ApiFormRequest
         return $client instanceof ApiClient
             && $this->user()?->can('delete', $client) === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Revocation has no body fields to validate.

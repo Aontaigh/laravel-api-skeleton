@@ -25,7 +25,7 @@ trait AppliesTeamShowParams
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Query Accessors
     |--------------------------------------------------------------------------
     */
 
@@ -36,10 +36,9 @@ trait AppliesTeamShowParams
     {
         return $this->fieldsFor('teams');
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
@@ -54,11 +53,23 @@ trait AppliesTeamShowParams
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-list Validation
+    |--------------------------------------------------------------------------
+    */
+
     protected function validateTeamShowParams(Validator $validator): void
     {
         $this->validateFieldsKeys($validator);
         $this->validateFieldsQueryParam($validator, 'teams');
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Allow-lists
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * @return list<string>

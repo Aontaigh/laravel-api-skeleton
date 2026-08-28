@@ -18,7 +18,7 @@ trait SanitisesPlainTextAttributes
 {
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Preparation
     |--------------------------------------------------------------------------
     */
 
@@ -29,6 +29,12 @@ trait SanitisesPlainTextAttributes
     {
         $this->sanitisePlainTextAttributes();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sanitisation
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Strip markup from each configured plain-text attribute.

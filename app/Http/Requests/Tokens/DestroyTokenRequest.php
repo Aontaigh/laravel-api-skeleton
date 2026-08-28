@@ -13,7 +13,7 @@ final class DestroyTokenRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -29,6 +29,12 @@ final class DestroyTokenRequest extends ApiFormRequest
     {
         return $this->user()?->can('delete', $this->route('token')) === true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.

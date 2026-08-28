@@ -23,7 +23,7 @@ final class RegisterRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -36,6 +36,12 @@ final class RegisterRequest extends ApiFormRequest
     {
         return true;
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Get the validation rules that apply to the request.
@@ -52,6 +58,12 @@ final class RegisterRequest extends ApiFormRequest
         ];
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get custom validation messages.
      *
@@ -63,10 +75,9 @@ final class RegisterRequest extends ApiFormRequest
             'email.unique' => 'Invalid Credentials',
         ];
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Sanitisation
     |--------------------------------------------------------------------------
     */
 

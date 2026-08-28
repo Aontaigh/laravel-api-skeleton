@@ -24,7 +24,7 @@ final class UpdateMeRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -41,6 +41,12 @@ final class UpdateMeRequest extends ApiFormRequest
             && $user->can('updateMe', $user);
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *
@@ -55,6 +61,12 @@ final class UpdateMeRequest extends ApiFormRequest
             'team_id' => ['prohibited'],
         ];
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Configure the validator instance.
@@ -74,10 +86,9 @@ final class UpdateMeRequest extends ApiFormRequest
             );
         });
     }
-
     /*
     |--------------------------------------------------------------------------
-    | Protected
+    | Sanitisation
     |--------------------------------------------------------------------------
     */
 

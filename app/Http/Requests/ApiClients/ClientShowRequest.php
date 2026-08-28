@@ -24,7 +24,7 @@ final class ClientShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorization
     |--------------------------------------------------------------------------
     */
 
@@ -39,6 +39,12 @@ final class ClientShowRequest extends ApiFormRequest
             && $this->user()?->can('view', $client) === true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * @return array<string, array<int, mixed>>
      */
@@ -46,6 +52,12 @@ final class ClientShowRequest extends ApiFormRequest
     {
         return $this->apiClientShowRules();
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validator Hooks
+    |--------------------------------------------------------------------------
+    */
 
     public function withValidator(Validator $validator): void
     {
