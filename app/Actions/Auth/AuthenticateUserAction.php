@@ -75,6 +75,18 @@ final class AuthenticateUserAction
             ]);
         }
 
+        /*
+         * Upgrade an out-of-date hash to the configured driver and work factors.
+         * Placed after the suspension and service-account guards so only a
+         * credential that would actually authenticate triggers the write: the
+         * rehash on a suspended or service account would mutate a record the
+         * caller can never use, and leak by timing that such an account exists.
+         */
+        if (config()->boolean('hashing.rehash_on_login') && Hash::needsRehash($user->password)) {
+            $user->password = $credentials->password;
+            $user->save();
+        }
+
         return $user;
     }
 
@@ -105,9 +117,12 @@ final class AuthenticateUserAction
     }
 
     /**
-     * Return the bcrypt hash used to normalise login timing for unknown emails.
+     * Return the hash used to normalise login timing for unknown emails.
      *
-     * @return string the configured bcrypt hash compared against when no User matches
+     * Generated at boot with the configured driver (argon2id), so the dummy
+     * check costs the same as a real password verification.
+     *
+     * @return string the configured hash compared against when no User matches
      */
     private function timingNormalisationHash(): string
     {

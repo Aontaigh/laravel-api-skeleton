@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `config/hashing.php` — Argon2id as the default password hash driver with env-driven work factors and `HASH_REHASH_ON_LOGIN`
+- Rehash-on-login in `AuthenticateUserAction` — transparently upgrades stale Argon2id hashes after work-factor bumps
+- `RehashOnLoginTest` — covers stale-hash upgrade, suspended-user guard (no rehash), and unchanged current hashes
+
+### Changed
+
+- `.env.example`, `.env.ci`, and `phpunit.xml` — aligned low-cost Argon2id settings for tests and CI
+- Login timing-normalisation docs and config comments — dummy hash uses the configured driver, not bcrypt-only wording
+
 ## [1.8.1] - 2026-08-28
 
 ### Added

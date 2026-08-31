@@ -33,6 +33,17 @@
         <env name="APP_ENV" value="testing"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
+        <!-- Password hashing — Hash service reads these at config boot. phpunit.xml
+             is the source for hashing during PHPUnit runs; .env.ci mirrors the same
+             values for CI parity (DB and other vars still come from .env.ci there).
+             Low-cost argon2id keeps the suite fast; BCRYPT_ROUNDS remains for the
+             bcrypt fallback options in config/hashing.php. -->
+        <env name="HASH_DRIVER" value="argon2id"/>
+        <env name="ARGON_MEMORY" value="8192"/>
+        <env name="ARGON_THREADS" value="1"/>
+        <env name="ARGON_TIME" value="1"/>
+        <env name="HASH_VERIFY" value="true"/>
+        <env name="HASH_REHASH_ON_LOGIN" value="true"/>
         <env name="BROADCAST_CONNECTION" value="null"/>
         <env name="CACHE_STORE" value="array"/>
         <env name="DB_DATABASE" value="testing"/>

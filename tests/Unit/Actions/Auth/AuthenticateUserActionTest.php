@@ -27,7 +27,11 @@ final class AuthenticateUserActionTest extends UnitTestCase
     */
 
     /**
-     * Fixed bcrypt hash for timing-normalisation assertions.
+     * Fixed hash pinned for timing-normalisation assertions.
+     *
+     * The literal is a bcrypt string, but the value here is arbitrary: it only
+     * exists so Mockery can assert the exact argument Hash::check() receives.
+     * It does not need to match the configured argon2id driver.
      */
     private const TIMING_NORMALISATION_HASH = '$2y$04$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
 
@@ -77,6 +81,11 @@ final class AuthenticateUserActionTest extends UnitTestCase
             ->once()
             ->with('Xq7#mK2$vL9pTzW4', Mockery::type('string'))
             ->andReturn(true);
+
+        Hash::shouldReceive('needsRehash')
+            ->once()
+            ->with(Mockery::type('string'))
+            ->andReturn(false);
 
         // Act
 
@@ -184,7 +193,7 @@ final class AuthenticateUserActionTest extends UnitTestCase
             ));
             $this->fail('Expected ValidationException was not thrown');
         } catch (ValidationException) {
-            // Expected — dummy hash check ran before the exception was thrown.
+            // Expected: dummy hash check ran before the exception was thrown.
         }
     }
 

@@ -127,9 +127,10 @@ return [
     | Auth Timing Normalisation Hash
     |--------------------------------------------------------------------------
     |
-    | Bcrypt hash used when login email is unknown so Hash::check() cost matches
-    | a real password verification. Null is resolved at application boot using
-    | the configured bcrypt rounds.
+    | Password hash compared against when the login email is unknown, so the
+    | Hash::check() cost on a miss matches a real verification and response
+    | timing does not reveal whether the account exists. Null is resolved at
+    | application boot using the configured hash driver (Argon2id) and factors.
     |
     */
 
