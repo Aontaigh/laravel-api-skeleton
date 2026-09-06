@@ -22,6 +22,8 @@ final class ForceLogoutUsersAction
     */
 
     /**
+     * Create a new ForceLogoutUsersAction.
+     *
      * @param LogoutUserAction      $logoutUser revokes tokens, remember-me state, and sessions
      * @param RecordAuthAuditAction $audit      records forced-logout audit events
      */
@@ -37,14 +39,14 @@ final class ForceLogoutUsersAction
     */
 
     /**
-     * Force-logout every User id in the payload.
+     * Force-logout every User ID in the payload.
      *
      * @example
      * app(ForceLogoutUsersAction::class)->execute($data, $request);
      *
-     * @param  ForceLogoutUsersData $data    the target User ids
+     * @param  ForceLogoutUsersData $data    the target User IDs
      * @param  Request              $request the inbound admin request
-     * @return list<int>            the User ids that were logged out
+     * @return list<int>            the User IDs that were logged out
      */
     public function execute(ForceLogoutUsersData $data, Request $request): array
     {

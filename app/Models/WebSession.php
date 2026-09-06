@@ -18,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null                     $device_name
  * @property string|null                     $ip_address
  * @property string|null                     $user_agent
+ * @property string|null                     $location_city
  * @property bool                            $remember_me
  * @property \Illuminate\Support\Carbon|null $last_activity_at
  * @property \Illuminate\Support\Carbon|null $revoked_at
@@ -48,6 +49,8 @@ final class WebSession extends Model
         'device_name',
         'ip_address',
         'user_agent',
+        'location_city',
+        'location_country',
         'remember_me',
         'last_activity_at',
         'revoked_at',
@@ -99,6 +102,8 @@ final class WebSession extends Model
 
     /**
      * Whether the session has been revoked from the registry.
+     *
+     * @return bool true when the session has been revoked
      */
     public function isRevoked(): bool
     {

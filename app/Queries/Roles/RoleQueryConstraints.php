@@ -27,7 +27,7 @@ final class RoleQueryConstraints
      * Spatie seeds roles against `auth.defaults.guard` at migration/seed time
      * (`web` in this application). Sanctum may switch the runtime default
      * guard during API requests, so the index must not derive the guard from
-     * the current request — pin it here instead.
+     * the current request - pin it here instead.
      */
     public const GUARD_NAME = 'web';
 

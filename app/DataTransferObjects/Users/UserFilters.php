@@ -12,9 +12,9 @@ use App\Models\User;
 final readonly class UserFilters
 {
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Constructor
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     /**
@@ -26,10 +26,12 @@ final readonly class UserFilters
      * @param User        $viewer        the authenticated User (drives row scoping)
      * @param bool        $listsAllTeams whether the viewer may see every Team, not just their own
      * @param string|null $search        optional name/email search term
+     * @param bool        $canViewEmails whether the viewer may read User emails
      */
     public function __construct(
         public User $viewer,
         public bool $listsAllTeams = false,
         public ?string $search = null,
+        public bool $canViewEmails = false,
     ) {}
 }

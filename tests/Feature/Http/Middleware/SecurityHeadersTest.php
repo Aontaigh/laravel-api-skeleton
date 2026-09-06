@@ -42,6 +42,11 @@ final class SecurityHeadersTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /*
+     * Baseline Headers Tests
+     * ----------------------
+     */
+
     /**
      * Attach the baseline headers to a JSON API response.
      */
@@ -71,6 +76,11 @@ final class SecurityHeadersTest extends TestCase
         $this->assertStringNotContainsString('https://cdn.jsdelivr.net', $csp);
         $this->assertStringNotContainsString("'unsafe-inline'", $csp);
     }
+
+    /*
+     * Content-Security-Policy Tests
+     * -----------------------------
+     */
 
     /**
      * Enforce the CSP in tests rather than emitting a report-only header.
@@ -109,8 +119,14 @@ final class SecurityHeadersTest extends TestCase
         $csp = (string) $response->headers->get('Content-Security-Policy');
 
         $this->assertStringContainsString('https://cdn.jsdelivr.net', $csp);
-        $this->assertStringContainsString("script-src 'self' 'unsafe-inline'", $csp);
+        $this->assertStringContainsString('https://fonts.scalar.com', $csp);
+        $this->assertStringNotContainsString("script-src 'self' 'unsafe-inline'", $csp);
     }
+
+    /*
+     * Environment Behaviour Tests
+     * ---------------------------
+     */
 
     /**
      * Omit HSTS on plain-http local requests.

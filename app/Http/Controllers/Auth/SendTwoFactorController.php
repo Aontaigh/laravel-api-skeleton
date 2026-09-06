@@ -32,7 +32,7 @@ final class SendTwoFactorController
      * Dispatch a two-factor code over the chosen channel.
      *
      * Login now only verifies credentials; the visitor then picks how to receive
-     * their code. Only email is wired up — the code is dispatched from this
+     * their code. Only email is wired up - the code is dispatched from this
      * controller, not from login.
      *
      * @param  SendTwoFactorRequest          $request the validated channel request
@@ -57,8 +57,8 @@ final class SendTwoFactorController
         |--------------------------------------------------------------------------
         |
         | A code can only be sent while a login is mid-flight. The pending user id
-        | comes from the caller's own session or opaque token — never from email
-        | input — so there is no enumeration risk in returning a clear expiry
+        | comes from the caller's own session or opaque token - never from email
+        | input - so there is no enumeration risk in returning a clear expiry
         | message here.
         |
         */

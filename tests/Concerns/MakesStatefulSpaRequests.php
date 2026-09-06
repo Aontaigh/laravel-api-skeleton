@@ -12,6 +12,12 @@ use Illuminate\Testing\TestResponse;
  */
 trait MakesStatefulSpaRequests
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Stateful SPA request headers for Sanctum cookie authentication.
      *

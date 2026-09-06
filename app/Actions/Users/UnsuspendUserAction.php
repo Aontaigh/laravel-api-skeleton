@@ -25,7 +25,8 @@ final class UnsuspendUserAction
      * @example
      * app(UnsuspendUserAction::class)->execute($user);
      *
-     * @param User $user the User to unsuspend
+     * @param  User $user the User to unsuspend
+     * @return void
      */
     public function execute(User $user): void
     {

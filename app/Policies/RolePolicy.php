@@ -33,9 +33,9 @@ final class RolePolicy
     /**
      * Whether the User may view a single Role record.
      *
-     * Only roles for the application's default guard are exposed — the index
+     * Only roles for the application's default guard are exposed - the index
      * pins `guard_name` the same way so callers cannot fetch a foreign guard
-     * row by id.
+     * row by ID.
      *
      * @param  User $user  the authenticated User
      * @param  Role $model the Role being viewed

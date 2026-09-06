@@ -19,7 +19,7 @@ return new class extends Migration
      *
      * Adds a monotonically-increasing session version to the User. Bumping it
      * invalidates every existing web session on the next request, so a
-     * credential change or admin force-logout signs the User out everywhere —
+     * credential change or admin force-logout signs the User out everywhere -
      * without depending on the session driver being the database.
      */
     public function up(): void

@@ -68,6 +68,8 @@ final class ApiClientFactory extends Factory
 
     /**
      * Return the plaintext secret from the last factory definition call.
+     *
+     * @return string the plaintext demo client secret
      */
     public static function plainTextSecret(): ?string
     {

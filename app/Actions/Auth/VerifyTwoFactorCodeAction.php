@@ -24,6 +24,8 @@ final class VerifyTwoFactorCodeAction
 
     /**
      * Attempts allowed against a single challenge before it's torn down.
+     *
+     * @return int the maximum OTP verify attempts per challenge
      */
     private static function maxAttempts(): int
     {
@@ -42,9 +44,10 @@ final class VerifyTwoFactorCodeAction
      * The stored value is a hash, compared with the constant-time
      * `Hash::check`. On success the code is single-use (forgotten).
      *
-     * @param User        $user         the User being challenged
-     * @param string      $code         the submitted six-digit code
-     * @param string|null $pendingToken the opaque pending token for stateless clients
+     * @param  User        $user         the User being challenged
+     * @param  string      $code         the submitted six-digit code
+     * @param  string|null $pendingToken the opaque pending token for stateless clients
+     * @return void
      *
      * @throws TwoFactorChallengeException when no valid challenge matches
      */
@@ -87,10 +90,11 @@ final class VerifyTwoFactorCodeAction
     /**
      * Perform the verify flow while holding the per-User lock.
      *
-     * @param User        $user         the User being challenged
-     * @param string      $code         the submitted six-digit code
-     * @param string      $cacheKey     the challenge's cache key
-     * @param string|null $pendingToken the opaque pending token for stateless clients
+     * @param  User        $user         the User being challenged
+     * @param  string      $code         the submitted six-digit code
+     * @param  string      $cacheKey     the challenge's cache key
+     * @param  string|null $pendingToken the opaque pending token for stateless clients
+     * @return void
      *
      * @throws TwoFactorChallengeException when no valid challenge matches
      */
@@ -128,7 +132,7 @@ final class VerifyTwoFactorCodeAction
         | A wrong guess re-caches with the SAME absolute expiry (never a fresh
         | TTL), so repeated attempts can't push the lifetime out. The final
         | allowed strike instead tears the challenge AND the pending session
-        | down, so a resend can't reopen a fresh guess window post-lockout — the
+        | down, so a resend can't reopen a fresh guess window post-lockout - the
         | visitor must re-authenticate from the login screen.
         |
         */
@@ -159,8 +163,9 @@ final class VerifyTwoFactorCodeAction
     /**
      * Tear the challenge down and end the pending login on lockout.
      *
-     * @param string      $cacheKey     the challenge's cache key
-     * @param string|null $pendingToken the opaque pending token for stateless clients
+     * @param  string      $cacheKey     the challenge's cache key
+     * @param  string|null $pendingToken the opaque pending token for stateless clients
+     * @return void
      */
     private function tearDown(string $cacheKey, ?string $pendingToken = null): void
     {

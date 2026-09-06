@@ -39,6 +39,8 @@ final class SessionQueryConstraints
         'device_name',
         'ip_address',
         'user_agent',
+        'location_city',
+        'location_country',
         'remember_me',
         'last_activity_at',
         'created_at',

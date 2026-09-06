@@ -6,10 +6,15 @@ namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\UpdatePasswordAction;
 use App\DataTransferObjects\Users\UpdatePasswordData;
+use App\Enums\PasswordChangeSource;
 use App\Http\Requests\Users\UpdateMePasswordRequest;
 use App\Models\User;
+use App\Notifications\Auth\PasswordChangedNotification;
+use App\Services\UserAgent\Contracts\UserAgentParser;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Changes the authenticated User's password.
@@ -28,13 +33,15 @@ final class UpdateMePasswordController
     /**
      * Change the caller's own password.
      *
-     * @param  UpdateMePasswordRequest $request the validated password change request
-     * @param  UpdatePasswordAction    $action  the password change Action
+     * @param  UpdateMePasswordRequest $request         the validated password change request
+     * @param  UpdatePasswordAction    $action          the password change Action
+     * @param  UserAgentParser         $userAgentParser the configured parser driver, resolved from the container
      * @return JsonResponse            the standardised success envelope
      */
     public function __invoke(
         UpdateMePasswordRequest $request,
         UpdatePasswordAction $action,
+        UserAgentParser $userAgentParser,
     ): JsonResponse {
         /*
         |--------------------------------------------------------------------------
@@ -49,7 +56,7 @@ final class UpdateMePasswordController
             newPassword: $input->string('password')->toString(),
         );
 
-        /** @var User $user — never null behind `auth:sanctum` */
+        /** @var User $user - never null behind `auth:sanctum` */
         $user = $request->user();
 
         /*
@@ -59,6 +66,30 @@ final class UpdateMePasswordController
         */
 
         $action->execute($user, $data);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Password Changed Notification
+        |--------------------------------------------------------------------------
+        |
+        | Best-effort: queuing the security alert is wrapped so a dispatch-time
+        | failure is logged, not a 500, once the password is already saved.
+        |
+        */
+
+        try {
+            $user->notify(new PasswordChangedNotification(
+                source: PasswordChangeSource::SelfService,
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                userAgentParser: $userAgentParser,
+            ));
+        } catch (Throwable $exception) {
+            Log::warning('Password Changed E-Mail Could Not Be Sent', [
+                'user_id' => $user->id,
+                'exception' => $exception->getMessage(),
+            ]);
+        }
 
         /*
         |--------------------------------------------------------------------------

@@ -21,7 +21,11 @@ final class ApiClientFilterQuery
     */
 
     /**
-     * @param Builder<ApiClient> $query
+     * Apply the Api Client filters to the query.
+     *
+     * @param  Builder<ApiClient> $query
+     * @param  ApiClientFilters   $filters the validated filters
+     * @return void
      */
     public function apply(Builder $query, ApiClientFilters $filters): void
     {

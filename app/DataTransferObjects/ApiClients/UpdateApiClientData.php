@@ -7,10 +7,16 @@ namespace App\DataTransferObjects\ApiClients;
 /**
  * Validated payload for updating an API client.
  *
- * Every field is optional — the caller may send any subset.
+ * Every field is optional - the caller may send any subset.
  */
 final readonly class UpdateApiClientData
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Create a new UpdateApiClientData value object.
      *

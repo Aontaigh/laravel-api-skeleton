@@ -9,7 +9,7 @@ use App\Models\User;
 use Illuminate\Contracts\Validation\Validator;
 
 /**
- * Authorises an admin request to force-logout Users by id.
+ * Authorises an admin request to force-logout Users by ID.
  */
 final class ForceLogoutUsersRequest extends ApiFormRequest
 {
@@ -48,7 +48,7 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
      * Get the validation rules that apply to the request.
      *
      * Existence and service-account guardrails run in {@see withValidator()} so
-     * every id is checked in a single query instead of one query per array item.
+     * every ID is checked in a single query instead of one query per array item.
      *
      * @return array<string, array<int, mixed>> the force-logout rules
      */
@@ -67,7 +67,10 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
     */
 
     /**
-     * Reject ids that do not exist on a non-service account, including soft-deleted rows.
+     * Reject IDs that do not exist on a non-service account, including soft-deleted rows.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
      */
     public function withValidator(Validator $validator): void
     {

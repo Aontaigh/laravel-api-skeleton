@@ -24,7 +24,8 @@ final class ApplyRememberMeAction
      * @example
      * app(ApplyRememberMeAction::class)->execute($user);
      *
-     * @param User $user the User opting into remember-me
+     * @param  User $user the User opting into remember-me
+     * @return void
      */
     public function execute(User $user): void
     {

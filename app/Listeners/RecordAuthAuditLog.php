@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Listeners;
 
 use App\Actions\Auth\RecordAuthAuditAction;
+use App\Contracts\GeoIp\GeoIpLocator;
 use App\Events\AuthEventOccurred;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -41,10 +42,14 @@ final class RecordAuthAuditLog implements ShouldQueue
     */
 
     /**
-     * @param RecordAuthAuditAction $record the audit persistence Action
+     * Create a new RecordAuthAuditLog listener.
+     *
+     * @param RecordAuthAuditAction $record       the audit persistence Action
+     * @param GeoIpLocator          $geoIpLocator the fail-open city/country lookup
      */
     public function __construct(
         private readonly RecordAuthAuditAction $record,
+        private readonly GeoIpLocator $geoIpLocator,
     ) {}
 
     /*
@@ -56,10 +61,17 @@ final class RecordAuthAuditLog implements ShouldQueue
     /**
      * Persist the audit row for the dispatched event.
      *
-     * @param AuthEventOccurred $event the dispatched authentication event
+     * The location is resolved here from the event payload's `ipAddress` -
+     * captured at dispatch - never from `request()`, so a queued worker cannot
+     * pick up a later request's address. Lookups fail open.
+     *
+     * @param  AuthEventOccurred $event the dispatched authentication event
+     * @return void
      */
     public function handle(AuthEventOccurred $event): void
     {
-        $this->record->execute($event->data);
+        $location = $this->geoIpLocator->locate($event->data->ipAddress);
+
+        $this->record->execute($event->data->withLocation($location));
     }
 }

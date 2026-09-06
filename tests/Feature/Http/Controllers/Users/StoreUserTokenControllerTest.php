@@ -67,6 +67,11 @@ final class StoreUserTokenControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /*
+     * Mutation Tests
+     * --------------
+     */
+
     /**
      * Allow an admin to create a Token for another User.
      */
@@ -134,6 +139,11 @@ final class StoreUserTokenControllerTest extends TestCase
         ]);
     }
 
+    /*
+     * Validation Tests
+     * ----------------
+     */
+
     /**
      * Reject unknown abilities for an admin-issued Token.
      */
@@ -166,13 +176,15 @@ final class StoreUserTokenControllerTest extends TestCase
         $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Bad Abilities']);
     }
 
+    /*
+     * Authorization Tests
+     * -------------------
+     */
+
     /**
      * Deny non-admins from creating Tokens for other Users.
      */
     #[Test]
-    /**
-     * Deny non-admins from creating Tokens for other Users.
-     */
     #[DataProvider('nonAdminRoleProvider')]
     public function it_denies_non_admins_from_creating_tokens_for_other_users(string $role): void
     {

@@ -34,7 +34,8 @@ final class ApiExceptionRenderer
     /**
      * Register API exception renderers on the application exception handler.
      *
-     * @param Exceptions $exceptions the application exception configuration
+     * @param  Exceptions $exceptions the application exception configuration
+     * @return void
      */
     public static function register(Exceptions $exceptions): void
     {
@@ -264,7 +265,7 @@ final class ApiExceptionRenderer
     }
 
     /**
-     * Catch-all for unexpected errors — never leak stack traces on API routes.
+     * Catch-all for unexpected errors - never leak stack traces on API routes.
      *
      * @param  Throwable         $exception the uncaught throwable
      * @param  Request           $request   the inbound request

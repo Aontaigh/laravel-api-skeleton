@@ -51,7 +51,7 @@ final class MeShowRequest extends ApiFormRequest
     /**
      * Columns the caller may request via `fields[users]=` on their own profile.
      *
-     * Always includes `email` — unlike the User index and show endpoints.
+     * Always includes `email` - unlike the User index and show endpoints.
      *
      * @return list<string> the User columns available on `GET /me`
      */
@@ -84,6 +84,9 @@ final class MeShowRequest extends ApiFormRequest
 
     /**
      * Run allow-list validation for include and fields params.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
      */
     public function withValidator(Validator $validator): void
     {

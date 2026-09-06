@@ -18,7 +18,7 @@ final readonly class ForceLogoutUsersData
     /**
      * Create a new ForceLogoutUsersData value object.
      *
-     * @param list<int> $userIds the User ids to log out everywhere
+     * @param list<int> $userIds the User IDs to log out everywhere
      */
     public function __construct(
         public array $userIds,

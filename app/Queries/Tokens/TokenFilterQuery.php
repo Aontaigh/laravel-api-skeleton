@@ -16,9 +16,9 @@ use Laravel\Sanctum\PersonalAccessToken;
 final class TokenFilterQuery
 {
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Public
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     /**
@@ -26,8 +26,9 @@ final class TokenFilterQuery
      *
      * Row scoping constrains tokens to those owned by the viewer's User model.
      *
-     * @param Builder<PersonalAccessToken> $query   the Token query builder
-     * @param TokenFilters                 $filters the validated filter DTO
+     * @param  Builder<PersonalAccessToken> $query   the Token query builder
+     * @param  TokenFilters                 $filters the validated filter DTO
+     * @return void
      */
     public function apply(Builder $query, TokenFilters $filters): void
     {

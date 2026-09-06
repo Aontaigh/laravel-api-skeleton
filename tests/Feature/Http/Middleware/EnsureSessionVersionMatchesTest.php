@@ -20,7 +20,7 @@ use Tests\TestCase;
  * Feature tests for the session-version gate on authenticated routes.
  *
  * The gate turns away any web session whose stamped `session_version` no longer
- * matches the User's current version — the driver-agnostic "log out everywhere"
+ * matches the User's current version - the driver-agnostic "log out everywhere"
  * mechanism. Bearer-token clients carry no session, so they are never gated.
  */
 #[CoversClass(EnsureSessionVersionMatches::class)]
@@ -56,6 +56,11 @@ final class EnsureSessionVersionMatchesTest extends TestCase
     | Tests
     |--------------------------------------------------------------------------
     */
+
+    /*
+     * Version Gate Tests
+     * ------------------
+     */
 
     /**
      * Turn away a session with no version stamp or a superseded stamp.
@@ -143,6 +148,11 @@ final class EnsureSessionVersionMatchesTest extends TestCase
         $this->assertApiErrorEnvelope($response, 401, 'Session Expired');
     }
 
+    /*
+     * Teardown Tests
+     * --------------
+     */
+
     /**
      * Log out, invalidate, and rotate the CSRF token when the stamped version is stale.
      *
@@ -195,6 +205,11 @@ final class EnsureSessionVersionMatchesTest extends TestCase
 
         $followUp->assertUnauthorized();
     }
+
+    /*
+     * Bearer Token Tests
+     * ------------------
+     */
 
     /**
      * Leave a Bearer-token caller untouched: no session means nothing to gate.

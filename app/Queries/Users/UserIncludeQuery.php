@@ -44,13 +44,14 @@ final class UserIncludeQuery
      *
      * `include=role` (singular, matching the other `fields[…]`-style query
      * param names) eager-loads the plural `roles` relationship Spatie
-     * defines — this application models exactly one Role per User, so
+     * defines - this application models exactly one Role per User, so
      * `UserResource` collapses it back to a single `role` key.
      *
-     * @param Builder<User>     $query      the User query builder
-     * @param list<string>      $includes   validated include keys
-     * @param list<string>|null $teamFields sparse Team columns for nested relations
-     * @param list<string>|null $roleFields sparse Role columns for nested relations
+     * @param  Builder<User>     $query      the User query builder
+     * @param  list<string>      $includes   validated include keys
+     * @param  list<string>|null $teamFields sparse Team columns for nested relations
+     * @param  list<string>|null $roleFields sparse Role columns for nested relations
+     * @return void
      *
      * @throws InvalidArgumentException when an allowed include has no eager-load mapping
      */
@@ -101,13 +102,13 @@ final class UserIncludeQuery
      *
      * The closure takes a `Relation`, not a `Builder`. Eloquent invokes
      * eager-load constraints with the relation instance, which only
-     * forwards to the builder through `__call` — typing the parameter as
+     * forwards to the builder through `__call` - typing the parameter as
      * `Builder` is a runtime `TypeError`, so the builder is unwrapped with
      * `getQuery()` before it is passed on.
      *
      * Left generic over `Relation`'s three template params (rather than
      * pinned to `Relation<Team, User, Team|null>`) because `Builder::with()`
-     * itself accepts `Closure(Relation<*, *, *>): mixed` — a closure typed
+     * itself accepts `Closure(Relation<*, *, *>): mixed` - a closure typed
      * to one concrete relation would not be assignable to that wildcard
      * shape when combined with `role`'s eager-load closure into one array.
      *

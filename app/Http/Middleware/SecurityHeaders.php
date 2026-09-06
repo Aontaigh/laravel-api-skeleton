@@ -62,6 +62,13 @@ final class SecurityHeaders
             : 'Content-Security-Policy-Report-Only';
         $headers->set($cspHeader, $this->resolveCspPolicy($request));
 
+        /*
+         * Cookie-authenticated SPA responses carry PII and token metadata and
+         * carry no RFC 7234 shared-cache protection (no Authorization header),
+         * so nothing this API serves may be stored by a browser or proxy.
+         */
+        $headers->set('Cache-Control', 'no-store, private');
+
         return $response;
     }
 
@@ -77,6 +84,8 @@ final class SecurityHeaders
      * Vite hot-reload injects scripts from the dev server that a strict CSP
      * would block, so local hot runs skip the header entirely. Locally-built
      * assets and every non-local environment still get the policy.
+     *
+     * @return bool true when the CSP should be attached
      */
     private function shouldAttachCsp(): bool
     {
@@ -85,6 +94,9 @@ final class SecurityHeaders
 
     /**
      * Resolve the CSP for the current request path.
+     *
+     * @param  Request $request the inbound HTTP request
+     * @return string  the CSP policy for the response
      */
     private function resolveCspPolicy(Request $request): string
     {

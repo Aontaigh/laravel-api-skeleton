@@ -70,6 +70,11 @@ final class StoreTokenControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /*
+     * Mutation Tests
+     * --------------
+     */
+
     /**
      * Create a Token for the authenticated User.
      */
@@ -176,6 +181,11 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertJsonPath('data.token.abilities', ['tokens.list-own']);
     }
 
+    /*
+     * Validation Tests
+     * ----------------
+     */
+
     /**
      * Reject unknown abilities.
      */
@@ -249,6 +259,11 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertUnprocessable();
         $this->assertApiValidationErrors($response, ['abilities.0']);
     }
+
+    /*
+     * Authorization Tests
+     * -------------------
+     */
 
     /**
      * Deny viewers without the create-own permission.

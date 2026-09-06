@@ -32,6 +32,8 @@ final class TwoFactorChallengeIssued
     */
 
     /**
+     * Create a new TwoFactorChallengeIssued event.
+     *
      * @param User   $user the User being challenged
      * @param string $code the plaintext six-digit code
      */

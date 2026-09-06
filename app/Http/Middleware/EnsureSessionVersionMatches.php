@@ -20,11 +20,26 @@ use Symfony\Component\HttpFoundation\Response;
  * works whether sessions live in the database, Redis, or files, because it
  * reads the stamp from the session payload rather than deleting store rows.
  *
- * Bearer-token clients are untouched — a stateless request carries no
+ * Bearer-token clients are untouched - a stateless request carries no
  * `session_version`, so the gate only ever applies to cookie sessions.
  */
 final class EnsureSessionVersionMatches
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constants
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Session-payload key holding the User's stamped `session_version`.
+     *
+     * Written at the privilege boundary (login, remember-me restore) and read
+     * here on every authenticated cookie request; shared with the fail-closed
+     * restamp in InvalidateStoredSessionAction so both sides cannot drift.
+     */
+    public const string SESSION_KEY = 'session_version';
+
     /*
     |--------------------------------------------------------------------------
     | Public
@@ -35,7 +50,7 @@ final class EnsureSessionVersionMatches
      * Turn away a stale session with a 401; pass everyone else through.
      *
      * On a stale stamp the session is invalidated before responding so the
-     * client cannot retry with the same fixated or superseded session id.
+     * client cannot retry with the same fixated or superseded session ID.
      *
      * @param  Request                    $request the incoming request
      * @param  Closure(Request): Response $next    the next pipeline stage
@@ -58,7 +73,7 @@ final class EnsureSessionVersionMatches
         }
 
         $session = $request->session();
-        $stamped = $session->get('session_version');
+        $stamped = $session->get(self::SESSION_KEY);
 
         if (! is_numeric($stamped) || (int) $stamped !== $user->session_version) {
             Auth::guard('web')->logout();

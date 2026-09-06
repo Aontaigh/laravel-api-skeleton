@@ -76,7 +76,7 @@ final class UserFactory extends Factory
      * Indicate that the User holds the Admin Spatie role.
      *
      * Assigned via `afterCreating()` because `assignRole()` needs a
-     * persisted, keyed model — a plain `state()` array cannot call it.
+     * persisted, keyed model - a plain `state()` array cannot call it.
      *
      * @return static the factory that assigns the Admin role after creation
      */

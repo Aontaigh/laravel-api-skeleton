@@ -34,6 +34,7 @@ final class ApiClientResource extends JsonResource
     /**
      * Transform the resource into an array.
      *
+     * @param  Request              $request the inbound HTTP request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array

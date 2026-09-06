@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Feature\Listeners;
 
 use App\Actions\Auth\RecordAuthAuditAction;
+use App\Contracts\GeoIp\GeoIpLocator;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\DataTransferObjects\GeoIp\GeoIpLocation;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Listeners\RecordAuthAuditLog;
@@ -24,6 +26,7 @@ use Tests\TestCase;
 #[CoversClass(AuthEventOccurred::class)]
 #[CoversClass(RecordAuthAuditLog::class)]
 #[CoversClass(RecordAuthAuditAction::class)]
+#[CoversClass(RecordAuthAuditData::class)]
 final class RecordAuthAuditLogTest extends TestCase
 {
     /*
@@ -55,6 +58,11 @@ final class RecordAuthAuditLogTest extends TestCase
     | Tests
     |--------------------------------------------------------------------------
     */
+
+    /*
+     * Audit Persistence Tests
+     * -----------------------
+     */
 
     /**
      * Persist the audit row when the event is dispatched.
@@ -121,6 +129,11 @@ final class RecordAuthAuditLogTest extends TestCase
         ]);
     }
 
+    /*
+     * Listener Registration Tests
+     * ---------------------------
+     */
+
     /**
      * Run the audit write on the queue, off the request hot path.
      */
@@ -154,5 +167,108 @@ final class RecordAuthAuditLogTest extends TestCase
          */
 
         $this->assertNotEmpty($listeners);
+    }
+
+    /*
+     * Location Enrichment Tests
+     * -------------------------
+     */
+
+    /**
+     * Persist the location resolved from the event IP on the audit row.
+     *
+     * A capturing fake GeoIpLocator is bound in the container so the test
+     * proves the queued listener enriches from `$event->data->ipAddress`
+     * without depending on MaxMind availability.
+     */
+    #[Test]
+    public function it_persists_the_location_resolved_from_the_event_ip(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->user()->create();
+
+        $locator = new class implements GeoIpLocator
+        {
+            /** @var list<string> */
+            private array $locatedIps = [];
+
+            /**
+             * @return list<string> the IPs the locator received
+             */
+            public function locatedIps(): array
+            {
+                return $this->locatedIps;
+            }
+
+            public function locate(?string $ipAddress): ?GeoIpLocation
+            {
+                if ($ipAddress === null || $ipAddress === '') {
+                    return null;
+                }
+
+                $this->locatedIps[] = $ipAddress;
+
+                return new GeoIpLocation(city: 'Mountain View', country: 'US');
+            }
+        };
+
+        $this->app->instance(GeoIpLocator::class, $locator);
+
+        // Act
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::Login,
+            userId: $user->id,
+            email: $user->email,
+            ipAddress: '8.8.8.8',
+            userAgent: 'phpunit',
+        ));
+
+        // Assert
+
+        $this->assertSame(['8.8.8.8'], $locator->locatedIps());
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'user_id' => $user->id,
+            'event' => AuthAuditEvent::Login->value,
+            'location_city' => 'Mountain View',
+            'location_country' => 'US',
+        ]);
+    }
+
+    /**
+     * Persist null location fields when the real locator fails open.
+     *
+     * PHPUnit runs as `testing` with no MMDB present, so the private-range
+     * skip applies before any Reader lookup.
+     */
+    #[Test]
+    public function it_persists_null_location_fields_when_the_lookup_fails_open(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->user()->create();
+
+        // Act
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::Login,
+            userId: $user->id,
+            email: $user->email,
+            ipAddress: '127.0.0.1',
+            userAgent: 'phpunit',
+        ));
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'user_id' => $user->id,
+            'event' => AuthAuditEvent::Login->value,
+            'location_city' => null,
+            'location_country' => null,
+        ]);
     }
 }

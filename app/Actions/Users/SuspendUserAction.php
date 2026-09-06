@@ -20,6 +20,8 @@ final class SuspendUserAction
     */
 
     /**
+     * Create a new SuspendUserAction.
+     *
      * @param LogoutUserAction $logoutUser revokes tokens, remember-me state, and sessions
      */
     public function __construct(
@@ -43,7 +45,8 @@ final class SuspendUserAction
      * @example
      * app(SuspendUserAction::class)->execute($user);
      *
-     * @param User $user the User to suspend
+     * @param  User $user the User to suspend
+     * @return void
      */
     public function execute(User $user): void
     {

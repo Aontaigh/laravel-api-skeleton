@@ -50,6 +50,8 @@ final class RecordAuthAuditAction
             'personal_access_token_id' => $data->personalAccessTokenId,
             'api_client_id' => $data->apiClientId,
             'remember_me' => $data->rememberMe,
+            'location_city' => $data->locationCity,
+            'location_country' => $data->locationCountry,
         ]);
 
         return $log;
@@ -63,6 +65,9 @@ final class RecordAuthAuditAction
 
     /**
      * Cap attacker-controlled request metadata before the audit row is persisted.
+     *
+     * @param  string|null $userAgent the raw User-Agent header
+     * @return string|null the capped User-Agent, or null
      */
     private function normalizedUserAgent(?string $userAgent): ?string
     {

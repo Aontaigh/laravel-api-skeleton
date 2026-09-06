@@ -14,7 +14,7 @@ Route::get('/', function () {
 |--------------------------------------------------------------------------
 |
 | Scalar interactive reference and the OpenAPI source file. Public in every
-| environment — endpoint access still requires a Sanctum bearer token. When
+| environment - endpoint access still requires a Sanctum bearer token. When
 | API_DOCS_BASIC_AUTH_USER and API_DOCS_BASIC_AUTH_PASSWORD are set, both
 | routes require HTTP Basic Auth (useful in production).
 |
@@ -33,10 +33,11 @@ Route::middleware('api-docs')->group(function (): void {
 | Health
 |--------------------------------------------------------------------------
 |
-| Public uptime probe — no auth, no throttling. Load balancers and uptime
+| Public uptime probe - no auth, no throttling. Load balancers and uptime
 | monitors hit this to confirm the API is serving and the database answers.
 |
 */
 
 Route::get('/health', \App\Http\Controllers\Api\ShowHealthController::class)
+    ->middleware('throttle:health')
     ->name('health');

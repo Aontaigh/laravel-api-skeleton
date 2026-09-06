@@ -28,6 +28,8 @@ final class AuthAuditLogShowController
     */
 
     /**
+     * Create a new AuthAuditLogShowController.
+     *
      * @param IndexFieldsQuery         $fieldsQuery  composes sparse fieldsets onto any single-table builder
      * @param AuthAuditLogIncludeQuery $includeQuery composes validated includes onto any audit log builder
      */
@@ -44,6 +46,10 @@ final class AuthAuditLogShowController
 
     /**
      * Return the route-bound audit log with optional sparse fieldsets and includes.
+     *
+     * @param  AuthAuditLogShowRequest $request      the validated show request
+     * @param  AuthAuditLog            $authAuditLog the route-bound Auth Audit Log
+     * @return JsonResponse            the standardised success envelope
      */
     public function __invoke(
         AuthAuditLogShowRequest $request,

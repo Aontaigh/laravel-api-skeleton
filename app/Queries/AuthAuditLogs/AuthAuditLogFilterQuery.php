@@ -23,8 +23,9 @@ final class AuthAuditLogFilterQuery
     /**
      * Compose filter constraints onto the query.
      *
-     * @param Builder<AuthAuditLog> $query   the audit log query builder
-     * @param AuthAuditLogFilters   $filters the validated filter DTO
+     * @param  Builder<AuthAuditLog> $query   the audit log query builder
+     * @param  AuthAuditLogFilters   $filters the validated filter DTO
+     * @return void
      */
     public function apply(Builder $query, AuthAuditLogFilters $filters): void
     {

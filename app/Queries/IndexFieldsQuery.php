@@ -27,12 +27,12 @@ final class IndexFieldsQuery
      * Apply a sparse fieldset to the query, or the default allow-listed projection.
      *
      * When `$requestedFields` is null the query selects every column in
-     * `$allowedFields` plus `$requiredColumns` — never `SELECT *`. Callers
+     * `$allowedFields` plus `$requiredColumns` - never `SELECT *`. Callers
      * must keep secrets (password hashes, token digests) out of `$allowedFields`.
      *
      * `$requiredColumns` bypasses `$allowedFields` so internal columns
      * (foreign keys) can be selected without exposing them to `fields[…]`.
-     * It must come from constants, never from the request — see
+     * It must come from constants, never from the request - see
      * `QualifiedColumn`.
      *
      * The method is generic because `Builder`'s model template is
@@ -41,11 +41,12 @@ final class IndexFieldsQuery
      *
      * @template TModel of Model
      *
-     * @param Builder<TModel>   $query           the Eloquent query builder
-     * @param list<string>|null $requestedFields client sparse fieldset, or null for all columns
-     * @param list<string>      $allowedFields   whitelisted API column names
-     * @param string            $table           table name or query alias
-     * @param list<string>      $requiredColumns columns always selected (never client-controlled)
+     * @param  Builder<TModel>   $query           the Eloquent query builder
+     * @param  list<string>|null $requestedFields client sparse fieldset, or null for all columns
+     * @param  list<string>      $allowedFields   whitelisted API column names
+     * @param  string            $table           table name or query alias
+     * @param  list<string>      $requiredColumns columns always selected (never client-controlled)
+     * @return void
      */
     public function apply(
         Builder $query,

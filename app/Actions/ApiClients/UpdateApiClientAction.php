@@ -64,6 +64,16 @@ final class UpdateApiClientAction
             }
 
             /*
+             * Deactivating a compromised integration must end its live access
+             * immediately: `is_active` is only consulted at exchange time, so
+             * an already-issued bearer token would otherwise keep the full
+             * Service-role power until its 30-day expiry.
+             */
+            if (($attributes['is_active'] ?? null) === false) {
+                $client->user->tokens()->delete();
+            }
+
+            /*
              * When the client name changes, keep the linked service
              * User name in sync for audit-log readability.
              */

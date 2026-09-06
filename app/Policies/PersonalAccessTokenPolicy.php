@@ -43,7 +43,7 @@ final class PersonalAccessTokenPolicy
     /**
      * Whether the User may revoke the given Token.
      *
-     * Combines the permission with an ownership check — `tokens.revoke-own`
+     * Combines the permission with an ownership check - `tokens.revoke-own`
      * only ever authorises revoking a Token that belongs to the caller.
      *
      * @param  User                $user  the authenticated User

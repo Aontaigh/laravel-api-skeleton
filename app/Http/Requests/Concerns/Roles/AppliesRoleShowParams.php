@@ -13,7 +13,7 @@ use Illuminate\Contracts\Validation\Validator;
 /**
  * Shared Role Show query-param rules and typed accessors.
  *
- * Composes reusable parse traits for `include` and sparse `fields[…]` only —
+ * Composes reusable parse traits for `include` and sparse `fields[…]` only -
  * no sort, filter, or pagination on a show endpoint.
  *
  * @mixin \App\Http\Requests\ApiFormRequest
@@ -125,7 +125,8 @@ trait AppliesRoleShowParams
     /**
      * Run allow-list validation for include and fields params.
      *
-     * @param Validator $validator the validator under extension
+     * @param  Validator $validator the validator under extension
+     * @return void
      */
     protected function validateRoleShowParams(Validator $validator): void
     {

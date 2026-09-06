@@ -4,11 +4,8 @@ declare(strict_types=1);
 
 namespace App\Providers;
 
+use App\Contracts\GeoIp\GeoIpLocator;
 use App\Enums\RoleName;
-use App\Events\AuthEventOccurred;
-use App\Events\TwoFactorChallengeIssued;
-use App\Listeners\RecordAuthAuditLog;
-use App\Listeners\SendTwoFactorCodeNotification;
 use App\Models\ApiClient;
 use App\Models\AuthAuditLog;
 use App\Models\User;
@@ -19,16 +16,19 @@ use App\Policies\PermissionPolicy;
 use App\Policies\PersonalAccessTokenPolicy;
 use App\Policies\RolePolicy;
 use App\Policies\WebSessionPolicy;
+use App\Services\GeoIp\GeoIpDatabase;
+use App\Services\GeoIp\MaxMindGeoIpLocator;
+use App\Services\UserAgent\Contracts\UserAgentParser;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Validation\Rules\Password;
+use InvalidArgumentException;
 use Laravel\Sanctum\PersonalAccessToken;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
@@ -48,35 +48,76 @@ final class AppServiceProvider extends ServiceProvider
      * Register any application services.
      *
      * Telescope is registered here, not in `bootstrap/providers.php`, so it
-     * never loads outside `local` — it is a development-only dependency and
+     * never loads outside `local`: it is a development-only dependency and
      * has no business booting routes, migrations, or its dashboard in a
      * deployed environment.
+     *
+     * @return void
      */
     public function register(): void
     {
         if ($this->app->environment('local')) {
             $this->app->register(TelescopeServiceProvider::class);
         }
+
+        $this->registerUserAgentParser();
+        $this->registerGeoIp();
+    }
+
+    /**
+     * Bind the configured user-agent parser driver to the UserAgentParser contract.
+     *
+     * The driver key and its implementation map live in config/useragent.php, so
+     * swapping parsers is a one-line config change with no provider edit.
+     *
+     * @return void
+     */
+    private function registerUserAgentParser(): void
+    {
+        $this->app->bind(UserAgentParser::class, function (): UserAgentParser {
+            /** @var array<string, class-string<UserAgentParser>> $drivers */
+            $drivers = config()->array('useragent.drivers');
+
+            /** @var class-string<UserAgentParser> $implementation */
+            $implementation = $drivers[config()->string('useragent.driver')] ?? $drivers['basic'];
+
+            return new $implementation;
+        });
+    }
+
+    /**
+     * Bind the GeoLite2 database and the fail-open locator.
+     *
+     * The database is a process-lifetime singleton: the MMDB is immutable,
+     * and remapping it per request would stall every lookup. The locator is
+     * bound per resolution so no lookup state can survive across requests.
+     *
+     * @return void
+     */
+    private function registerGeoIp(): void
+    {
+        $this->app->singleton(GeoIpDatabase::class);
+        $this->app->bind(GeoIpLocator::class, MaxMindGeoIpLocator::class);
     }
 
     /**
      * Bootstrap any application services.
      *
      * `PersonalAccessToken` and Spatie's `Role` live outside `App\Models`, so
-     * Laravel's convention-based policy discovery cannot find their Policies —
+     * Laravel's convention-based policy discovery cannot find their Policies,
      * register them explicitly.
+     *
+     * @return void
      */
     public function boot(): void
     {
+        $this->rejectReflectiveCors();
         Gate::policy(PersonalAccessToken::class, PersonalAccessTokenPolicy::class);
         Gate::policy(ApiClient::class, ApiClientPolicy::class);
         Gate::policy(AuthAuditLog::class, AuthAuditLogPolicy::class);
         Gate::policy(Role::class, RolePolicy::class);
         Gate::policy(Permission::class, PermissionPolicy::class);
         Gate::policy(WebSession::class, WebSessionPolicy::class);
-
-        Event::listen(AuthEventOccurred::class, RecordAuthAuditLog::class);
-        Event::listen(TwoFactorChallengeIssued::class, SendTwoFactorCodeNotification::class);
 
         $this->registerTelescopeGate();
         $this->configurePasswordDefaults();
@@ -94,6 +135,8 @@ final class AppServiceProvider extends ServiceProvider
 
     /**
      * Register the Telescope dashboard gate.
+     *
+     * @return void
      */
     private function registerTelescopeGate(): void
     {
@@ -104,6 +147,8 @@ final class AppServiceProvider extends ServiceProvider
 
     /**
      * Configure per-minute API rate limits.
+     *
+     * @return void
      */
     private function configureApiRateLimiting(): void
     {
@@ -159,6 +204,34 @@ final class AppServiceProvider extends ServiceProvider
                     ->by($this->twoFactorCompositeKey($request)),
             ];
         });
+
+        /*
+         * Public System Status page: per-IP only - there is no authenticated
+         * User to key on. A dedicated limiter key keeps status polling from
+         * sharing (or exhausting) the authenticated `api` budget.
+         */
+
+        RateLimiter::for('api-status', static function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.status_rate_limit_per_minute'))
+                    ->by((string) $request->ip()),
+            ];
+        });
+
+        RateLimiter::for('health', static function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.health_rate_limit_per_minute'))
+                    ->by((string) $request->ip()),
+            ];
+        });
+
+        RateLimiter::for('api-auth-password', function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.password_reset_rate_limit_per_minute'))
+                    ->by($this->authCompositeKey($request, 'email')),
+                ...$this->perIpCeiling(config()->integer('api.password_reset_ip_ceiling_per_minute'), $request),
+            ];
+        });
     }
 
     /**
@@ -179,7 +252,10 @@ final class AppServiceProvider extends ServiceProvider
      * Build a composite rate-limit key for two-factor endpoints.
      *
      * Stateless clients pass `two_factor_token`; session clients fall back to the
-     * session id so resend and verify budgets stay scoped to one challenge.
+     * session ID so resend and verify budgets stay scoped to one challenge.
+     *
+     * @param  Request $request the inbound HTTP request
+     * @return string  the composite limiter key
      */
     private function twoFactorCompositeKey(Request $request): string
     {
@@ -200,8 +276,8 @@ final class AppServiceProvider extends ServiceProvider
      * Build the broad per-IP ceiling that backs each auth limiter.
      *
      * This ceiling is a shared-network safeguard: it stops one IP from hammering
-     * many different accounts. Locally every request — including the whole test
-     * suite — originates from a single container IP, so the ceiling only locks
+     * many different accounts. Locally every request, including the whole
+     * test suite, originates from a single container IP, so the ceiling only locks
      * the developer out while adding nothing. It is therefore dropped in the
      * `local` environment; the per-credential composite limits (which carry the
      * real anti-abuse intent) always remain.
@@ -222,9 +298,11 @@ final class AppServiceProvider extends ServiceProvider
     /**
      * Define the application-wide default password policy.
      *
-     * Applied wherever a FormRequest uses `Password::defaults()` — currently
+     * Applied wherever a FormRequest uses `Password::defaults()`, currently
      * registration. Min 12 characters, letters, mixed case, numbers, and a
      * HaveIBeenPwned breach check (`uncompromised()`).
+     *
+     * @return void
      */
     private function configurePasswordDefaults(): void
     {
@@ -236,7 +314,29 @@ final class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Refuse a CORS configuration that reflects any origin while allowing
+     * credentials: the vendored CORS service would then echo arbitrary origins
+     * with `Access-Control-Allow-Credentials: true`, letting any site read
+     * cookie-authenticated responses. Fail at boot, not at first exploit.
+     *
+     * @return void
+     */
+    private function rejectReflectiveCors(): void
+    {
+        $origins = config()->array('cors.allowed_origins');
+        $credentials = config()->boolean('cors.supports_credentials');
+
+        if ($credentials && in_array('*', $origins, true)) {
+            throw new InvalidArgumentException(
+                'CORS_ALLOWED_ORIGINS Must Not Contain * While CORS_SUPPORTS_CREDENTIALS Is Enabled',
+            );
+        }
+    }
+
+    /**
      * Resolve the timing-normalisation hash when not set in config.
+     *
+     * @return void
      */
     private function configureAuthTimingNormalisation(): void
     {
@@ -250,7 +350,9 @@ final class AppServiceProvider extends ServiceProvider
     /**
      * Resolve `{token}` only within the authenticated User's own tokens.
      *
-     * Foreign ids return 404 so callers cannot probe whether a token exists.
+     * Foreign IDs return 404 so callers cannot probe whether a token exists.
+     *
+     * @return void
      */
     private function registerScopedTokenBinding(): void
     {
@@ -270,9 +372,11 @@ final class AppServiceProvider extends ServiceProvider
      * Resolve `{web_session}` within the caller's row scope.
      *
      * Callers holding `sessions.list-all` or `sessions.revoke-any` may address
-     * any registry row; everyone else is scoped to their own User id so foreign
-     * ids return 404. The `revoke-any` branch keeps the binding consistent with
+     * any registry row; everyone else is scoped to their own User ID so foreign
+     * IDs return 404. The `revoke-any` branch keeps the binding consistent with
      * WebSessionPolicy::delete, which grants cross-user revoke via `revoke-any`.
+     *
+     * @return void
      */
     private function registerScopedWebSessionBinding(): void
     {

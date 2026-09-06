@@ -28,7 +28,7 @@ final class StoreTokenController
     /**
      * Create a Token for the authenticated User.
      *
-     * The plaintext value is returned only once, in this response — it is
+     * The plaintext value is returned only once, in this response - it is
      * never retrievable again, matching Sanctum's own guarantee.
      *
      * @param  StoreTokenRequest               $request the validated create-Token request

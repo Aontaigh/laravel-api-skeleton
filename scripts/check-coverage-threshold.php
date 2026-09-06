@@ -100,7 +100,7 @@ exit(0);
  * result renders directly on the GitHub Actions run page.
  *
  * Outside Actions (`GITHUB_STEP_SUMMARY` unset, e.g. local runs), this is a
- * no-op — the operator already sees the same numbers on stdout.
+ * no-op - the operator already sees the same numbers on stdout.
  */
 function writeJobSummary(
     SimpleXMLElement $xml,
@@ -183,7 +183,7 @@ function renderProgressBar(float $coverage): string
  * Walk every `<file>` in the Clover report, compute line coverage
  * percentage, and return the bottom `$limit` files (lowest first).
  *
- * Files with zero statements are excluded — they are typically pure
+ * Files with zero statements are excluded - they are typically pure
  * interfaces / enums where coverage is undefined and would otherwise
  * crowd the table with `0/0` noise.
  *

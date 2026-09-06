@@ -31,6 +31,8 @@ final class AuthAuditLogQueryConstraints
         'email',
         'ip_address',
         'user_agent',
+        'location_city',
+        'location_country',
         'personal_access_token_id',
         'api_client_id',
         'remember_me',
@@ -55,6 +57,8 @@ final class AuthAuditLogQueryConstraints
     */
 
     /**
+     * Columns that must always be selected for an Auth Audit Log query.
+     *
      * @param  list<string> $includes validated include keys
      * @return list<string>
      */

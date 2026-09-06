@@ -62,7 +62,7 @@ trait AppliesUserFilters
     /**
      * Columns the viewer may request via `fields[users]=`.
      *
-     * `email` is only ever added for a viewer holding `users.view-email` —
+     * `email` is only ever added for a viewer holding `users.view-email` -
      * every other caller gets the base allow-list, so the field is never
      * exposed to a User Index request that has no business seeing it.
      *
@@ -206,7 +206,18 @@ trait AppliesUserFilters
      */
     protected function allowedSortColumns(): array
     {
-        return UserQueryConstraints::ALLOWED_SORTS;
+        /*
+         * `email` is only sortable for viewers who may also read it: ordering
+         * (and paging through ordered results) would otherwise reveal email
+         * existence to viewers without `users.view-email`.
+         */
+        $sorts = UserQueryConstraints::ALLOWED_SORTS;
+
+        if ($this->viewer()->can('users.view-email')) {
+            $sorts[] = 'email';
+        }
+
+        return $sorts;
     }
 
     /**

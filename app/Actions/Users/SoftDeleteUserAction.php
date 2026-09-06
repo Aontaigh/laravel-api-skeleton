@@ -23,7 +23,8 @@ final class SoftDeleteUserAction
      * @example
      * app(SoftDeleteUserAction::class)->execute($user);
      *
-     * @param User $user the User to soft-delete
+     * @param  User $user the User to soft-delete
+     * @return void
      */
     public function execute(User $user): void
     {

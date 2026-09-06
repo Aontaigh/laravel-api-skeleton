@@ -63,7 +63,8 @@ final class SessionIndexRequest extends ApiFormRequest
     /**
      * Run allow-list validation for filter, sort, include, and fields params.
      *
-     * @param Validator $validator the validator under extension
+     * @param  Validator $validator the validator under extension
+     * @return void
      */
     public function withValidator(Validator $validator): void
     {

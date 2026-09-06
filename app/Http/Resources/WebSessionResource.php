@@ -36,8 +36,9 @@ final class WebSessionResource extends JsonResource
      * Transform the Web Session into its API shape.
      *
      * Omits `user_id` unless the viewer holds `sessions.list-all`, and omits
-     * `ip_address` / `user_agent` on another User's sessions unless the viewer
-     * holds `sessions.list-all` — a sparse-fieldset omission alone is not
+     * `ip_address` / `user_agent` / location fields on another User's sessions
+     * unless the viewer
+     * holds `sessions.list-all` - a sparse-fieldset omission alone is not
      * enough, because a request that never constrains `fields[sessions]` runs
      * an unqualified `SELECT *` and would otherwise leak those columns.
      *
@@ -70,6 +71,16 @@ final class WebSessionResource extends JsonResource
                     && $this->viewerMaySeeSessionTelemetry($request),
                 fn (): ?string => $this->resource->user_agent,
             ),
+            'location_city' => $this->when(
+                array_key_exists('location_city', $this->resource->getAttributes())
+                    && $this->viewerMaySeeSessionTelemetry($request),
+                fn (): ?string => $this->resource->location_city,
+            ),
+            'location_country' => $this->when(
+                array_key_exists('location_country', $this->resource->getAttributes())
+                    && $this->viewerMaySeeSessionTelemetry($request),
+                fn (): ?string => $this->resource->location_country,
+            ),
             'remember_me' => $this->whenAttributeSelected(
                 'remember_me',
                 fn (): bool => $this->resource->remember_me,
@@ -95,10 +106,13 @@ final class WebSessionResource extends JsonResource
     }
 
     /**
-     * Whether the viewer may see IP and user-agent telemetry for this session.
+     * Whether the viewer may see IP, user-agent, and location telemetry for this session.
      *
      * Callers always see their own session metadata; cross-user telemetry
      * requires `sessions.list-all` (admin session management).
+     *
+     * @param  Request $request the inbound HTTP request
+     * @return bool    true when telemetry may be shown to the viewer
      */
     private function viewerMaySeeSessionTelemetry(Request $request): bool
     {
@@ -118,8 +132,9 @@ final class WebSessionResource extends JsonResource
     /**
      * Whether a computed Session field should appear for the active sparse fieldset.
      *
-     * @param Request $request the inbound HTTP request
-     * @param string  $field   the computed field name
+     * @param  Request $request the inbound HTTP request
+     * @param  string  $field   the computed field name
+     * @return bool    true when the computed field belongs in the response
      */
     private function includesSessionField(Request $request, string $field): bool
     {

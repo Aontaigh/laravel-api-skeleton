@@ -36,7 +36,22 @@ final class ApiClientsSeeder extends Seeder
 
     public function run(): void
     {
+        /*
+         * Demo credentials are public in this repository, so the client is
+         * only ever seeded in local/testing environments: any other run
+         * (including a production `db:seed`) silently skips it. firstOrCreate
+         * (not updateOrCreate) also means re-seeding never resurrects a demo
+         * client an operator has revoked or deactivated.
+         */
+        if (! app()->environment(['local', 'testing'])) {
+            return;
+        }
+
         $plainSecret = config()->string('api.demo_client_secret');
+
+        if ($plainSecret === '') {
+            return;
+        }
 
         /** @var User $user */
         $user = User::query()->firstOrCreate(
@@ -55,7 +70,7 @@ final class ApiClientsSeeder extends Seeder
             $user->assignRole(RoleName::Service->value);
         }
 
-        ApiClient::query()->updateOrCreate(
+        ApiClient::query()->firstOrCreate(
             ['client_id' => self::DEMO_CLIENT_ID],
             [
                 'user_id' => $user->id,

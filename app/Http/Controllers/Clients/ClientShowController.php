@@ -27,6 +27,8 @@ final class ClientShowController
     */
 
     /**
+     * Create a new ClientShowController.
+     *
      * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto any single-table builder
      */
     public function __construct(
@@ -41,6 +43,10 @@ final class ClientShowController
 
     /**
      * Return the route-bound API client with optional sparse fieldsets.
+     *
+     * @param  ClientShowRequest $request the validated show request
+     * @param  ApiClient         $client  the route-bound API Client
+     * @return JsonResponse      the standardised success envelope
      */
     public function __invoke(ClientShowRequest $request, ApiClient $client): JsonResponse
     {

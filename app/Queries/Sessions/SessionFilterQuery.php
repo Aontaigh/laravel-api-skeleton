@@ -23,8 +23,9 @@ final class SessionFilterQuery
     /**
      * Compose filter and row-scope constraints onto the query.
      *
-     * @param Builder<WebSession> $query   the Web Session query builder
-     * @param SessionFilters      $filters the validated filter DTO
+     * @param  Builder<WebSession> $query   the Web Session query builder
+     * @param  SessionFilters      $filters the validated filter DTO
+     * @return void
      */
     public function apply(Builder $query, SessionFilters $filters): void
     {

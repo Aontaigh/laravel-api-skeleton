@@ -45,7 +45,7 @@ final class UpdateMeController
 
         $input = $request->safe();
 
-        /** @var User $user — never null behind `auth:sanctum` */
+        /** @var User $user - never null behind `auth:sanctum` */
         $user = $request->user();
 
         $data = new UpdateUserData(

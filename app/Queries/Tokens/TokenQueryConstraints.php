@@ -8,7 +8,7 @@ namespace App\Queries\Tokens;
  * Allow-lists shared by TokenIndexRequest and the Token Query classes.
  *
  * Single source of truth for sort columns, sparse fieldsets, and pagination
- * bounds on the self-service Token Index. No `include` keys are advertised —
+ * bounds on the self-service Token Index. No `include` keys are advertised -
  * every row belongs to the authenticated User, so nested relations are redundant.
  */
 final class TokenQueryConstraints

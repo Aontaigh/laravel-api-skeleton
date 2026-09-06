@@ -71,7 +71,8 @@ final class UpdateMeRequest extends ApiFormRequest
     /**
      * Configure the validator instance.
      *
-     * @param Validator $validator the validator under construction
+     * @param  Validator $validator the validator under construction
+     * @return void
      */
     public function withValidator(Validator $validator): void
     {

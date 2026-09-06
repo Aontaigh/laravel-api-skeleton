@@ -24,8 +24,8 @@ final class GetTwoFactorStatusAction
     /**
      * Resolve the pending challenge status from the session or opaque token.
      *
-     * The pending User id comes from the caller's own session or token — never
-     * from email input — so a clear expiry response does not create an
+     * The pending User ID comes from the caller's own session or token - never
+     * from email input - so a clear expiry response does not create an
      * enumeration vector.
      *
      * @param  string|null            $token the opaque pending token, when supplied by the client

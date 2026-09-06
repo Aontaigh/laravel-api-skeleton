@@ -115,7 +115,7 @@ final class CreateApiClientActionTest extends TestCase
      * Roll back the service User when the client insert fails.
      *
      * A forced exception inside the client insert must not leave an orphaned
-     * service-account User behind — the two writes share one transaction.
+     * service-account User behind - the two writes share one transaction.
      */
     #[Test]
     public function it_rolls_back_the_service_user_when_the_client_insert_fails(): void

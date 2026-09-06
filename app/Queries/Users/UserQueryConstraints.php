@@ -8,7 +8,7 @@ namespace App\Queries\Users;
  * Allow-lists shared by UserIndexRequest and the User Query classes.
  *
  * Single source of truth for sort columns, includes, sparse fieldsets, and
- * pagination bounds. `ALLOWED_FIELDS` deliberately excludes `email` —
+ * pagination bounds. `ALLOWED_FIELDS` deliberately excludes `email` -
  * `AppliesUserFilters::allowedUserFields()` adds it only for viewers with
  * the `users.view-email` permission.
  */
@@ -20,8 +20,15 @@ final class UserQueryConstraints
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> columns callers may sort on via `?sort=` */
-    public const ALLOWED_SORTS = ['id', 'name', 'email', 'created_at'];
+    /**
+     * Columns callers may sort on via `?sort=`, before per-viewer filtering.
+     *
+     * `email` is deliberately absent: `AppliesUserFilters::allowedSortColumns()`
+     * appends it only for viewers holding `users.view-email`, mirroring the
+     * sparse-fieldset gate, so the column cannot leak its existence through
+     * ordering to viewers who may not read it.
+     */
+    public const ALLOWED_SORTS = ['id', 'name', 'created_at'];
 
     /** @var list<string> relations callers may request via `?include=` */
     public const ALLOWED_INCLUDES = ['team', 'role'];
@@ -55,7 +62,7 @@ final class UserQueryConstraints
      *
      * Only columns Eloquent needs in memory belong here: the key, plus the
      * foreign key behind each requested include. Sort and filter columns
-     * are deliberately absent — SQL can `ORDER BY` and `WHERE` on a column
+     * are deliberately absent - SQL can `ORDER BY` and `WHERE` on a column
      * that is not in the select list, and adding them would push columns
      * the client did not ask for back into the response.
      *

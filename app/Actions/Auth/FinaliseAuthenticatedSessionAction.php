@@ -12,6 +12,7 @@ use App\DataTransferObjects\Sessions\RegisterWebSessionData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
+use App\Http\Middleware\EnsureSessionVersionMatches;
 use Illuminate\Support\Facades\Auth;
 use Laravel\Sanctum\NewAccessToken;
 
@@ -72,7 +73,7 @@ final class FinaliseAuthenticatedSessionAction
         ));
 
         if (session()->isStarted()) {
-            session()->put('session_version', $user->session_version);
+            session()->put(EnsureSessionVersionMatches::SESSION_KEY, $user->session_version);
 
             $this->registerWebSession->execute(new RegisterWebSessionData(
                 user: $user,

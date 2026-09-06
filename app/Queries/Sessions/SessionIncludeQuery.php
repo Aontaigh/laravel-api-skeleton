@@ -24,6 +24,8 @@ final class SessionIncludeQuery
     */
 
     /**
+     * Create a new SessionIncludeQuery.
+     *
      * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto nested relation builders
      */
     public function __construct(
@@ -39,9 +41,10 @@ final class SessionIncludeQuery
     /**
      * Compose eager loads onto the query.
      *
-     * @param Builder<WebSession> $query      the Web Session query builder
-     * @param list<string>        $includes   validated include keys
-     * @param list<string>|null   $userFields sparse User columns for nested relations
+     * @param  Builder<WebSession> $query      the Web Session query builder
+     * @param  list<string>        $includes   validated include keys
+     * @param  list<string>|null   $userFields sparse User columns for nested relations
+     * @return void
      *
      * @throws InvalidArgumentException when an allowed include has no eager-load mapping
      */
@@ -78,6 +81,8 @@ final class SessionIncludeQuery
     */
 
     /**
+     * Build the eager-load constraint closure for the `user` relation.
+     *
      * @param list<string>|null $userFields sparse User columns from `fields[users]`
      * @return Closure(Relation<*, *, *>): void
      */

@@ -16,7 +16,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Runs on every authenticated route for both auth modes, so it covers
  * Bearer-token (Personal Access Token) clients as well as any cookie session
  * that outlives a suspension. A suspended User is turned away with a 403
- * regardless of how it authenticated — the gate is the single place that
+ * regardless of how it authenticated - the gate is the single place that
  * revokes a live User's access.
  */
 final class EnsureAccountIsActive

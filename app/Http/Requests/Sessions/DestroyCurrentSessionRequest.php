@@ -55,7 +55,9 @@ final class DestroyCurrentSessionRequest extends ApiFormRequest
     */
 
     /**
-     * Resolve the registry row for the inbound Laravel session id.
+     * Resolve the registry row for the inbound Laravel session ID.
+     *
+     * @return WebSession|null the current registry row, or null without a session
      */
     public function currentWebSession(): ?WebSession
     {

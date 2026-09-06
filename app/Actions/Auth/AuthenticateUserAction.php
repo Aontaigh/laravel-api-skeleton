@@ -22,7 +22,7 @@ final class AuthenticateUserAction
     */
 
     /**
-     * Optional lookup override for unit tests — the container always passes null.
+     * Optional lookup override for unit tests - the container always passes null.
      *
      * @param (Closure(string): ?User)|null $resolveUserByEmail optional User resolver
      */

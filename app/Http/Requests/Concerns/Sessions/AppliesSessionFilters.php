@@ -71,6 +71,8 @@ trait AppliesSessionFilters
 
     /**
      * Resolve the optional `filter[user_id]` value for admin viewers.
+     *
+     * @return ?int
      */
     public function userIdFilter(): ?int
     {
@@ -121,7 +123,8 @@ trait AppliesSessionFilters
     /**
      * Reject filter keys outside the resource allow-list.
      *
-     * @param Validator $validator the validator under extension
+     * @param  Validator $validator the validator under extension
+     * @return void
      */
     protected function validateFilterKeys(Validator $validator): void
     {

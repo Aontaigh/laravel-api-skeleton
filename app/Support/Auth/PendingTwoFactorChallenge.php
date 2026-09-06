@@ -9,6 +9,12 @@ namespace App\Support\Auth;
  */
 final readonly class PendingTwoFactorChallenge
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Create a new PendingTwoFactorChallenge value object.
      *

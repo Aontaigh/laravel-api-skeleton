@@ -29,6 +29,8 @@ final class TeamShowRequest extends ApiFormRequest
     */
 
     /**
+     * Determine whether the User is authorised to make this request.
+     *
      * @return bool true when the User may view the route-bound Team
      */
     public function authorize(): bool
@@ -47,6 +49,9 @@ final class TeamShowRequest extends ApiFormRequest
     */
 
     /**
+     * Get the validation rules that apply to the request.
+     *
+     *
      * @return array<string, array<int, mixed>>
      */
     public function rules(): array
@@ -60,6 +65,12 @@ final class TeamShowRequest extends ApiFormRequest
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Run allow-list validation for the request's query params.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
+     */
     public function withValidator(Validator $validator): void
     {
         $this->validateTeamShowParams($validator);

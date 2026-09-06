@@ -38,8 +38,9 @@ final class ApiDocsTest extends TestCase
         // Assert
 
         $response->assertOk();
-        $response->assertSee('Scalar.createApiReference', false);
+        $response->assertSee('data-url', false);
         $response->assertSee('/api/openapi.yaml', false);
+        $response->assertSee('@scalar/api-reference@1.64.1', false);
     }
 
     /**

@@ -5,17 +5,17 @@ Machine-readable contract: [openapi.yaml](openapi.yaml) (OpenAPI 3.1), served at
 
 Human-oriented endpoint guides and permission notes live in the [README](../README.md)
 and [permissions.md](permissions.md). The OpenAPI spec is the source of truth for
-tooling — Postman, Insomnia, client codegen, contract linting, and the hosted Scalar UI.
+tooling - Postman, Insomnia, client codegen, contract linting, and the hosted Scalar UI.
 
 Allow-lists in the spec mirror the PHP constraints in
-[`app/Queries/*/*QueryConstraints.php`](../app/Queries/) — when they drift, fix
+[`app/Queries/*/*QueryConstraints.php`](../app/Queries/) - when they drift, fix
 the spec and the constraints in the same change.
 
 ## Interactive Docs (Scalar)
 
 Hosted in the app at **`/api/docs`** in every environment (local and production).
 Scalar loads the spec from `/api/openapi.yaml` on the same host, so try-it requests
-stay same-origin — no CORS configuration needed.
+stay same-origin - no CORS configuration needed.
 
 1. Start the app (`./vendor/bin/sail up -d`)
 2. Open [http://localhost/api/docs](http://localhost/api/docs) (or `{APP_URL}/api/docs` in production)
@@ -40,22 +40,22 @@ by Sanctum regardless.
 
 ## Learning Path
 
-1. [README Quick Start](../README.md#quick-start) — Sail, seed, issue a token
-2. **[/api/docs](http://localhost/api/docs)** — Scalar try-it UI (paste bearer token)
-3. [README API](../README.md#api) — shared query contract and per-resource summaries
-4. [openapi.yaml](openapi.yaml) — full paths, schemas, and param allow-lists
-5. [permissions.md](permissions.md) — who can call each endpoint
-6. Source — [routes/api.php](../routes/api.php), controllers under
+1. [README Quick Start](../README.md#quick-start) - Sail, seed, issue a token
+2. **[/api/docs](http://localhost/api/docs)** - Scalar try-it UI (paste bearer token)
+3. [README API](../README.md#api) - shared query contract and per-resource summaries
+4. [openapi.yaml](openapi.yaml) - full paths, schemas, and param allow-lists
+5. [permissions.md](permissions.md) - who can call each endpoint
+6. Source - [routes/api.php](../routes/api.php), controllers under
    [app/Http/Controllers/](../app/Http/Controllers/)
 
 ## View the Docs
 
-**Scalar (recommended)** — interactive try-it UI, served by the app:
+**Scalar (recommended)** - interactive try-it UI, served by the app:
 
 - Local: [http://localhost/api/docs](http://localhost/api/docs)
 - Production: `{APP_URL}/api/docs`
 
-**Swagger Editor** — paste or import [openapi.yaml](openapi.yaml):
+**Swagger Editor** - paste or import [openapi.yaml](openapi.yaml):
 
 <https://editor.swagger.io>
 
@@ -65,7 +65,7 @@ by Sanctum regardless.
 npx @redocly/cli preview-docs docs/openapi.yaml
 ```
 
-**Stoplight Elements** — drop the file into [Stoplight Studio](https://stoplight.io/studio)
+**Stoplight Elements** - drop the file into [Stoplight Studio](https://stoplight.io/studio)
 or serve Elements against the spec URL.
 
 ## Import Into a Client
@@ -124,7 +124,7 @@ bearer-token auth; cookie mode is documented for teams that adopt Sanctum's SPA 
 
 When you add or change an endpoint:
 
-1. Update [openapi.yaml](openapi.yaml) (paths, schemas, allow-lists) — use Title Case for `##` headings, operation `summary` values, response `description` labels, and `**Bold Labels:**` in prose (see [write-readme](https://github.com/kaxmedia/ai-rules/blob/main/skills/write-readme/SKILL.md))
+1. Update [openapi.yaml](openapi.yaml) (paths, schemas, allow-lists) - use Title Case for `##` headings, operation `summary` values, response `description` labels, and `**Bold Labels:**` in prose (see [write-readme](https://github.com/kaxmedia/ai-rules/blob/main/skills/write-readme/SKILL.md))
 2. Update the matching `*QueryConstraints` class under [app/Queries/](../app/Queries/)
 3. Open [http://localhost/api/docs](http://localhost/api/docs) and spot-check the changed operation
 4. Update the README `## API` section if behaviour is user-facing
@@ -135,6 +135,6 @@ When you add or change an endpoint:
 8. Optional: lint the spec in CI with [Spectral](https://stoplight.io/open-source/spectral)
 
 The spec deliberately documents the shared index query contract (`sort`,
-`fields[{resource}]`, `include`, `filter[search]`, pagination) in detail — that
+`fields[{resource}]`, `include`, `filter[search]`, pagination) in detail - that
 surface is hard for code generators to infer and is where hand-written OpenAPI
 pays off.

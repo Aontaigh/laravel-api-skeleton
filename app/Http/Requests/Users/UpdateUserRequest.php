@@ -16,9 +16,9 @@ use Illuminate\Validation\Validator;
 final class UpdateUserRequest extends ApiFormRequest
 {
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Traits
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     use SanitisesPlainTextAttributes;
@@ -79,7 +79,8 @@ final class UpdateUserRequest extends ApiFormRequest
     /**
      * Configure the validator instance.
      *
-     * @param Validator $validator the validator under construction
+     * @param  Validator $validator the validator under construction
+     * @return void
      */
     public function withValidator(Validator $validator): void
     {

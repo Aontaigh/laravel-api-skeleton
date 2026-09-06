@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Models;
 
 use App\Enums\MfaMethod;
+use App\Notifications\Auth\ResetPasswordNotification;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,9 +14,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Arr;
 use Laravel\Sanctum\HasApiTokens;
+use Laravel\Sanctum\PersonalAccessToken;
+use Laravel\Sanctum\TransientToken;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Traits\HasRoles;
+use UnitEnum;
 
 /**
  * An authenticated User.
@@ -129,6 +134,58 @@ final class User extends Authenticatable
     */
 
     /**
+     * Whether the User holds the given abilities under both Spatie permissions
+     * and the current Sanctum Token scope.
+     *
+     * Spatie permissions are resolved first through the parent gate. When the
+     * request authenticated with a scoped Personal Access Token (no `*`
+     * ability), every bare permission checked must also appear in the Token's
+     * abilities - a Token issued for `roles.list` must not inherit the
+     * Service role's other permissions. Session-cookie authentication (no
+     * current Token) and wildcard Tokens are unaffected.
+     *
+     * @param  string|iterable<mixed>|UnitEnum $abilities the ability or abilities to check, or a comma-separated string
+     * @param  mixed                           $arguments the Policy arguments (route-bound model or class name)
+     * @return bool                            true when every ability passes both the Spatie and Token checks
+     */
+    public function can($abilities, $arguments = []): bool
+    {
+        if (! parent::can($abilities, $arguments)) {
+            return false;
+        }
+
+        $token = $this->currentAccessToken();
+
+        if ($this->isTokenUnrestricted($token)) {
+            return true;
+        }
+
+        /*
+         * Verb-style checks (`can('viewAny', User::class)`) resolve through a
+         * Policy, whose nested `$user->can('users.list')` calls return here
+         * with bare permission strings, where the Token scope is enforced.
+         * Demanding the verb itself on the Token would require Gate verbs no
+         * caller ever holds, so argument-backed checks defer to those nested
+         * permission checks.
+         */
+        if ($arguments !== []) {
+            return true;
+        }
+
+        $requested = is_string($abilities)
+            ? array_map('trim', explode(',', $abilities))
+            : Arr::wrap($abilities);
+
+        foreach ($requested as $ability) {
+            if (is_string($ability) && ! $token->can($ability)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
      * Whether this User is a non-interactive service account.
      *
      * @return bool true when the User backs an API Client rather than a person
@@ -165,12 +222,51 @@ final class User extends Authenticatable
      * Invalidate every existing web session for this User.
      *
      * Bumping the version makes every session stamped with the old value fail
-     * the `session.version` gate on its next request — regardless of the
-     * session driver — so a credential change or force-logout signs the User
+     * the `session.version` gate on its next request - regardless of the
+     * session driver - so a credential change or force-logout signs the User
      * out everywhere.
+     *
+     * @return void
      */
     public function rotateSessions(): void
     {
         $this->increment('session_version');
+    }
+
+    /**
+     * Send the password reset link through the queued app notification.
+     *
+     * The framework default would emit its own mail pointing at the API host,
+     * which only serves JSON. The app notification carries a config-driven
+     * SPA destination (`api.password_reset_url`) instead.
+     *
+     * @param  string $token the password reset token issued by the broker
+     * @return void
+     */
+    public function sendPasswordResetNotification($token): void
+    {
+        $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Private
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Whether the request's Token grants unrestricted access.
+     *
+     * `currentAccessToken()` is non-null only on Token-backed requests: a
+     * cookie-session request has none, and Sanctum's guard hands `actingAs`
+     * callers an always-permissive TransientToken. Only a persisted Personal
+     * Access Token can answer `false` and reach the scope check.
+     *
+     * @param  PersonalAccessToken|TransientToken|null $token the Token issued for the current request, or null
+     * @return bool                                    true when no Token scope needs enforcing
+     */
+    private function isTokenUnrestricted(PersonalAccessToken|TransientToken|null $token): bool
+    {
+        return $token?->can('*') !== false;
     }
 }

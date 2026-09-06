@@ -31,6 +31,8 @@ final class SessionIndexController
     */
 
     /**
+     * Create a new SessionIndexController.
+     *
      * @param SessionFilterQuery  $filterQuery  composes validated filters onto any Web Session builder
      * @param IndexSortQuery      $sortQuery    composes validated sort onto any single-table builder
      * @param IndexFieldsQuery    $fieldsQuery  composes sparse fieldsets onto any single-table builder

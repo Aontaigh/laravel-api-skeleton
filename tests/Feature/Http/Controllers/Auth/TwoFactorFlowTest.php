@@ -275,7 +275,7 @@ final class TwoFactorFlowTest extends TestCase
             'password' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        // Act — only email is wired; sms is not a valid enum value today,
+        // Act - only email is wired; sms is not a valid enum value today,
         // so we simulate a future channel by tampering with mfa_method after login.
 
         /** @var User $user */
@@ -592,7 +592,7 @@ final class TwoFactorFlowTest extends TestCase
 
         $this->postJson('/api/auth/two-factor/send', ['channel' => 'email']);
 
-        // Assert — a fresh challenge starts with zero attempts
+        // Assert - a fresh challenge starts with zero attempts
 
         $challenge = Cache::get('two-factor:'.$user->id);
         $this->assertIsArray($challenge);

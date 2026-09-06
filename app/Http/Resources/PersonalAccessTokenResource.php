@@ -13,7 +13,7 @@ use Laravel\Sanctum\PersonalAccessToken;
 /**
  * API representation of a Sanctum Personal Access Token.
  *
- * The plaintext token value is never part of this shape — Sanctum only
+ * The plaintext token value is never part of this shape - Sanctum only
  * returns it once, at creation time, and the controller merges it into the
  * response envelope alongside this Resource rather than through it.
  *

@@ -20,7 +20,7 @@ final class UserPolicy
     /**
      * Whether the User may list Users.
      *
-     * Row scoping (own Team vs every Team) is a separate decision — see
+     * Row scoping (own Team vs every Team) is a separate decision - see
      * `AppliesUserFilters::listsAllTeams()` and `UserFilterQuery`.
      *
      * @param  User $user the authenticated User
@@ -48,7 +48,7 @@ final class UserPolicy
      * Whether the User may view their own profile via `GET /me`.
      *
      * Open to every interactive account with a bearer token. Service accounts
-     * are machine identities — they use client credentials, not profile screens.
+     * are machine identities - they use client credentials, not profile screens.
      *
      * @param  User $user the authenticated User
      * @return bool true when the User may call `GET /me`
@@ -62,7 +62,7 @@ final class UserPolicy
      * Whether the User may update their own profile via `PATCH /me`.
      *
      * Open to every interactive account with a bearer token. Service accounts
-     * are machine identities — they use client credentials, not self-service
+     * are machine identities - they use client credentials, not self-service
      * endpoints.
      *
      * @param  User $user the authenticated User
@@ -150,7 +150,7 @@ final class UserPolicy
      * Whether the User may suspend another User's account.
      *
      * Requires `users.suspend`. Callers may never suspend their own account
-     * through this endpoint — an Admin suspending themselves would have no
+     * through this endpoint - an Admin suspending themselves would have no
      * one left to lift the suspension.
      *
      * @param  User $user  the authenticated User

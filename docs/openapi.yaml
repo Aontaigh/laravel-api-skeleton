@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.8.1
+  version: 1.9.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -11,7 +11,7 @@ info:
 
     Password sign-in starts with `POST /auth/login` or `POST /auth/register`. When the User
     has email MFA enrolled (`mfa_method` set), the response is
-    `two_factor_required` plus an opaque `two_factor_token` — complete
+    `two_factor_required` plus an opaque `two_factor_token` - complete
     `POST /auth/two-factor/send` and `POST /auth/two-factor/verify` before a bearer token
     is issued. Users without MFA receive a Sanctum token immediately from login.
 
@@ -33,10 +33,10 @@ info:
     }
     ```
 
-    - **Success** — `data` holds the payload; list endpoints add `meta.pagination`
-    - **Validation Error (422)** — `meta.errors` is a field → messages map; allow-list
+    - **Success** - `data` holds the payload; list endpoints add `meta.pagination`
+    - **Validation Error (422)** - `meta.errors` is a field → messages map; allow-list
       failures also include `meta.allowed` with the supported values for that key
-    - **Invalid Token Abilities (422)** — `meta.invalid_abilities` lists unknown ability strings
+    - **Invalid Token Abilities (422)** - `meta.invalid_abilities` lists unknown ability strings
 
     ## Index Query Contract
 
@@ -48,7 +48,7 @@ info:
     | Param | Format | Notes |
     | --- | --- | --- |
     | `sort` | `{column}` or `-{column}` | Single column; prefix `-` for descending. Whitelist is resource-specific (see each operation). Default sort is documented per resource. |
-    | `fields[{resource}]` | comma-separated columns | Sparse fieldset — only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. |
+    | `fields[{resource}]` | comma-separated columns | Sparse fieldset - only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. |
     | `include` | comma-separated relations | Whitelisted eager loads. Singular keys may load plural relations (e.g. `include=role` eager-loads `roles`). |
     | `filter[search]` | string (max 255) | Partial match on name (and email for users and audit logs). Only whitelisted `filter[…]` keys are accepted per resource. |
     | `page` | integer ≥ 1 | Offset pagination page (default `1`). |
@@ -69,13 +69,13 @@ info:
 
     `GET /me`, `GET /users/{user}`, `GET /roles/{role}`, `GET /clients/{client}`,
     `GET /audit-logs/{auth_audit_log}`, and `GET /teams/{team}` support `include`
-    and `fields[…]` only — no `sort`, `filter`, or pagination.
+    and `fields[…]` only - no `sort`, `filter`, or pagination.
 
     ## Account Status
 
     Suspended accounts (`suspended_at` set) are rejected at login and OAuth
     client-credentials exchange with the generic `Invalid Credentials` validation
-    message — no bearer token is issued. An existing bearer token or session
+    message - no bearer token is issued. An existing bearer token or session
     receives `403` with message `Account Suspended` on every authenticated route
     (`active.account` middleware). Remember-me restoration answers with generic
     `401 Unauthenticated`. Admins suspend and unsuspend accounts via
@@ -93,6 +93,7 @@ info:
     | Two-factor status (`GET /auth/two-factor/status`) | 60 requests / minute / pending-challenge+IP |
     | Client credentials (`POST /oauth/token`) | 5 requests / minute / `client_id`+IP, plus a 20 requests / minute per-IP ceiling |
     | Token creation (`POST /tokens`, `POST /users/{user}/tokens`, `POST /clients`) | 10 requests / minute / user |
+    | System status (`GET /status`) | 30 requests / minute / IP |
 
     Exceeded limits return `429` with message `Too Many Requests`.
 
@@ -123,7 +124,7 @@ tags:
   - name: Tokens
     description: Self-Service Personal Access Token Management
   - name: Sessions
-    description: Cookie-Bound Web Session Registry — List and Revoke
+    description: Cookie-Bound Web Session Registry - List and Revoke
   - name: Roles
     description: Role Index and Show (Read-Only)
   - name: Teams
@@ -136,6 +137,8 @@ tags:
     description: Admin Read-Only Authentication Audit Trail
   - name: Health
     description: Public Uptime Probe (No Auth)
+  - name: System Status
+    description: Public Status Page - Current State and Daily Uptime History (No Auth)
 
 paths:
   /health:
@@ -143,7 +146,7 @@ paths:
       tags: [Health]
       summary: Health Check
       description: |
-        Public uptime probe — no auth, no throttling. Returns the application
+        Public uptime probe - no auth, no throttling. Returns the application
         version and whether the primary database answers `select 1`. Returns
         `503 Service Unavailable` when the database is unreachable.
 
@@ -151,7 +154,7 @@ paths:
       operationId: health
       servers:
         - url: /
-          description: Root — Health Probe Bypasses the /api Prefix
+          description: Root - Health Probe Bypasses the /api Prefix
       responses:
         '200':
           description: Service Healthy
@@ -179,6 +182,58 @@ paths:
                 default:
                   $ref: '#/components/examples/HealthUnavailable'
 
+  /status:
+    get:
+      tags: [System Status]
+      summary: System Status
+      description: |
+        Public, unauthenticated status page - the human-facing counterpart to
+        the `GET /health` load-balancer probe. Reports the current state and
+        daily uptime history for every monitored component (database, cache,
+        queue), read from rows persisted by the scheduled `health:record`
+        command (every five minutes, except in `local` and `testing`).
+
+        `monitoring_active` is `false` and component readings are `null` before
+        the first scheduled run has ever persisted a row - the absence of
+        monitoring data is not reported as an outage.
+
+        A day's `uptime_percentage` counts `up` as 1, `degraded` as 0.5, and
+        `down` as 0. A day's discrete `status` is the *worst* status observed
+        that day. Days with no recorded checks appear with `null` values
+        rather than being omitted.
+      operationId: systemStatus
+      security: []
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: Number of Calendar Days of Daily Uptime History to Return
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 90
+            default: 90
+          example: 30
+      responses:
+        '200':
+          description: System Status Retrieved Successfully
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: System Status Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/SystemStatusData'
+              examples:
+                default:
+                  $ref: '#/components/examples/SystemStatusSuccess'
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
   /auth/login:
     post:
       tags: [Authentication]
@@ -187,7 +242,7 @@ paths:
         Verify email and password credentials and return a Sanctum bearer token.
         When the User has enrolled in email two-factor authentication (`mfa_method`
         set), valid credentials return `200` with `two_factor_required: true`,
-        `two_factor_token`, and no bearer token — the caller must complete
+        `two_factor_token`, and no bearer token - the caller must complete
         `POST /auth/two-factor/send` and `POST /auth/two-factor/verify` before a session is
         issued. Pass `two_factor_token` on send and verify when the client cannot
         rely on session cookies (stateless API clients).
@@ -245,7 +300,7 @@ paths:
         a prior `POST /auth/login` or `POST /auth/register` that returned
         `two_factor_required: true`. The pending challenge is bound to the caller's
         session **or** the opaque `two_factor_token` returned alongside
-        `two_factor_required` — pass the token on stateless clients that do not
+        `two_factor_required` - pass the token on stateless clients that do not
         retain cookies. Only `email` is supported today; the channel must match the
         user's enrolled `mfa_method`.
 
@@ -279,7 +334,7 @@ paths:
       summary: Verify Two-Factor Code
       description: |
         Verify the six-digit code and issue a Sanctum bearer token. Requires the
-        pending challenge opened by `POST /auth/login` or `POST /auth/register` — resolved
+        pending challenge opened by `POST /auth/login` or `POST /auth/register` - resolved
         from the session cookie or optional `two_factor_token`.
 
         Wrong, expired, or over-attempt codes return `422` with
@@ -316,7 +371,7 @@ paths:
         Report whether a pending two-factor challenge is still active. Intended for
         SPA polling while the visitor is on the verification screen. The pending
         challenge is resolved from the session cookie or optional
-        `two_factor_token` query parameter — never from email input.
+        `two_factor_token` query parameter - never from email input.
 
         Returns `422` with `Your Sign-In Session Has Expired` when no pending
         challenge exists. Suspended accounts receive `403 Account Suspended`.
@@ -375,6 +430,111 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/forgot-password:
+    post:
+      tags: [Authentication]
+      summary: Request Password Reset Link
+      description: |
+        Email a password reset link to the account holder. The response is
+        identical for known and unknown addresses - the endpoint never reveals
+        whether an account exists. The password broker additionally throttles
+        repeat requests (60 seconds per address) silently, without changing
+        the response.
+
+        The reset link points at the configured SPA destination
+        (`API_PASSWORD_RESET_URL`) and expires after 60 minutes. The request is
+        recorded in `auth_audit_logs` as `Password Reset Requested` (queued
+        listener) whether or not the address exists.
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+      responses:
+        '200':
+          description: Generic Success (Sent or Not)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+              examples:
+                default:
+                  $ref: '#/components/examples/ForgotPasswordSuccess'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/reset-password:
+    post:
+      tags: [Authentication]
+      summary: Reset Password
+      description: |
+        Consume a valid reset token and set a new password. On success this is
+        a full credential rotation: every Personal Access Token is revoked,
+        every registered web session is stamped revoked and its stored payload
+        destroyed, `session_version` is bumped (killing every cookie session on
+        its next request), and the remember-me token is rotated. A queued
+        `Password Reset` audit row is written and a password-changed security
+        e-mail is sent.
+
+        An unknown, expired, mismatched, or already-consumed token returns a
+        generic `422` that does not distinguish the cause. The new password
+        must satisfy the shared password policy (minimum 12 characters,
+        letters, mixed case, numbers, and a breach check).
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [token, email, password]
+              properties:
+                token:
+                  type: string
+                  maxLength: 128
+                  description: Reset token from the e-mailed reset link
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                password:
+                  type: string
+                  format: password
+                  maxLength: 255
+      responses:
+        '200':
+          description: Password Reset
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+              examples:
+                default:
+                  $ref: '#/components/examples/PasswordResetSuccess'
+        '422':
+          description: Invalid or Expired Reset Token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorEnvelope'
+              examples:
+                default:
+                  $ref: '#/components/examples/PasswordResetFailed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /auth/register:
     post:
       tags: [Authentication]
@@ -384,12 +544,12 @@ paths:
         remains null), and auto-enrol email two-factor authentication
         (`mfa_method: email`). Email addresses are normalised to lowercase before
         validation and persistence. Returns `201` with `two_factor_required: true`
-        and `two_factor_token` — no bearer token until
+        and `two_factor_token` - no bearer token until
         `POST /auth/two-factor/send` and `POST /auth/two-factor/verify` complete. Email
-        verification is not required — `email_verified_at` remains null.
+        verification is not required - `email_verified_at` remains null.
 
         Duplicate email addresses return `422` with the same generic `Invalid Credentials`
-        message on the `email` field as failed login — callers cannot distinguish an
+        message on the `email` field as failed login - callers cannot distinguish an
         existing account from other validation failures on that field.
       operationId: register
       security: []
@@ -588,7 +748,7 @@ paths:
       summary: Show Current User Profile
       description: |
         Return the authenticated User's own profile. Any bearer token holder may
-        call this endpoint — `users.list` is **not** required.
+        call this endpoint - `users.list` is **not** required.
 
         Service accounts (`is_service_account`) receive `403`.
 
@@ -627,7 +787,7 @@ paths:
       summary: Update Current User Profile
       description: |
         Update the authenticated User's own `name`. Any interactive bearer token
-        holder may call this — `users.update` is **not** required.
+        holder may call this - `users.update` is **not** required.
 
         - `name` is required; `email`, `password`, and `team_id` are **prohibited**
         - Plain-text markup in `name` is stripped before validation
@@ -764,7 +924,7 @@ paths:
         may be `Admin`, `Manager`, or `User`; optional `team_id` assigns the user
         to a team. Email addresses are normalised to lowercase before validation
         and persistence. New accounts are auto-enrolled in email two-factor
-        authentication (`mfa_method: email`). `email_verified_at` remains null —
+        authentication (`mfa_method: email`). `email_verified_at` remains null -
         no verification email is sent. Does not return a bearer token.
 
         Plain-text markup in `name` is stripped before validation.
@@ -1323,14 +1483,14 @@ paths:
         and User).
 
         Results are scoped to the `web` guard Spatie stores on permission rows.
-        Powers token and API client ability pickers — the same catalog
+        Powers token and API client ability pickers - the same catalog
         `PermissionAbilityCatalog` validates on create.
 
         **Sort Whitelist:** `id`, `name` (default `id` ascending).
 
         **Fields Keys:** `fields[permissions]`.
 
-        **Include:** not supported — any `include` value returns `422`.
+        **Include:** not supported - any `include` value returns `422`.
 
         **Filter:** `filter[search]` partial name match only.
       operationId: listPermissions
@@ -1377,7 +1537,7 @@ paths:
 
         **Fields Keys:** `fields[api_clients]`.
 
-        **Include:** not supported — this resource has no includable relations; any
+        **Include:** not supported - this resource has no includable relations; any
         `include` value returns `422`.
 
         **Filter:** `filter[search]` partial name match only.
@@ -1454,7 +1614,7 @@ paths:
         Single API client. Requires `api-clients.list`.
 
         Supports `fields[api_clients]` only. No `include`, `sort`, `filter`, or
-        pagination — any `include` value returns `422`.
+        pagination - any `include` value returns `422`.
       operationId: showApiClient
       parameters:
         - $ref: '#/components/parameters/QueryFieldsApiClients'
@@ -1558,7 +1718,7 @@ paths:
       summary: List Auth Audit Logs
       description: |
         Paginated authentication audit log index. **Admin role only** (requires
-        `audit-logs.list` plus interactive Admin — service accounts are rejected
+        `audit-logs.list` plus interactive Admin - service accounts are rejected
         even when the permission is present).
 
         **Sort Whitelist:** `id`, `event`, `email`, `user_id`, `api_client_id`,
@@ -1873,7 +2033,7 @@ components:
         meta: {}
 
     RegisterPendingSuccess:
-      summary: Account Created — Two-Factor Pending
+      summary: Account Created - Two-Factor Pending
       value:
         status: success
         status_code: 201
@@ -1910,6 +2070,33 @@ components:
         status: success
         status_code: 200
         message: Logged Out Successfully
+        data: null
+        meta: {}
+
+    ForgotPasswordSuccess:
+      summary: Generic Reset Link Response
+      value:
+        status: success
+        status_code: 200
+        message: If the Account Exists, a Reset Link Has Been Sent
+        data: null
+        meta: {}
+
+    PasswordResetSuccess:
+      summary: Password Reset Complete
+      value:
+        status: success
+        status_code: 200
+        message: Password Reset Successfully
+        data: null
+        meta: {}
+
+    PasswordResetFailed:
+      summary: Invalid or Expired Reset Token
+      value:
+        status: error
+        status_code: 422
+        message: The Reset Token Is Invalid Or Has Expired
         data: null
         meta: {}
 
@@ -2171,6 +2358,8 @@ components:
             email: admin@example.com
             ip_address: 127.0.0.1
             user_agent: OpenAPI Verify
+            location_city: null
+            location_country: 'US'
             personal_access_token_id: 4
             api_client_id: null
             remember_me: false
@@ -2413,7 +2602,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.8.1
+          version: 1.9.0
         meta: {}
 
     HealthUnavailable:
@@ -2423,6 +2612,62 @@ components:
         status_code: 503
         message: Service Unavailable
         data: null
+        meta: {}
+    SystemStatusSuccess:
+      summary: Public Status Page With Monitoring Data
+      value:
+        status: success
+        status_code: 200
+        message: System Status Retrieved Successfully
+        data:
+          monitoring_active: true
+          overall_status: degraded
+          components:
+            - component: database
+              label: Database
+              status: up
+              checked_at: '2026-09-06T12:00:00+00:00'
+              uptime_percentage: 100
+              history:
+                - date: '2026-09-04'
+                  uptime_percentage: 100
+                  status: up
+                - date: '2026-09-05'
+                  uptime_percentage: 99.4
+                  status: degraded
+                - date: '2026-09-06'
+                  uptime_percentage: 100
+                  status: up
+            - component: cache
+              label: Cache
+              status: degraded
+              checked_at: '2026-09-06T12:00:00+00:00'
+              uptime_percentage: 99.9
+              history:
+                - date: '2026-09-04'
+                  uptime_percentage: 100
+                  status: up
+                - date: '2026-09-05'
+                  uptime_percentage: 99.6
+                  status: degraded
+                - date: '2026-09-06'
+                  uptime_percentage: 100
+                  status: up
+            - component: queue
+              label: Queue
+              status: up
+              checked_at: '2026-09-06T12:00:00+00:00'
+              uptime_percentage: 100
+              history:
+                - date: '2026-09-04'
+                  uptime_percentage: 100
+                  status: up
+                - date: '2026-09-05'
+                  uptime_percentage: 100
+                  status: up
+                - date: '2026-09-06'
+                  uptime_percentage: 100
+                  status: up
         meta: {}
 
   securitySchemes:
@@ -2539,6 +2784,12 @@ components:
           - Remember Me Login
           - Client Token Exchange
           - Client Token Exchange Failed
+          - Two-Factor Issued
+          - Two-Factor Verified
+          - Two-Factor Failed
+          - Password Reset Requested
+          - Password Reset
+          - Password Reset Failed
       description: Exact Match on the Persisted Event Value.
 
     QueryFilterUserId:
@@ -2771,7 +3022,8 @@ components:
       description: |
         Sparse Fieldset for Web Session Columns. Allowed: `id`, `user_id` (admins
         with `sessions.list-all` only), `device_name`, `ip_address`, `user_agent`,
-        `remember_me`, `last_activity_at`, `created_at`, `is_current`.
+        `location_city`, `location_country` (telemetry-gated), `remember_me`,
+        `last_activity_at`, `created_at`, `is_current`.
 
     QueryIncludeSessions:
       name: include
@@ -2800,8 +3052,8 @@ components:
         example: id,event,email,created_at
       description: |
         Sparse Fieldset for Auth Audit Log Columns. Allowed: `id`, `user_id`, `event`,
-        `email`, `ip_address`, `user_agent`, `personal_access_token_id`,
-        `api_client_id`, `remember_me`, `created_at`.
+        `email`, `ip_address`, `user_agent`, `location_city`, `location_country`,
+        `personal_access_token_id`, `api_client_id`, `remember_me`, `created_at`.
 
   schemas:
     SuccessEnvelope:
@@ -2865,7 +3117,7 @@ components:
                       type: string
                 allowed:
                   type: object
-                  description: Present on allow-list failures — supported values keyed to the matching error field
+                  description: Present on allow-list failures - supported values keyed to the matching error field
                   additionalProperties:
                     type: array
                     items:
@@ -2926,8 +3178,86 @@ components:
           example: up
         version:
           type: string
-          example: 1.8.1
+          example: 1.9.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
+
+    SystemStatusData:
+      type: object
+      required: [monitoring_active, overall_status, components]
+      properties:
+        monitoring_active:
+          type: boolean
+          description: Whether Any Component Has Ever Recorded a Check (False Before the First Scheduled `health:record` Run)
+        overall_status:
+          type: string
+          enum: [up, degraded, down]
+          description: The Worst Current Status Across Every Component With a Reading (Up When Nothing Has Reported Yet)
+        components:
+          type: array
+          description: One Entry Per Monitored Component
+          items:
+            $ref: '#/components/schemas/SystemStatusComponent'
+
+    SystemStatusComponent:
+      type: object
+      required: [component, label, status, checked_at, uptime_percentage, history]
+      properties:
+        component:
+          type: string
+          description: Stable Component Slug From `system_health_checks.component`
+          example: database
+        label:
+          type: string
+          description: Human-Readable Component Name
+          example: Database
+        status:
+          oneOf:
+            - type: string
+              enum: [up, degraded, down]
+            - type: 'null'
+          description: Current Status From the Latest Recorded Row (Null Before the First Run)
+        checked_at:
+          oneOf:
+            - $ref: '#/components/schemas/ApiDateTime'
+            - type: 'null'
+          description: When the Latest Row Was Recorded
+        uptime_percentage:
+          oneOf:
+            - type: number
+              format: float
+              minimum: 0
+              maximum: 100
+            - type: 'null'
+          description: Whole-Window Aggregate; Up Weighs 1, Degraded 0.5, Down 0 (Null With No Rows in the Window)
+        history:
+          type: array
+          description: One Entry Per Calendar Day (UTC) in the Window, Oldest First
+          items:
+            $ref: '#/components/schemas/DailyUptime'
+
+    DailyUptime:
+      type: object
+      required: [date, uptime_percentage, status]
+      properties:
+        date:
+          type: string
+          format: date
+          example: '2026-09-06'
+        uptime_percentage:
+          oneOf:
+            - type: number
+              format: float
+              minimum: 0
+              maximum: 100
+            - type: 'null'
+          description: Day Aggregate; Null When the Day Has No Recorded Checks
+        status:
+          oneOf:
+            - type: string
+              enum: [up, degraded, down]
+              description: The Worst Status Observed That Day
+            - type: 'null'
+          description: Null When the Day Has No Recorded Checks
 
     ApiDateTime:
       type: string
@@ -3025,6 +3355,17 @@ components:
           oneOf:
             - type: string
             - type: 'null'
+        location_city:
+          oneOf:
+            - type: string
+            - type: 'null'
+          description: Resolved via MaxMind GeoLite2 at session registration; null when the lookup failed open
+        location_country:
+          oneOf:
+            - type: string
+              maxLength: 2
+            - type: 'null'
+          description: ISO 3166-1 alpha-2 code resolved from the session IP; null when the lookup failed open
         remember_me:
           type: boolean
         last_activity_at:
@@ -3084,11 +3425,18 @@ components:
           oneOf:
             - type: string
             - type: 'null'
-        personal_access_token_id:
+        location_city:
           oneOf:
-            - type: integer
+            - type: string
             - type: 'null'
-        api_client_id:
+          description: Resolved via MaxMind GeoLite2 from the audited event IP; null when the lookup failed open
+        location_country:
+          oneOf:
+            - type: string
+              maxLength: 2
+            - type: 'null'
+          description: ISO 3166-1 alpha-2 code resolved from the audited event IP; null when the lookup failed open
+        personal_access_token_id:
           oneOf:
             - type: integer
             - type: 'null'

@@ -31,6 +31,8 @@ final class AuthAuditLogIndexController
     */
 
     /**
+     * Create a new AuthAuditLogIndexController.
+     *
      * @param AuthAuditLogFilterQuery  $filterQuery  composes validated filters onto any audit log builder
      * @param IndexSortQuery           $sortQuery    composes validated sort onto any single-table builder
      * @param IndexFieldsQuery         $fieldsQuery  composes sparse fieldsets onto any single-table builder
@@ -51,6 +53,9 @@ final class AuthAuditLogIndexController
 
     /**
      * Return a page of auth audit logs matching the active filters.
+     *
+     * @param  AuthAuditLogIndexRequest $request the validated index request
+     * @return JsonResponse             the paginated success envelope
      */
     public function __invoke(AuthAuditLogIndexRequest $request): JsonResponse
     {

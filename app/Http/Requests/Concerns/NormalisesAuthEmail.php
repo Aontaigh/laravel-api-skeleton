@@ -24,6 +24,8 @@ trait NormalisesAuthEmail
 
     /**
      * Store the email address in lowercase before validation runs.
+     *
+     * @return void
      */
     protected function normaliseAuthEmail(): void
     {

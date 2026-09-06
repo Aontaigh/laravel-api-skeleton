@@ -23,7 +23,8 @@ final class RevokePersonalAccessTokenAction
      * @example
      * app(RevokePersonalAccessTokenAction::class)->execute($token);
      *
-     * @param PersonalAccessToken $token the Token to revoke
+     * @param  PersonalAccessToken $token the Token to revoke
+     * @return void
      */
     public function execute(PersonalAccessToken $token): void
     {

@@ -12,6 +12,7 @@ use App\DataTransferObjects\Sessions\RegisterWebSessionData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
+use App\Http\Middleware\EnsureSessionVersionMatches;
 use App\Http\Requests\Auth\RememberLoginRequest;
 use App\Http\Resources\AuthenticatedUserResource;
 use App\Http\Resources\PersonalAccessTokenResource;
@@ -103,7 +104,7 @@ final class RememberLoginController
         }
 
         if (session()->isStarted()) {
-            session()->put('session_version', $user->session_version);
+            session()->put(EnsureSessionVersionMatches::SESSION_KEY, $user->session_version);
 
             $register->execute(new RegisterWebSessionData(
                 user: $user,

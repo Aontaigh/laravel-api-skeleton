@@ -14,7 +14,7 @@ use Illuminate\Contracts\Validation\Validator;
 /**
  * Shared auth audit log Show query-param rules and typed accessors.
  *
- * Composes reusable parse traits for `include` and sparse `fields[…]` only —
+ * Composes reusable parse traits for `include` and sparse `fields[…]` only -
  * no sort, filter, or pagination on a show endpoint.
  *
  * @mixin \App\Http\Requests\ApiFormRequest
@@ -38,6 +38,8 @@ trait AppliesAuthAuditLogShowParams
     */
 
     /**
+     * Get the requested `fields[auth_audit_logs]` columns, or null.
+     *
      * @return list<string>|null
      */
     public function authAuditLogFields(): ?array
@@ -46,6 +48,8 @@ trait AppliesAuthAuditLogShowParams
     }
 
     /**
+     * Get the requested `fields[users]` columns, or null.
+     *
      * @return list<string>|null
      */
     public function auditLogUserFields(): ?array
@@ -59,6 +63,8 @@ trait AppliesAuthAuditLogShowParams
     */
 
     /**
+     * Get the Auth Audit Log Show query-param validation rules.
+     *
      * @return array<string, array<int, mixed>>
      */
     protected function authAuditLogShowRules(): array
@@ -78,6 +84,8 @@ trait AppliesAuthAuditLogShowParams
     */
 
     /**
+     * Get the relations callers may request via `?include=`.
+     *
      * @return list<string>
      */
     protected function allowedIncludeKeys(): array
@@ -86,6 +94,8 @@ trait AppliesAuthAuditLogShowParams
     }
 
     /**
+     * Get the `fields[…]` resource keys this resource accepts.
+     *
      * @return list<string>
      */
     protected function allowedFieldsResourceKeys(): array
@@ -94,6 +104,10 @@ trait AppliesAuthAuditLogShowParams
     }
 
     /**
+     * Get the field allow-list for the given resource key.
+     *
+     *
+     * @param  string       $resourceKey the `fields[…]` key being resolved
      * @return list<string>
      */
     protected function allowedFieldsFor(string $resourceKey): array
@@ -111,6 +125,12 @@ trait AppliesAuthAuditLogShowParams
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Reject include or field keys outside the allow-list.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
+     */
     protected function validateAuthAuditLogShowParams(Validator $validator): void
     {
         $this->validateFieldsKeys($validator);
@@ -126,6 +146,8 @@ trait AppliesAuthAuditLogShowParams
     */
 
     /**
+     * Get the `users` columns exposed under `fields[users]`.
+     *
      * @return list<string>
      */
     public function allowedNestedUserFields(): array

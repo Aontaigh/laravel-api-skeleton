@@ -11,6 +11,12 @@ use App\Enums\RoleName;
  */
 final readonly class CreateUserData
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Create a new CreateUserData value object.
      *

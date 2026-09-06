@@ -71,7 +71,7 @@ trait ValidatesTokenPayload
     {
         /*
          * `abilities.*` is validated as `string`, but that only proves the
-         * shape at the HTTP boundary — PHPStan still sees the validated
+         * shape at the HTTP boundary - PHPStan still sees the validated
          * array as `array<mixed>`. Building the list element-by-element
          * behind an `is_string()` guard (rather than casting) lets
          * PHPStan narrow every entry pushed on, so the result is provably
@@ -103,8 +103,8 @@ trait ValidatesTokenPayload
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'abilities' => ['sometimes', 'array'],
-            'abilities.*' => ['string'],
+            'abilities' => ['sometimes', 'array', 'max:50'],
+            'abilities.*' => ['string', 'max:255'],
         ];
     }
 

@@ -44,7 +44,7 @@ trait ResolvesAuthenticatedViewer
      *
      * `authorize()` has already run by the time accessors are called, so a
      * missing User is a wiring fault (route not behind auth) rather than a
-     * client error — fail loudly instead of degrading silently.
+     * client error - fail loudly instead of degrading silently.
      *
      * @return User the authenticated User
      *

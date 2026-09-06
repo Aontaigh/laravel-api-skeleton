@@ -5,7 +5,7 @@ step. Written to be followed literally by a human or an agent.
 
 For GitHub release note formatting (emoji section headings, **Full Changelog**
 footer), follow the **create-github-release** skill in your conventions toolkit.
-This runbook is the surrounding procedure — gates, changelog, tag, and publish.
+This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 
 - **Prerequisites:** `gh` authenticated against `Aontaigh/laravel-api-skeleton`
   (`gh auth status`); push access to `main`; Docker for Sail when host PHP is not 8.5.
@@ -15,12 +15,12 @@ This runbook is the surrounding procedure — gates, changelog, tag, and publish
 
 ## Release Checklist
 
-- [ ] 1. App version bumped — `composer.json`, `docs/openapi.yaml`, and changelog (see [App version](#app-version))
-- [ ] 2. `CHANGELOG.md` updated — `## [X.Y.Z] - YYYY-MM-DD` with today's date
+- [ ] 1. App version bumped - `composer.json`, `docs/openapi.yaml`, and changelog (see [App version](#app-version))
+- [ ] 2. `CHANGELOG.md` updated - `## [X.Y.Z] - YYYY-MM-DD` with today's date
 - [ ] 3. Quality gates green locally (see below)
 - [ ] 4. Release commit pushed to `main`, CI green **on that commit**
 - [ ] 5. Tag `vX.Y.Z` on the CI-green commit and push
-- [ ] 6. GitHub release published (transform changelog headings to emoji — do not paste
+- [ ] 6. GitHub release published (transform changelog headings to emoji - do not paste
   `CHANGELOG.md` verbatim)
 
 ## Release Flow
@@ -38,12 +38,12 @@ flowchart LR
 ## App Version
 
 The `/health` endpoint reports the app version from `config('app.version')`. That
-value defaults to the **`version` field in `composer.json`** — not a hard-coded
+value defaults to the **`version` field in `composer.json`** - not a hard-coded
 fallback in `config/app.php`. Keep these in sync on every release:
 
 | File | What to update |
 | --- | --- |
-| [`composer.json`](../composer.json) | `"version": "X.Y.Z"` — **source of truth** |
+| [`composer.json`](../composer.json) | `"version": "X.Y.Z"` - **source of truth** |
 | [`docs/openapi.yaml`](../docs/openapi.yaml) | `info.version`, the `HealthSuccess` example, and the `HealthData.version` schema example |
 | Git tag | `vX.Y.Z` (must match composer version without the `v` prefix) |
 
@@ -66,13 +66,13 @@ Actions build (`GITHUB_REF_NAME=vX.Y.Z`) does not match the composer version.
 Rename `## [Unreleased]` to `## [X.Y.Z] - YYYY-MM-DD`, add a fresh empty
 `## [Unreleased]` above it, and update the footer compare links at the bottom.
 
-Use **plain** section headings in this file (`### Added`, `### Changed`) — emoji
+Use **plain** section headings in this file (`### Added`, `### Changed`) - emoji
 headings are for the GitHub release only.
 
 ## 2. Run the Quality Gates
 
 > [!IMPORTANT]
-> Discover commands from this repo — do not assume another project's gates. Primary
+> Discover commands from this repo - do not assume another project's gates. Primary
 > sources: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and `composer.json`
 > scripts.
 
@@ -86,7 +86,7 @@ bash scripts/verify-openapi-examples.sh
 
 `composer ci` runs Pint, Larastan, PHPUnit with the 90% coverage gate, app version
 sync (`composer verify:version`), and `composer audit`. OpenAPI example verification
-is a **separate** CI job — run it locally before tagging when API or docs changed.
+is a **separate** CI job - run it locally before tagging when API or docs changed.
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
 Sail port notes when Docker ports on your machine are already in use.
@@ -101,7 +101,7 @@ gh run watch --exit-status
 ```
 
 CI must be green on the commit you are about to tag. The **All Quality Gates** summary
-job must pass — Pint, app version sync, Larastan, PHPUnit + coverage, Security Audit,
+job must pass - Pint, app version sync, Larastan, PHPUnit + coverage, Security Audit,
 Semgrep, and OpenAPI Examples.
 
 ## 4. Tag the CI-Green Commit
@@ -115,7 +115,7 @@ git rev-parse vX.Y.Z          # must equal the SHA above
 ```
 
 > [!WARNING]
-> Tag only after CI passes on **that** commit — not an earlier changelog-only push that
+> Tag only after CI passes on **that** commit - not an earlier changelog-only push that
 > failed a gate.
 
 ## 5. Publish the GitHub Release
@@ -146,4 +146,4 @@ gh release view vX.Y.Z --web
 ```
 
 For ticketless repos, bullet lines with commit or PR links match prior skeleton
-releases — see [v1.3.0](https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.3.0).
+releases - see [v1.3.0](https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.3.0).

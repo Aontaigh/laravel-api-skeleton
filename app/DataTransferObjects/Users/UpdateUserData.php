@@ -12,9 +12,9 @@ use App\Models\User;
 final readonly class UpdateUserData
 {
     /*
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     | Constructor
-    |--------------------------------------------------------------------------​
+    |--------------------------------------------------------------------------
     */
 
     /**
@@ -22,7 +22,7 @@ final readonly class UpdateUserData
      *
      * @param User        $user   the User being updated
      * @param string|null $name   the new display name, or null to leave unchanged
-     * @param int|null    $teamId the new Team id, or null to leave unchanged
+     * @param int|null    $teamId the new Team ID, or null to leave unchanged
      */
     public function __construct(
         public User $user,

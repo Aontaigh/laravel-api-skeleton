@@ -152,7 +152,7 @@ final class ApiValidationTest extends TestCase
         ]);
 
         $allowed = $this->apiMetaAllowed($response);
-        $this->assertSame(AllowListValidation::sorted(UserQueryConstraints::ALLOWED_SORTS), $allowed['sort'] ?? null);
+        $this->assertSame(AllowListValidation::sorted(['created_at', 'email', 'id', 'name']), $allowed['sort'] ?? null);
         $this->assertSame(AllowListValidation::sorted(UserQueryConstraints::ALLOWED_INCLUDES), $allowed['include'] ?? null);
         $this->assertSame(['created_at', 'email', 'id', 'name'], $allowed['fields.users'] ?? null);
         $this->assertSame(['search'], $allowed['filter'] ?? null);

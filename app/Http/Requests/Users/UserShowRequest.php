@@ -67,7 +67,8 @@ final class UserShowRequest extends ApiFormRequest
     /**
      * Run allow-list validation for include and fields params.
      *
-     * @param Validator $validator the validator under extension
+     * @param  Validator $validator the validator under extension
+     * @return void
      */
     public function withValidator(Validator $validator): void
     {

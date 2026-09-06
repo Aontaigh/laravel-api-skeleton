@@ -20,4 +20,7 @@ enum AuthAuditEvent: string
     case TwoFactorIssued = 'Two-Factor Issued';
     case TwoFactorVerified = 'Two-Factor Verified';
     case TwoFactorFailed = 'Two-Factor Failed';
+    case PasswordResetRequested = 'Password Reset Requested';
+    case PasswordReset = 'Password Reset';
+    case PasswordResetFailed = 'Password Reset Failed';
 }

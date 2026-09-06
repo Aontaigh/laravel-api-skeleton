@@ -24,7 +24,9 @@ final class ExchangeClientCredentialsAction
     */
 
     /**
-     * @param AuthenticateClientCredentialsAction $authenticate verifies client id and secret
+     * Create a new ExchangeClientCredentialsAction.
+     *
+     * @param AuthenticateClientCredentialsAction $authenticate verifies client ID and secret
      * @param CreatePersonalAccessTokenAction     $issueToken   issues the scoped Sanctum token
      * @param RecordAuthAuditAction               $audit        records exchange audit events
      */
@@ -46,7 +48,7 @@ final class ExchangeClientCredentialsAction
      * @example
      * app(ExchangeClientCredentialsAction::class)->execute($credentials, $ip, $userAgent);
      *
-     * @param  ClientCredentialsData                           $credentials the client id and secret payload
+     * @param  ClientCredentialsData                           $credentials the client ID and secret payload
      * @param  string|null                                     $ipAddress   the caller IP address
      * @param  string|null                                     $userAgent   the caller user agent
      * @return array{client: ApiClient, token: NewAccessToken} the client row and issued token

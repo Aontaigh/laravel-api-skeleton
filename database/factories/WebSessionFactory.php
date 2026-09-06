@@ -30,6 +30,8 @@ final class WebSessionFactory extends Factory
     */
 
     /**
+     * Define the model's default state.
+     *
      * @return array<string, mixed>
      */
     public function definition(): array
@@ -48,6 +50,8 @@ final class WebSessionFactory extends Factory
 
     /**
      * Mark the web session as revoked.
+     *
+     * @return static
      */
     public function revoked(): static
     {

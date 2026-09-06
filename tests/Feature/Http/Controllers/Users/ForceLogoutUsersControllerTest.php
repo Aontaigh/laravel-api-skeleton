@@ -52,6 +52,11 @@ final class ForceLogoutUsersControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /*
+     * Mutation Tests
+     * --------------
+     */
+
     /** @var User an admin viewer with `users.force-logout` */
     private User $admin;
 
@@ -80,6 +85,11 @@ final class ForceLogoutUsersControllerTest extends TestCase
     | Tests
     |--------------------------------------------------------------------------
     */
+
+    /*
+     * Mutation Tests
+     * --------------
+     */
 
     /**
      * Return the standard success envelope with the logged-out User ids.
@@ -260,6 +270,11 @@ final class ForceLogoutUsersControllerTest extends TestCase
             ->assertUnauthorized();
     }
 
+    /*
+     * Authorization Tests
+     * -------------------
+     */
+
     /**
      * Deny managers without `users.force-logout`.
      */
@@ -329,6 +344,11 @@ final class ForceLogoutUsersControllerTest extends TestCase
 
         $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
     }
+
+    /*
+     * Validation Tests
+     * ----------------
+     */
 
     /**
      * Require the ids array on force-logout requests.

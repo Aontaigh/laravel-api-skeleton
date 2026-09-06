@@ -37,7 +37,7 @@ final class UserResource extends JsonResource
      *
      * Omits keys for columns that were not selected (sparse fieldsets), and
      * omits `email` unless the requesting User holds `users.view-email` or is
-     * viewing their own record — a sparse-fieldset omission alone is not enough,
+     * viewing their own record - a sparse-fieldset omission alone is not enough,
      * because a request that never constrains `fields[users]` runs an unqualified
      * `SELECT *` and would otherwise leak the column regardless of permission.
      *

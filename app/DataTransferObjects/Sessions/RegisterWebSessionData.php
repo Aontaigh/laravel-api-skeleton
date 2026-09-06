@@ -11,11 +11,17 @@ use App\Models\User;
  */
 final readonly class RegisterWebSessionData
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Create a new RegisterWebSessionData value object.
      *
      * @param User        $user       the authenticated User
-     * @param string      $sessionId  the Laravel session id stamped at the privilege boundary
+     * @param string      $sessionId  the Laravel session ID stamped at the privilege boundary
      * @param string      $deviceName the device label from the login request
      * @param string      $ipAddress  the caller IP address
      * @param string|null $userAgent  the caller user agent

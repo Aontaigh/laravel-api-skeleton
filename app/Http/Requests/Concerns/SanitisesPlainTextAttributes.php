@@ -24,6 +24,8 @@ trait SanitisesPlainTextAttributes
 
     /**
      * Prepare the data for validation.
+     *
+     * @return void
      */
     protected function prepareForValidation(): void
     {
@@ -38,6 +40,8 @@ trait SanitisesPlainTextAttributes
 
     /**
      * Strip markup from each configured plain-text attribute.
+     *
+     * @return void
      */
     protected function sanitisePlainTextAttributes(): void
     {

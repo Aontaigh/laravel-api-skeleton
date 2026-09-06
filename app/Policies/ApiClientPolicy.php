@@ -32,8 +32,9 @@ final class ApiClientPolicy
     /**
      * Whether the User may view a single API client.
      *
-     * @param User      $user   the authenticated User
-     * @param ApiClient $client the client being viewed
+     * @param  User      $user   the authenticated User
+     * @param  ApiClient $client the client being viewed
+     * @return bool      true when the User may view the API Client
      */
     public function view(User $user, ApiClient $client): bool
     {

@@ -23,7 +23,7 @@ final class PendingTwoFactor
     */
 
     /**
-     * Session key holding the pending challenge's User id.
+     * Session key holding the pending challenge's User ID.
      */
     public const string USER_ID_KEY = 'auth.two_factor.user_id';
 
@@ -53,7 +53,7 @@ final class PendingTwoFactor
     public const string PENDING_CACHE_PREFIX = 'two-factor-pending:';
 
     /**
-     * Cache key prefix mapping a User id to their current opaque pending token.
+     * Cache key prefix mapping a User ID to their current opaque pending token.
      */
     public const string PENDING_USER_PREFIX = 'two-factor-pending-user:';
 
@@ -129,6 +129,20 @@ final class PendingTwoFactor
      */
     public static function resolve(?string $token = null): ?PendingTwoFactorChallenge
     {
+        /*
+         * Session-bound pendings live as long as the session payload, so the
+         * configured pending TTL is enforced here explicitly: an expired
+         * challenge is torn down and reported as absent instead of letting a
+         * stolen mid-login cookie keep re-arming the OTP flow.
+         */
+        $expiresAt = self::expiresAt($token);
+
+        if (is_int($expiresAt) && $expiresAt <= now()->timestamp) {
+            self::forget($token);
+
+            return null;
+        }
+
         $sessionUserId = self::userId();
 
         if ($sessionUserId !== null) {
@@ -170,7 +184,7 @@ final class PendingTwoFactor
      *
      * Session-bound clients store the expiry in the session payload; stateless
      * clients rely on the opaque-token cache. When a session expiry stamp is
-     * present it always wins — even if a caller also passes an opaque token —
+     * present it always wins - even if a caller also passes an opaque token -
      * so polling and send/verify stay aligned with the active browser session.
      *
      * @param  string|null $token optional token from status/send/verify when no session cookie is used
@@ -206,9 +220,9 @@ final class PendingTwoFactor
     }
 
     /**
-     * Get the pending challenge's User id, or null when none is pending.
+     * Get the pending challenge's User ID, or null when none is pending.
      *
-     * @return int|null the pending User id
+     * @return int|null the pending User ID
      */
     public static function userId(): ?int
     {
@@ -234,7 +248,8 @@ final class PendingTwoFactor
     /**
      * Clear the pending challenge from the session and cache.
      *
-     * @param string|null $token optional explicit token when the session is unavailable
+     * @param  string|null $token optional explicit token when the session is unavailable
+     * @return void
      */
     public static function forget(?string $token = null): void
     {
@@ -287,9 +302,9 @@ final class PendingTwoFactor
     }
 
     /**
-     * Build the cache key mapping a User id to their current opaque token.
+     * Build the cache key mapping a User ID to their current opaque token.
      *
-     * @param  int    $userId the User id
+     * @param  int    $userId the User ID
      * @return string the cache key
      */
     private static function pendingUserCacheKey(int $userId): string

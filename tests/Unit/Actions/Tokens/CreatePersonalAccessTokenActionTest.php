@@ -16,7 +16,7 @@ use Tests\UnitTestCase;
 /**
  * Unit tests for CreatePersonalAccessTokenAction.
  *
- * Uses an in-memory catalog resolver — no database, no HTTP. The User is
+ * Uses an in-memory catalog resolver - no database, no HTTP. The User is
  * unsaved; `createToken()` is never reached when the catalog rejects abilities.
  */
 #[CoversClass(CreatePersonalAccessTokenAction::class)]

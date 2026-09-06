@@ -14,7 +14,7 @@ use Spatie\Permission\Models\Permission;
  * Spatie permission catalog.
  *
  * FormRequests validate the HTTP shape (`abilities` is an array of strings);
- * this Service enforces domain rules — only registered permission names (or
+ * this Service enforces domain rules - only registered permission names (or
  * the unrestricted wildcard) may be stored on a Token.
  */
 final class PermissionAbilityCatalog

@@ -18,7 +18,11 @@ final class TwoFactorCodeNotification extends Notification
     |--------------------------------------------------------------------------
     */
 
-    /** How long the emailed code stays valid, in minutes. */
+    /**
+     * Get the OTP validity window in minutes.
+     *
+     * @return int the OTP validity window in minutes
+     */
     private static function expiresMinutes(): int
     {
         return (int) ceil(config()->integer('api.two_factor_code_ttl_seconds') / 60);
@@ -31,6 +35,8 @@ final class TwoFactorCodeNotification extends Notification
     */
 
     /**
+     * Create a new TwoFactorCodeNotification.
+     *
      * @param string $code the plaintext six-digit one-time code
      */
     public function __construct(

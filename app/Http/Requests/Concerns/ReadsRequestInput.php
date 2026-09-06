@@ -30,7 +30,7 @@ trait ReadsRequestInput
      * Signatures here must match Laravel's exactly, or PHP rejects the host
      * class. The return is narrowed to `ValidatedInput` from Laravel's
      * `ValidatedInput|array`, because the array is only returned when `$keys`
-     * is passed — which these concerns never do, and the union would make
+     * is passed - which these concerns never do, and the union would make
      * every chained `->string()` call a static analysis error.
      *
      * @param  array<int, string>|null $keys limit the container to these keys

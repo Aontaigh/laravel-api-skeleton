@@ -43,6 +43,8 @@ final class IssueTwoFactorChallengeAction
 
     /**
      * Seconds the code remains valid before auto-expiry.
+     *
+     * @return int
      */
     public static function ttlSeconds(): int
     {
@@ -65,11 +67,12 @@ final class IssueTwoFactorChallengeAction
      *
      * A fresh issue overwrites any previous code, invalidating it. Delivery is
      * queued via {@see TwoFactorChallengeIssued}. A resend passes
-     * `preserveAttempts` so the guess count carries over the new code — a
+     * `preserveAttempts` so the guess count carries over the new code - a
      * caller can't reset the lockout window by requesting a fresh code.
      *
-     * @param User $user             the User to challenge
-     * @param bool $preserveAttempts whether to carry the existing attempt count onto the new code
+     * @param  User $user             the User to challenge
+     * @param  bool $preserveAttempts whether to carry the existing attempt count onto the new code
+     * @return void
      */
     public function execute(User $user, bool $preserveAttempts = false): void
     {

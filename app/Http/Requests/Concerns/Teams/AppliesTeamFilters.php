@@ -35,6 +35,8 @@ trait AppliesTeamFilters
     */
 
     /**
+     * Get the requested `fields[teams]` columns, or null.
+     *
      * @return list<string>|null
      */
     public function teamFields(): ?array
@@ -48,6 +50,9 @@ trait AppliesTeamFilters
     */
 
     /**
+     * Reject `filter[…]` keys outside the allow-list.
+     *
+     *
      * @return array<string, array<int, mixed>>
      */
     protected function teamFilterRules(): array
@@ -74,6 +79,12 @@ trait AppliesTeamFilters
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Reject `filter[…]` keys outside the allow-list.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
+     */
     protected function validateTeamFilterKeys(Validator $validator): void
     {
         $validator->after(function (Validator $check): void {
@@ -106,6 +117,8 @@ trait AppliesTeamFilters
     */
 
     /**
+     * Get the `filter[…]` keys this resource accepts.
+     *
      * @return list<string>
      */
     protected function allowedFilterKeys(): array
@@ -114,6 +127,8 @@ trait AppliesTeamFilters
     }
 
     /**
+     * Get the columns callers may sort on via `?sort=`.
+     *
      * @return list<string>
      */
     protected function allowedSortColumns(): array
@@ -122,6 +137,8 @@ trait AppliesTeamFilters
     }
 
     /**
+     * Get the `fields[…]` resource keys this resource accepts.
+     *
      * @return list<string>
      */
     protected function allowedFieldsResourceKeys(): array
@@ -130,6 +147,9 @@ trait AppliesTeamFilters
     }
 
     /**
+     * Get the field allow-list for the given resource key.
+     *
+     * @param  string       $resourceKey the `fields[…]` key being resolved
      * @return list<string>
      */
     protected function allowedFieldsFor(string $resourceKey): array

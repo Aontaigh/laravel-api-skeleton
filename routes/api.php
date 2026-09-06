@@ -9,10 +9,21 @@ use Illuminate\Support\Facades\Route;
 | API Routes
 |--------------------------------------------------------------------------
 |
-| Inline fully-qualified controller class names — no `use` imports at the top
+| Inline fully-qualified controller class names - no `use` imports at the top
 | of this file (see `php-tooling`). Register this file in `bootstrap/app.php`
 | without a `->namespace()` on the route group, or Laravel will prepend the
 | group namespace to every action and break resolution.
+|
+*/
+
+/*
+|--------------------------------------------------------------------------
+| Public Authentication
+|--------------------------------------------------------------------------
+|
+| Credential exchange and account recovery. No bearer token is required;
+| every route carries its own dedicated throttle so one surface cannot
+| exhaust another's budget.
 |
 */
 
@@ -29,6 +40,17 @@ Route::prefix('auth')->middleware(['throttle:api-auth'])->group(function (): voi
 
 });
 
+/*
+|--------------------------------------------------------------------------
+| Two-Factor Challenge
+|--------------------------------------------------------------------------
+|
+| Completes the pending challenge opened by login or registration. The
+| challenge is resolved from the session cookie or the opaque
+| `two_factor_token` returned alongside `two_factor_required`.
+|
+*/
+
 Route::post('/auth/two-factor/send', \App\Http\Controllers\Auth\SendTwoFactorController::class)
     ->middleware('throttle:api-auth-two-factor-send')
     ->name('two-factor.send');
@@ -41,21 +63,97 @@ Route::get('/auth/two-factor/status', \App\Http\Controllers\Auth\TwoFactorStatus
     ->middleware('throttle:api-auth-two-factor-status')
     ->name('two-factor.status');
 
+/*
+|--------------------------------------------------------------------------
+| Password Reset
+|--------------------------------------------------------------------------
+|
+| Unauthenticated account recovery. Both endpoints answer identically for
+| known and unknown addresses; the reset token in the request is the only
+| authorisation for setting a new password.
+|
+*/
+
+Route::post('/auth/forgot-password', \App\Http\Controllers\Auth\ForgotPasswordController::class)
+    ->middleware('throttle:api-auth-password')
+    ->name('password.request');
+
+Route::post('/auth/reset-password', \App\Http\Controllers\Auth\ResetPasswordController::class)
+    ->middleware('throttle:api-auth-password')
+    ->name('password.reset');
+
+/*
+|--------------------------------------------------------------------------
+| Client Credentials
+|--------------------------------------------------------------------------
+|
+| Machine-to-machine token exchange for API Clients. Shorter-lived than a
+| Personal Access Token by default; see `client_token_expiration_days`.
+|
+*/
+
 Route::post('/oauth/token', \App\Http\Controllers\Auth\ClientTokenExchangeController::class)
     ->middleware('throttle:api-client-auth')
     ->name('oauth.token');
 
-Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttle:api'])->group(function (): void {
+/*
+|--------------------------------------------------------------------------
+| System Status
+|--------------------------------------------------------------------------
+|
+| Public, unauthenticated status page: the current state and daily uptime
+| history per monitored component, read from `health:record`'s persisted
+| rows. A dedicated per-IP throttle keeps status polling from sharing the
+| authenticated API's budget. `GET /health` (routes/web.php) remains the
+| load-balancer probe; this endpoint is the human-facing status page.
+|
+*/
+
+Route::get('/status', \App\Http\Controllers\SystemHealth\SystemStatusController::class)
+    ->middleware('throttle:api-status')
+    ->name('status');
+/*
+|--------------------------------------------------------------------------
+| Authenticated API
+|--------------------------------------------------------------------------
+|
+| Every route below requires a Sanctum bearer token or a stateful SPA
+| session cookie. `active.account` rejects suspended accounts, and
+| `session.version` turns away cookies stamped with a superseded version
+| (force-logout, password change, password reset).
+|
+*/
+
+Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session.touch', 'throttle:api'])->group(function (): void {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Account
+    |--------------------------------------------------------------------------
+    |
+    | Self-Service Surface: end the current session, view and update the
+    | caller's own profile and password.
+    |
+    */
 
     Route::post('/logout', \App\Http\Controllers\Auth\LogoutController::class)
         ->name('auth.logout');
+
+    Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)
+        ->name('me.show');
+
+    Route::patch('/me', \App\Http\Controllers\Users\UpdateMeController::class)
+        ->name('me.update');
+
+    Route::patch('/me/password', \App\Http\Controllers\Users\UpdateMePasswordController::class)
+        ->name('me.password.update');
 
     /*
     |--------------------------------------------------------------------------
     | Sessions
     |--------------------------------------------------------------------------
     |
-    | Cookie-bound web session registry — list, revoke one device, or end the
+    | Cookie-bound web session registry - list, revoke one device, or end the
     | current browser without revoking bearer tokens.
     |
     */
@@ -69,23 +167,15 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
     Route::delete('/sessions/{web_session}', \App\Http\Controllers\Sessions\DestroySessionController::class)
         ->name('sessions.destroy');
 
-    Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)
-        ->name('me.show');
-
-    Route::patch('/me', \App\Http\Controllers\Users\UpdateMeController::class)
-        ->name('me.update');
-
-    Route::patch('/me/password', \App\Http\Controllers\Users\UpdateMePasswordController::class)
-        ->name('me.password.update');
-
     /*
     |--------------------------------------------------------------------------
     | Users
     |--------------------------------------------------------------------------
     |
     | Query-Param-Driven User Index and Show Endpoints (`sort`, `fields`,
-    | `include`, `filter`, pagination on index) plus admin-issued Personal
-    | Access Tokens for another User.
+    | `include`, `filter`, pagination on index) plus Admin Operations:
+    | creation, suspension, forced logout, and Admin-Issued Personal Access
+    | Tokens for another User.
     |
     */
 
@@ -119,10 +209,10 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
 
     /*
     |--------------------------------------------------------------------------
-    | Tokens
+    | Personal Access Tokens
     |--------------------------------------------------------------------------
     |
-    | Self-Service Personal Access Tokens for the authenticated caller.
+    | Self-Service Tokens for the authenticated caller.
     |
     */
 
@@ -141,7 +231,7 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
     | API Clients
     |--------------------------------------------------------------------------
     |
-    | Admin-managed machine-to-machine client credentials.
+    | Admin-Managed Machine-to-Machine Client Credentials.
     |
     */
 
@@ -155,11 +245,11 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'throttl
     Route::get('/clients/{client}', \App\Http\Controllers\Clients\ClientShowController::class)
         ->name('clients.show');
 
-    Route::delete('/clients/{client}', \App\Http\Controllers\Clients\DestroyClientController::class)
-        ->name('clients.destroy');
-
     Route::patch('/clients/{client}', \App\Http\Controllers\Clients\UpdateClientController::class)
         ->name('clients.update');
+
+    Route::delete('/clients/{client}', \App\Http\Controllers\Clients\DestroyClientController::class)
+        ->name('clients.destroy');
 
     /*
     |--------------------------------------------------------------------------

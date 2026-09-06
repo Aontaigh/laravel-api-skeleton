@@ -38,7 +38,8 @@ final class SendTwoFactorCodeNotification implements ShouldQueue
     /**
      * Send the two-factor code notification for the issued challenge.
      *
-     * @param TwoFactorChallengeIssued $event the dispatched challenge event
+     * @param  TwoFactorChallengeIssued $event the dispatched challenge event
+     * @return void
      */
     public function handle(TwoFactorChallengeIssued $event): void
     {

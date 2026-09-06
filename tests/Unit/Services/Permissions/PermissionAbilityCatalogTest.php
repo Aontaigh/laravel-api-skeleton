@@ -13,7 +13,7 @@ use Tests\UnitTestCase;
 /**
  * Unit tests for PermissionAbilityCatalog.
  *
- * Uses an in-memory permission list — no database, no Spatie queries.
+ * Uses an in-memory permission list - no database, no Spatie queries.
  */
 #[CoversClass(PermissionAbilityCatalog::class)]
 final class PermissionAbilityCatalogTest extends UnitTestCase
@@ -54,6 +54,11 @@ final class PermissionAbilityCatalogTest extends UnitTestCase
     |--------------------------------------------------------------------------
     */
 
+    /*
+     * Catalog Tests
+     * -------------
+     */
+
     /**
      * List every permission name from the resolver.
      */
@@ -84,6 +89,11 @@ final class PermissionAbilityCatalogTest extends UnitTestCase
         $this->assertTrue($catalog->exists('roles.list'));
         $this->assertFalse($catalog->exists('not-a-permission'));
     }
+
+    /*
+     * Ability Normalisation Tests
+     * ---------------------------
+     */
 
     /**
      * Treat a single wildcard as unrestricted.
@@ -151,6 +161,11 @@ final class PermissionAbilityCatalogTest extends UnitTestCase
 
         $this->assertSame(['tokens.list-own'], $abilities);
     }
+
+    /*
+     * Validation Tests
+     * ----------------
+     */
 
     /**
      * Reject unknown ability names.

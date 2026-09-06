@@ -27,7 +27,7 @@ final class TwoFactorStatusRequest extends ApiFormRequest
     */
 
     /**
-     * Public endpoint — the pending challenge lives in the session or token.
+     * Public endpoint - the pending challenge lives in the session or token.
      *
      * @return bool always true
      */

@@ -2,7 +2,7 @@
 
 Authorisation uses [Spatie Laravel Permission](https://spatie.be/docs/laravel-permission).
 Permission strings are the single source of truth for what a caller may do; Policies
-and query scoping enforce them server-side — never on the client alone.
+and query scoping enforce them server-side - never on the client alone.
 
 [`database/seeders/RolesAndPermissionsSeeder.php`](../database/seeders/RolesAndPermissionsSeeder.php)
 creates every permission below and assigns them to the seeded roles (`Admin`,
@@ -51,7 +51,7 @@ Policy or request concern.
 #### `GET /me`
 
 Any authenticated interactive User may call `GET /api/me` to load their own profile.
-`users.list` is not required — token-only Users use this instead of
+`users.list` is not required - token-only Users use this instead of
 `GET /api/users/{id}`. `UserPolicy::viewMe()` denies service accounts. The
 response always includes the caller's `email` and supports the same `include` and
 `fields[…]` allow-lists as User show.
@@ -72,7 +72,7 @@ from the response unless the viewer holds this permission. The check lives in
 `user_id` is only exposed when the viewer holds `sessions.list-all`. `ip_address` and
 `user_agent` are always returned for the caller's own sessions; cross-user telemetry
 requires `sessions.list-all` (admin session management). The checks live in
-`WebSessionResource`, not only in the query allow-list — omitting `fields[sessions]`
+`WebSessionResource`, not only in the query allow-list - omitting `fields[sessions]`
 runs an unqualified `SELECT *` and would otherwise leak those columns.
 
 #### `users.create`
@@ -100,7 +100,7 @@ excluded from the index and return 404 on show.
 #### Token Permissions Are Self-Scoped
 
 `tokens.list-own` always returns only the caller's tokens. There is no
-`tokens.list-all` — admins issue tokens for others via `tokens.create-for-user` on
+`tokens.list-all` - admins issue tokens for others via `tokens.create-for-user` on
 `POST /api/users/{user}/tokens`.
 
 #### `GET /api/audit-logs`
@@ -129,7 +129,7 @@ generic `401 Unauthenticated`.
 
 Admins suspend and unsuspend accounts via `POST /api/users/{user}/suspend` and
 `POST /api/users/{user}/unsuspend`, both gated by `users.suspend`. An Admin
-cannot suspend their own account — that would leave no one able to lift the
+cannot suspend their own account - that would leave no one able to lift the
 suspension. Suspending a service account disables its API clients'
 client-credentials exchange (the exchange rejects suspended identities).
 
@@ -160,7 +160,7 @@ After `migrate:fresh --seed`, a demo client is available:
 | **Admin** | All permissions |
 | **Manager** | `users.list`, `users.update`, `users.delete`, `roles.list`, `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list` |
 | **User** | `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list` |
-| **Service** | `users.list`, `users.list-all`, `users.view-email`, `roles.list` (machine identity only — no interactive login) |
+| **Service** | `users.list`, `users.list-all`, `users.view-email`, `roles.list` (machine identity only - no interactive login) |
 
 ## Seeded Accounts
 

@@ -21,7 +21,7 @@ final class RestoreUserFromRememberAction
     /**
      * Resolve the User from an active session or remember-me cookie.
      *
-     * SessionGuard::user() resolves the session id first, then lazily authenticates
+     * SessionGuard::user() resolves the session ID first, then lazily authenticates
      * from the remember-me recaller cookie when the session is empty.
      *
      * @example

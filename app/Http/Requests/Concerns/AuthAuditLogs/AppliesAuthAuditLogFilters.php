@@ -42,6 +42,8 @@ trait AppliesAuthAuditLogFilters
     */
 
     /**
+     * Get the requested `fields[auth_audit_logs]` columns, or null.
+     *
      * @return list<string>|null
      */
     public function authAuditLogFields(): ?array
@@ -50,6 +52,8 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
+     * Get the requested `fields[users]` columns, or null.
+     *
      * @return list<string>|null
      */
     public function auditLogUserFields(): ?array
@@ -57,6 +61,13 @@ trait AppliesAuthAuditLogFilters
         return $this->fieldsFor('users');
     }
 
+    /**
+     * Get the validated audit event filter, or null when absent.
+     *
+     *
+     *
+     * @return AuthAuditEvent|null the exact event filter, or null
+     */
     public function eventFilter(): ?AuthAuditEvent
     {
         if (! $this->safe()->filled('filter.event')) {
@@ -66,6 +77,13 @@ trait AppliesAuthAuditLogFilters
         return AuthAuditEvent::from($this->safe()->string('filter.event')->toString());
     }
 
+    /**
+     * Get the validated User filter, or null when absent.
+     *
+     *
+     *
+     * @return int|null the exact User filter, or null
+     */
     public function userIdFilter(): ?int
     {
         if (! $this->safe()->filled('filter.user_id')) {
@@ -75,6 +93,13 @@ trait AppliesAuthAuditLogFilters
         return $this->safe()->integer('filter.user_id');
     }
 
+    /**
+     * Get the validated API Client filter, or null when absent.
+     *
+     *
+     *
+     * @return int|null the exact API Client filter, or null
+     */
     public function apiClientIdFilter(): ?int
     {
         if (! $this->safe()->filled('filter.api_client_id')) {
@@ -90,6 +115,9 @@ trait AppliesAuthAuditLogFilters
     */
 
     /**
+     * Reject `filter[…]` keys outside the allow-list.
+     *
+     *
      * @return array<string, array<int, mixed>>
      */
     protected function authAuditLogFilterRules(): array
@@ -121,6 +149,12 @@ trait AppliesAuthAuditLogFilters
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Reject `filter[…]` keys outside the allow-list.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
+     */
     protected function validateFilterKeys(Validator $validator): void
     {
         $validator->after(function (Validator $check): void {
@@ -153,6 +187,8 @@ trait AppliesAuthAuditLogFilters
     */
 
     /**
+     * Get the `filter[…]` keys this resource accepts.
+     *
      * @return list<string>
      */
     protected function allowedFilterKeys(): array
@@ -161,6 +197,8 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
+     * Get the columns callers may sort on via `?sort=`.
+     *
      * @return list<string>
      */
     protected function allowedSortColumns(): array
@@ -169,6 +207,8 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
+     * Get the relations callers may request via `?include=`.
+     *
      * @return list<string>
      */
     protected function allowedIncludeKeys(): array
@@ -177,6 +217,8 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
+     * Get the `fields[…]` resource keys this resource accepts.
+     *
      * @return list<string>
      */
     protected function allowedFieldsResourceKeys(): array
@@ -185,6 +227,9 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
+     * Get the field allow-list for the given resource key.
+     *
+     * @param  string       $resourceKey the `fields[…]` key being resolved
      * @return list<string>
      */
     protected function allowedFieldsFor(string $resourceKey): array
@@ -197,6 +242,8 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
+     * Get the `users` columns exposed under `fields[users]`.
+     *
      * @return list<string>
      */
     public function allowedNestedUserFields(): array
@@ -211,6 +258,8 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
+     * Get every persisted `AuthAuditEvent` value.
+     *
      * @return list<string>
      */
     private static function allowedEventFilterValues(): array

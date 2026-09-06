@@ -5,6 +5,7 @@
         "phpdoc_align": {
             "align": "vertical"
         },
-        "fully_qualified_strict_types": false
+        "fully_qualified_strict_types": false,
+        "no_superfluous_phpdoc_tags": false
     }
 }

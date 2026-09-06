@@ -399,7 +399,7 @@ final class UserIndexControllerTest extends TestCase
     {
         /*
          * `team_id` is nullable, unlike a typical required foreign key, so a
-         * teamless User must not blow up TeamResource with a null resource —
+         * teamless User must not blow up TeamResource with a null resource -
          * this is the one place this endpoint's foreign key is optional.
          *
          * `withDefault()` on the BelongsTo relationship returns a default
@@ -563,7 +563,7 @@ final class UserIndexControllerTest extends TestCase
     {
         /*
          * `fields[users]=,` is a non-blank string (so `filled()` accepts it),
-         * but CommaSeparatedList::parse() reduces it to an empty list — that
+         * but CommaSeparatedList::parse() reduces it to an empty list - that
          * must fall back to an unconstrained select, not an empty one.
          */
 
@@ -588,7 +588,7 @@ final class UserIndexControllerTest extends TestCase
          * The global ConvertEmptyStringsToNull middleware turns the blank
          * value in `sort=` into `null` before validation runs, so a present
          * but empty `sort` key fails the `string` rule rather than falling
-         * back to the default sort — unlike omitting `sort` entirely.
+         * back to the default sort - unlike omitting `sort` entirely.
          */
 
         // Act
@@ -614,7 +614,7 @@ final class UserIndexControllerTest extends TestCase
     {
         /*
          * The admin holds `users.list-all`, so the response spans every
-         * Team and the admin's own row is not guaranteed to sort first —
+         * Team and the admin's own row is not guaranteed to sort first -
          * assert membership rather than position 0.
          */
 
@@ -643,7 +643,7 @@ final class UserIndexControllerTest extends TestCase
         /*
          * `manager` never receives `email` in ALLOWED_FIELDS, so requesting it
          * explicitly must be rejected by validation rather than silently
-         * dropped — proving the allow-list, not just the Resource, is the gate.
+         * dropped - proving the allow-list, not just the Resource, is the gate.
          */
 
         // Act
@@ -665,8 +665,8 @@ final class UserIndexControllerTest extends TestCase
     {
         /*
          * A request that never constrains `fields[users]` runs an
-         * unqualified `SELECT *`, so the Resource itself — not just sparse
-         * fieldset omission — must be the thing keeping email out.
+         * unqualified `SELECT *`, so the Resource itself - not just sparse
+         * fieldset omission - must be the thing keeping email out.
          */
 
         // Act

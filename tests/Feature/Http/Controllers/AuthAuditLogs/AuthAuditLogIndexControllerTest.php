@@ -248,7 +248,7 @@ final class AuthAuditLogIndexControllerTest extends TestCase
      * Respect the permission-aware email allow-list on nested user includes.
      *
      * An admin with `users.view-email` who asks for `fields[users]=email`
-     * must receive it — the query layer must not strip a column that the
+     * must receive it - the query layer must not strip a column that the
      * validation layer permitted.
      */
     #[Test]

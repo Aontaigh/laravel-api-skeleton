@@ -27,6 +27,8 @@ final class TeamShowController
     */
 
     /**
+     * Create a new TeamShowController.
+     *
      * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto any single-table builder
      */
     public function __construct(

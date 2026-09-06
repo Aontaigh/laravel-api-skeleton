@@ -36,11 +36,12 @@ final class IndexSortQuery
      *
      * @template TModel of Model
      *
-     * @param Builder<TModel> $query          the Eloquent query builder
-     * @param IndexSort       $sort           the validated sort DTO
-     * @param list<string>    $allowedSorts   whitelisted column names
-     * @param string          $table          table name or query alias
-     * @param string          $tieBreakColumn stable secondary sort column (default `id`)
+     * @param  Builder<TModel> $query          the Eloquent query builder
+     * @param  IndexSort       $sort           the validated sort DTO
+     * @param  list<string>    $allowedSorts   whitelisted column names
+     * @param  string          $table          table name or query alias
+     * @param  string          $tieBreakColumn stable secondary sort column (default `id`)
+     * @return void
      */
     public function apply(
         Builder $query,

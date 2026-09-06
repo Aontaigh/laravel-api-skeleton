@@ -11,6 +11,12 @@ use App\Models\User;
  */
 final readonly class SessionFilters
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Create a new SessionFilters value object.
      *

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-# Adversarial curl probes for auth endpoints — run against local Sail (http://localhost/api).
+# Adversarial curl probes for auth endpoints - run against local Sail (http://localhost/api).
 #
 # Covers: enumeration, injection, rate limits, token abuse, remember-me + CSRF,
 # suspensions, soft-delete, read endpoints (audit-logs, permissions, clients),
 # OAuth client-credentials, queued audit persistence, web-session registry
-# (IDOR, scope, surgical revoke vs global logout), and retired flat auth paths.
+# (IDOR, scope, surgical revoke vs global logout), password reset (enumeration,
+# token abuse, replay, credential rotation), session activity tracking, and
+# retired flat auth paths.
 #
 # Usage:
 #   ./vendor/bin/sail artisan migrate:fresh --seed
@@ -47,7 +49,7 @@ COOKIE_JAR="$(mktemp)"
 BODY_FILE="$(mktemp)"
 
 # Success-path registers must clear Password::defaults() (incl. uncompromised()).
-# No literal `$` — keep it POSIX/double-quote safe.
+# No literal `$` - keep it POSIX/double-quote safe.
 STRONG_PASS='Xq7#mK2vL9pTzW4Q'
 
 PASS_COUNT=0
@@ -147,7 +149,7 @@ except Exception:
 }
 
 json_path() {
-    # json_path <dotted.path> — print a nested value from the body file, or ''.
+    # json_path <dotted.path> - print a nested value from the body file, or ''.
     python3 -c "
 import json
 try:
@@ -422,7 +424,7 @@ revoked_web_session_count_for_user() {
     artisan_tinker "echo App\\Models\\WebSession::where('user_id', App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${email}'))->value('id'))->whereNotNull('revoked_at')->count();"
 }
 
-# Stateful SPA login — returns plain_text_token on stdout, sets COOKIE_JAR.
+# Stateful SPA login - returns plain_text_token on stdout, sets COOKIE_JAR.
 stateful_login() {
     local email="$1"
     local password="$2"
@@ -463,7 +465,7 @@ fi
 echo ""
 
 # --- 1. Account enumeration ---
-echo "--- 1. Account enumeration ---"
+echo "--- 1. Account Enumeration ---"
 post_json "$BASE/auth/login" -d "{\"email\":\"missing@example.com\",\"password\":\"${STRONG_PASS}\"}"
 UNKNOWN_MSG="$(json_errors_email)"
 
@@ -485,7 +487,7 @@ else
 fi
 
 # --- 2. Injection-shaped input (no 500) ---
-echo "--- 2. Injection-shaped input ---"
+echo "--- 2. Injection-Shaped Input ---"
 for payload in "' OR 1=1--" "'; DROP TABLE users;--" "admin@example.com'--" "%' OR '1'='1" "1;SELECT * FROM users"; do
     code=$(post_json_status "$BASE/auth/login" -d "{\"email\":\"${payload}\",\"password\":\"x\"}")
     expect_not_500 "Login SQLi-shaped email" "$code"
@@ -498,7 +500,7 @@ code=$(post_json_status "$BASE/auth/login" -d '{"email":"admin@example.com","pas
 expect_not_500 "Login SQLi-shaped password" "$code"
 
 # --- 3. Malformed transport ---
-echo "--- 3. Malformed transport ---"
+echo "--- 3. Malformed Transport ---"
 code=$(status_code -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d '{')
 expect_code "Malformed JSON body" "422" "$code"
 
@@ -513,7 +515,7 @@ else
 fi
 
 # --- 4. Rate limiting ---
-echo "--- 4. Rate limiting ---"
+echo "--- 4. Rate Limiting ---"
 LIMITED=0
 for _ in $(seq 1 15); do
     code=$(post_json_status "$BASE/auth/login" -d '{"email":"brute@example.com","password":"wrong"}')
@@ -539,7 +541,7 @@ else
 fi
 
 # --- 5. Mass assignment on register ---
-echo "--- 5. Mass assignment on register ---"
+echo "--- 5. Mass Assignment on Register ---"
 MASS_EMAIL="hacker-${RANDOM}@example.com"
 post_json "$BASE/auth/register" -d "{\"name\":\"Hacker\",\"email\":\"${MASS_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\",\"team_id\":1,\"is_admin\":true,\"email_verified_at\":\"2026-01-01T00:00:00Z\",\"role\":\"Admin\"}"
 code="$(json_status)"
@@ -555,7 +557,7 @@ else
 fi
 
 # --- 6. Password policy ---
-echo "--- 6. Password policy ---"
+echo "--- 6. Password Policy ---"
 code=$(post_json_status "$BASE/auth/register" -d "{\"name\":\"Weak\",\"email\":\"weak-${RANDOM}@example.com\",\"password\":\"short\",\"password_confirmation\":\"short\"}")
 expect_code "Weak password rejected" "422" "$code"
 
@@ -569,7 +571,7 @@ code=$(post_json_status "$BASE/auth/register" -d "{\"name\":\"Breached\",\"email
 expect_code "Breached password rejected (uncompromised)" "422" "$code"
 
 # --- 7. Bearer token abuse (deliberately invalid tokens) ---
-echo "--- 7. Bearer token abuse ---"
+echo "--- 7. Bearer Token Abuse ---"
 code=$(status_code -X GET "$BASE/users" -H "Accept: application/json" -H "Authorization: Bearer ")
 expect_code "Empty bearer token" "401" "$code"
 
@@ -583,7 +585,7 @@ code=$(status_code -X GET "$BASE/users" -H "Accept: application/json" -H "Author
 expect_code "Malformed Sanctum token" "401" "$code"
 
 # --- 8. Logout boundaries ---
-echo "--- 8. Logout boundaries ---"
+echo "--- 8. Logout Boundaries ---"
 code=$(post_json_status "$BASE/logout")
 expect_code "Logout without token" "401" "$code"
 
@@ -591,7 +593,7 @@ code=$(post_json_status "$BASE/logout" -H "Authorization: Bearer invalid-token-v
 expect_code "Logout invalid bearer" "401" "$code"
 
 # --- 9. Token revocation ---
-echo "--- 9. Token revocation ---"
+echo "--- 9. Token Revocation ---"
 reset_rate_limits
 REV_TOKEN="$(login_token admin@example.com password)"
 if [[ -z "$REV_TOKEN" ]]; then
@@ -603,7 +605,7 @@ else
 fi
 
 # --- 10. Remember-me boundaries ---
-echo "--- 10. Remember-me boundaries ---"
+echo "--- 10. Remember-Me Boundaries ---"
 code=$(post_json_status "$BASE/auth/login/remember")
 expect_code "Remember without session" "401" "$code"
 
@@ -646,7 +648,7 @@ else
 fi
 
 # --- 11. Soft-deleted account ---
-echo "--- 11. Soft-deleted account ---"
+echo "--- 11. Soft-Deleted Account ---"
 DELETE_EMAIL="deleted-${RANDOM}@example.com"
 post_json "$BASE/auth/register" -d "{\"name\":\"Delete Me\",\"email\":\"${DELETE_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}"
 artisan_tinker "App\\Models\\User::where('email','${DELETE_EMAIL}')->first()?->delete(); echo 'deleted';"
@@ -659,7 +661,7 @@ else
 fi
 
 # --- 12. Authorization boundaries ---
-echo "--- 12. Authorization boundaries ---"
+echo "--- 12. Authorization Boundaries ---"
 reset_rate_limits
 MANAGER_TOKEN="$(login_token manager@example.com password)"
 ADMIN_TOKEN="$(login_token admin@example.com password)"
@@ -693,7 +695,7 @@ else
 fi
 
 # --- 14. Token abilities cannot bypass role policy ---
-echo "--- 14. Token ability escalation ---"
+echo "--- 14. Token Ability Escalation ---"
 if [[ -z "${USER_TOKEN:-}" ]]; then
     warn "Token Ability Escalation" "No User Token Available"
 else
@@ -710,7 +712,7 @@ else
 fi
 
 # --- 15. XSS / markup sanitisation ---
-echo "--- 15. XSS / markup sanitisation ---"
+echo "--- 15. XSS / Markup Sanitisation ---"
 post_json "$BASE/auth/register" -d "{\"name\":\"<script>alert(1)</script>Bob\",\"email\":\"xss-${RANDOM}@example.com\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}"
 NAME="$(json_path 'data.user.name')"
 if [[ "$NAME" != *"<script>"* ]]; then
@@ -728,7 +730,7 @@ else
 fi
 
 # --- 16. Oversized input ---
-echo "--- 16. Oversized input ---"
+echo "--- 16. Oversized Input ---"
 LONG="$(python3 -c "print('a'*10000)")"
 code=$(post_json_status "$BASE/auth/login" -d "{\"email\":\"${LONG}@example.com\",\"password\":\"x\"}")
 if [[ "$code" == "422" || "$code" == "413" ]]; then
@@ -745,7 +747,7 @@ else
 fi
 
 # --- 17. HTTP verb tampering ---
-echo "--- 17. HTTP verb tampering ---"
+echo "--- 17. HTTP Verb Tampering ---"
 code=$(status_code -X GET "$BASE/auth/login")
 expect_code "GET /login" "405" "$code"
 
@@ -764,7 +766,7 @@ else
 fi
 
 # --- 18. Audit trail ---
-echo "--- 18. Audit trail ---"
+echo "--- 18. Audit Trail ---"
 drain_audit_queue
 COUNT="$(artisan_tinker "echo App\\Models\\AuthAuditLog::where('event','Login Failed')->count();")"
 if [[ "${COUNT:-0}" =~ ^[0-9]+$ && "${COUNT:-0}" -gt 0 ]]; then
@@ -774,7 +776,7 @@ else
 fi
 
 # --- 19. Email normalisation ---
-echo "--- 19. Email normalisation ---"
+echo "--- 19. Email Normalisation ---"
 reset_rate_limits
 CASE_EMAIL="CASE-${RANDOM}@EXAMPLE.COM"
 post_json "$BASE/auth/register" -d "{\"name\":\"Case\",\"email\":\"${CASE_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}"
@@ -797,7 +799,7 @@ else
 fi
 
 # --- 20. Logout kills all sessions ---
-echo "--- 20. Logout kills all sessions ---"
+echo "--- 20. Logout Kills All Sessions ---"
 reset_rate_limits
 T1="$(login_token admin@example.com password)"
 T2="$(login_token admin@example.com password)"
@@ -815,7 +817,7 @@ else
 fi
 
 # --- 21. Response leakage ---
-echo "--- 21. Response leakage ---"
+echo "--- 21. Response Leakage ---"
 LOGIN_JSON="$(curl -s -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"password"}')"
 HAS_PW="$(echo "$LOGIN_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print('password' in str(d).lower())" 2>/dev/null || echo "False")"
 if [[ "$HAS_PW" == "False" ]]; then
@@ -825,7 +827,7 @@ else
 fi
 
 # --- 22. Admin force-logout ---
-echo "--- 22. Admin force-logout ---"
+echo "--- 22. Admin Force-Logout ---"
 reset_rate_limits
 ADMIN_TOKEN="$(issue_token admin@example.com)"
 MANAGER_TOKEN="$(issue_token manager@example.com)"
@@ -856,7 +858,7 @@ else
 fi
 
 # --- 23. Timing side-channel (rough) ---
-echo "--- 23. Timing side-channel (rough) ---"
+echo "--- 23. Timing Side-Channel (Rough) ---"
 T_UNKNOWN="$(curl -s -o /dev/null -w '%{time_total}' -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"nonexistent999@example.com\",\"password\":\"${STRONG_PASS}\"}")"
 T_WRONG="$(curl -s -o /dev/null -w '%{time_total}' -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"WrongPass1"}')"
 python3 - <<PY
@@ -864,13 +866,13 @@ u,f=float("$T_UNKNOWN"),float("$T_WRONG")
 ratio=max(u,f)/min(u,f) if min(u,f)>0 else 1
 print(f"INFO  Timing ratio unknown/wrong: {ratio:.2f}x (u={u:.3f}s w={f:.3f}s)")
 if ratio > 3:
-    print("WARN  Timing side-channel — ratio > 3x may aid enumeration")
+    print("WARN  Timing side-channel - ratio > 3x may aid enumeration")
 else:
     print("PASS  Timing difference not dramatic")
 PY
 
 # --- 24. Suspended accounts ---
-echo "--- 24. Suspended accounts ---"
+echo "--- 24. Suspended Accounts ---"
 reset_rate_limits
 SUSPEND_EMAIL="suspended-${RANDOM}@example.com"
 SUSPEND_TOKEN="$(register_and_login_token "$SUSPEND_EMAIL" "$STRONG_PASS" "Suspended User")"
@@ -900,7 +902,7 @@ else
 fi
 
 # --- 25. New read endpoints ---
-echo "--- 25. New read endpoints ---"
+echo "--- 25. New Read Endpoints ---"
 reset_rate_limits
 ADMIN_TOKEN="$(login_token admin@example.com password)"
 MANAGER_TOKEN="$(login_token manager@example.com password)"
@@ -954,7 +956,7 @@ else
 fi
 
 # --- 26. OAuth client-credentials abuse ---
-echo "--- 26. OAuth client-credentials abuse ---"
+echo "--- 26. OAuth Client-Credentials Abuse ---"
 reset_rate_limits
 post_json "$BASE/oauth/token" -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"WrongSecret12"}'
 OAUTH_MSG="$(python3 -c "
@@ -1019,7 +1021,7 @@ else
 fi
 
 # --- 27. Remember-me + suspension ---
-echo "--- 27. Remember-me + suspension ---"
+echo "--- 27. Remember-Me + Suspension ---"
 reset_rate_limits
 REMEMBER_SUSPEND_EMAIL="remember-suspend-${RANDOM}@example.com"
 register_and_login_token "$REMEMBER_SUSPEND_EMAIL" "$STRONG_PASS" "Remember Suspend" > /dev/null
@@ -1055,7 +1057,7 @@ else
         fail "Remember-Me Allowed for Suspended User ($code)"
     fi
 else
-    warn "Remember-Me + Suspension" "SESSION_DRIVER=array — Cookie Restore Not Exercised"
+    warn "Remember-Me + Suspension" "SESSION_DRIVER=array - Cookie Restore Not Exercised"
 
     SUSPEND_RESULT="$(suspend_user "$REMEMBER_SUSPEND_EMAIL")"
     if [[ "$SUSPEND_RESULT" != "suspended" ]]; then
@@ -1075,7 +1077,7 @@ else
 fi
 
 # --- 28. Permission catalog query hardening ---
-echo "--- 28. Permission catalog query hardening ---"
+echo "--- 28. Permission Catalog Query Hardening ---"
 if [[ -n "${ADMIN_TOKEN:-}" ]]; then
     code=$(auth_get "$BASE/permissions?include=user" "$ADMIN_TOKEN")
     if [[ "$code" == "422" ]]; then
@@ -1095,7 +1097,7 @@ else
 fi
 
 # --- 29. Retired flat auth paths (must not linger) ---
-echo "--- 29. Retired flat auth paths ---"
+echo "--- 29. Retired Flat Auth Paths ---"
 for legacy in \
     "$BASE/login" \
     "$BASE/register" \
@@ -1115,7 +1117,7 @@ code=$(status_code -X GET "$BASE/two-factor/status")
 expect_code "Legacy GET /two-factor/status" "404" "$code"
 
 # --- 30. Web session registry boundaries ---
-echo "--- 30. Web session registry boundaries ---"
+echo "--- 30. Web Session Registry Boundaries ---"
 reset_rate_limits
 code=$(status_code -X GET "$BASE/sessions" -H "Accept: application/json")
 expect_code "Sessions index without token" "401" "$code"
@@ -1170,7 +1172,7 @@ else
 fi
 
 # --- 31. Web session IDOR + enumeration hardening ---
-echo "--- 31. Web session IDOR ---"
+echo "--- 31. Web Session IDOR ---"
 reset_rate_limits
 VICTIM_EMAIL="session-victim-${RANDOM}@example.com"
 ATTACKER_EMAIL="session-attacker-${RANDOM}@example.com"
@@ -1223,7 +1225,7 @@ else
 fi
 
 # --- 32. Surgical session revoke vs global logout ---
-echo "--- 32. Surgical session revoke vs global logout ---"
+echo "--- 32. Surgical Session Revoke vs Global Logout ---"
 reset_rate_limits
 SURGICAL_EMAIL="session-surgical-${RANDOM}@example.com"
 
@@ -1296,7 +1298,7 @@ else
 fi
 
 # --- 33. Admin cross-user session revoke ---
-echo "--- 33. Admin cross-user session revoke ---"
+echo "--- 33. Admin Cross-User Session Revoke ---"
 reset_rate_limits
 ADMIN_CROSS_TOKEN="$(login_token admin@example.com password)"
 ADMIN_VICTIM_EMAIL="session-admin-victim-${RANDOM}@example.com"
@@ -1312,7 +1314,7 @@ else
 fi
 
 # --- 34. Session list scope for admin vs user ---
-echo "--- 34. Session list scope ---"
+echo "--- 34. Session List Scope ---"
 reset_rate_limits
 SCOPE_A="scope-a-${RANDOM}@example.com"
 SCOPE_B="scope-b-${RANDOM}@example.com"
@@ -1349,7 +1351,7 @@ if [[ -n "$USER_SCOPE_TOKEN" ]]; then
 fi
 
 # --- 35. Stale session_version after force-logout ---
-echo "--- 35. Stale session_version gate ---"
+echo "--- 35. Stale `session_version` Gate ---"
 reset_rate_limits
 STALE_EMAIL="session-stale-${RANDOM}@example.com"
 STALE_TOKEN="$(register_and_login_token "$STALE_EMAIL" "$STRONG_PASS" "Stale")"
@@ -1377,7 +1379,7 @@ else
             fail "Stale Cookie Session Still Valid After Force-Logout ($code)"
         fi
     else
-        warn "Stale Cookie session_version" "SESSION_DRIVER=array — Cookie Gate Not Exercised"
+        warn "Stale Cookie session_version" "SESSION_DRIVER=array - Cookie Gate Not Exercised"
     fi
 
     code=$(auth_get "$BASE/me" "$STALE_TOKEN")
@@ -1385,7 +1387,7 @@ else
 fi
 
 # --- 36. Session registry hardening (double revoke, forged ids, verbs) ---
-echo "--- 36. Session registry hardening ---"
+echo "--- 36. Session Registry Hardening ---"
 reset_rate_limits
 HARDEN_EMAIL="session-harden-${RANDOM}@example.com"
 HARDEN_TOKEN="$(register_and_login_token "$HARDEN_EMAIL" "$STRONG_PASS" "Harden")"
@@ -1437,7 +1439,7 @@ else
 fi
 
 # --- 37. Two-factor token isolation ---
-echo "--- 37. Two-factor token isolation ---"
+echo "--- 37. Two-Factor Token Isolation ---"
 reset_rate_limits
 TFA_A="tfa-a-${RANDOM}@example.com"
 TFA_B="tfa-b-${RANDOM}@example.com"
@@ -1474,7 +1476,7 @@ else
 fi
 
 # --- 38. Session include / sort injection ---
-echo "--- 38. Session query injection ---"
+echo "--- 38. Session Query Injection ---"
 reset_rate_limits
 QUERY_TOKEN="$(login_token test@example.com password)"
 if [[ -z "$QUERY_TOKEN" ]]; then
@@ -1497,6 +1499,147 @@ else
         -H "Accept: application/json" \
         -H "Authorization: Bearer ${QUERY_TOKEN}")
     expect_not_500 "Sessions hostile sort" "$code"
+fi
+
+# --- 39. Password reset enumeration ---
+echo "--- 39. Password Reset Enumeration ---"
+reset_rate_limits
+RESET_KNOWN_EMAIL="reset-known-${RANDOM}@example.com"
+register_and_login_token "$RESET_KNOWN_EMAIL" "$STRONG_PASS" "Reset Known" > /dev/null
+
+post_json "$BASE/auth/forgot-password" -d "{\"email\":\"${RESET_KNOWN_EMAIL}\"}"
+RESET_KNOWN_MSG="$(json_message)"
+post_json "$BASE/auth/forgot-password" -d '{"email":"reset-unknown-999@example.com"}'
+RESET_UNKNOWN_MSG="$(json_message)"
+if [[ "$RESET_KNOWN_MSG" == "$RESET_UNKNOWN_MSG" && "$RESET_KNOWN_MSG" == "If the Account Exists, a Reset Link Has Been Sent" ]]; then
+    pass "Forgot-password known vs unknown identical generic message"
+else
+    fail "Forgot-Password Enumeration Leak: known='$RESET_KNOWN_MSG' unknown='$RESET_UNKNOWN_MSG'"
+fi
+
+DELETE_RESET_EMAIL="reset-deleted-${RANDOM}@example.com"
+post_json "$BASE/auth/register" -d "{\"name\":\"Reset Deleted\",\"email\":\"${DELETE_RESET_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}"
+artisan_tinker "App\\Models\\User::where('email','${DELETE_RESET_EMAIL}')->first()?->delete(); echo 'deleted';" > /dev/null
+post_json "$BASE/auth/forgot-password" -d "{\"email\":\"${DELETE_RESET_EMAIL}\"}"
+expect_code "Forgot-password soft-deleted account generic response" "200" "$(json_status)"
+
+post_json "$BASE/auth/forgot-password" -d '{"email":"not-an-email"}'
+expect_code "Forgot-password invalid email rejected" "422" "$(json_status)"
+
+RESET_LIMITED=0
+artisan_tinker "Illuminate\\Support\\Facades\\Cache::flush(); echo 'flushed';" > /dev/null
+for _ in $(seq 1 12); do
+    post_json "$BASE/auth/forgot-password" -d '{"email":"reset-brute@example.com"}'
+    if [[ "$(json_status)" == "429" ]]; then RESET_LIMITED=1; break; fi
+done
+if [[ "$RESET_LIMITED" == "1" ]]; then
+    pass "Password reset rate limit triggered (429)"
+else
+    warn "Password Reset Rate Limit" "No 429 ($MSG_TOO_MANY_REQUESTS) After 8 Attempts"
+fi
+
+# --- 40. Reset token abuse and credential rotation ---
+echo "--- 40. Reset Token Abuse and Credential Rotation ---"
+RESET_EMAIL="reset-victim-${RANDOM}@example.com"
+artisan_tinker "App\\Models\\User::factory()->create(['email' => Illuminate\\Support\\Str::lower('${RESET_EMAIL}'), 'password' => Illuminate\\Support\\Facades\\Hash::make('OldResetPass#1')]); echo 'created';" > /dev/null
+RESET_OLD_TOKEN="$(issue_token "$RESET_EMAIL")"
+reset_rate_limits
+
+RESET_TOKEN="$(artisan_tinker "echo Illuminate\\Support\\Facades\\Password::broker()->createToken(App\\Models\\User::where('email','${RESET_EMAIL}')->first());")"
+
+if [[ -z "$RESET_TOKEN" ]]; then
+    fail "Could Not Create a Reset Token via the Broker"
+else
+    post_json "$BASE/auth/reset-password" -d "{\"token\":\"not-a-real-token\",\"email\":\"${RESET_EMAIL}\",\"password\":\"${STRONG_PASS}\"}"
+    if [[ "$(json_status)" == "422" && "$(json_message)" == "The Reset Token Is Invalid Or Has Expired" ]]; then
+        pass "Unknown reset token returns generic 422"
+    else
+        fail "Unknown Reset Token Returned $(json_status) / '$(json_message)'"
+    fi
+
+    post_json "$BASE/auth/reset-password" -d "{\"token\":\"${RESET_TOKEN}\",\"email\":\"reset-other-${RANDOM}@example.com\",\"password\":\"${STRONG_PASS}\"}"
+    if [[ "$(json_status)" == "422" ]]; then
+        pass "Reset token bound to its own email address"
+    else
+        fail "Reset Token Usable With Foreign Email ($(json_status))"
+    fi
+
+    post_json "$BASE/auth/reset-password" -d "{\"token\":\"${RESET_TOKEN}\",\"email\":\"${RESET_EMAIL}\",\"password\":\"short\"}"
+    expect_code "Reset weak password rejected" "422" "$(json_status)"
+
+    RESET_NEW_PASS='N3wReset!PassX9'
+    post_json "$BASE/auth/reset-password" -d "{\"token\":\"${RESET_TOKEN}\",\"email\":\"${RESET_EMAIL}\",\"password\":\"${RESET_NEW_PASS}\"}"
+    expect_code "Reset with valid token succeeds" "200" "$(json_status)"
+
+    post_json "$BASE/auth/reset-password" -d "{\"token\":\"${RESET_TOKEN}\",\"email\":\"${RESET_EMAIL}\",\"password\":\"${RESET_NEW_PASS}\"}"
+    if [[ "$(json_status)" == "422" ]]; then
+        pass "Replayed reset token rejected"
+    else
+        fail "Replayed Reset Token Returned $(json_status)"
+    fi
+
+    if [[ -n "$RESET_OLD_TOKEN" ]]; then
+        code=$(auth_get "$BASE/me" "$RESET_OLD_TOKEN")
+        expect_code "Old bearer revoked after reset" "401" "$code"
+    else
+        warn "Reset Token Revocation" "No Old Bearer Token Available"
+    fi
+
+    post_json "$BASE/auth/login" -d "{\"email\":\"${RESET_EMAIL}\",\"password\":\"${RESET_NEW_PASS}\"}"
+    if [[ "$(json_status)" == "200" ]]; then
+        pass "New password authenticates after reset"
+    else
+        fail "New Password Login Failed ($(json_status))"
+    fi
+
+    TOKEN_ROWS="$(artisan_tinker "echo Illuminate\\Support\\Facades\\DB::table('password_reset_tokens')->where('email','${RESET_EMAIL}')->count();")"
+    if [[ "${TOKEN_ROWS:-x}" == "0" ]]; then
+        pass "Consumed reset token deleted from broker table"
+    else
+        fail "Reset Token Row Survives (${TOKEN_ROWS:-unknown})"
+    fi
+
+    drain_audit_queue
+    RESET_AUDIT="$(artisan_tinker "echo App\\Models\\AuthAuditLog::where('event','Password Reset')->where('email','${RESET_EMAIL}')->count();")"
+    if [[ "${RESET_AUDIT:-0}" == "1" ]]; then
+        pass "Password Reset audit row recorded"
+    else
+        warn "Password Reset Audit" "count=${RESET_AUDIT:-none}"
+    fi
+fi
+
+# --- 41. Session activity tracking ---
+echo "--- 41. Session Activity Tracking ---"
+reset_rate_limits
+
+if stateful_sessions_supported; then
+    # A seeded account without MFA enrolment so the cookie login completes.
+    stateful_login "manager@example.com" "password" true > /dev/null
+    ACTIVITY_SESSION="$(artisan_tinker "echo App\\Models\\WebSession::where('user_id', App\\Models\\User::where('email', 'manager@example.com')->value('id'))->whereNull('revoked_at')->orderByDesc('last_activity_at')->value('session_id') ?? '';")"
+
+    if [[ -n "$ACTIVITY_SESSION" ]]; then
+        artisan_tinker "App\\Models\\WebSession::where('session_id','${ACTIVITY_SESSION}')->update(['last_activity_at'=>now()->subMinutes(10)]); echo 'rewound';" > /dev/null
+        BEFORE_ACT="$(artisan_tinker "echo App\\Models\\WebSession::where('session_id','${ACTIVITY_SESSION}')->value('last_activity_at');")"
+
+        begin_stateful_session
+        XSRF="$(read_xsrf_token)"
+        status_code -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE/me" \
+            -H "Accept: application/json" \
+            -H "Origin: http://localhost" \
+            -H "Referer: http://localhost/" \
+            -H "X-XSRF-TOKEN: ${XSRF}" > /dev/null
+
+        AFTER_ACT="$(artisan_tinker "echo App\\Models\\WebSession::where('session_id','${ACTIVITY_SESSION}')->value('last_activity_at');")"
+        if [[ -n "$AFTER_ACT" && "$AFTER_ACT" != "$BEFORE_ACT" ]]; then
+            pass "Cookie request refreshed last_activity_at"
+        else
+            fail "Session Activity Not Refreshed (before='$BEFORE_ACT' after='$AFTER_ACT')"
+        fi
+    else
+        warn "Session Activity" "No Registry Row After Stateful Login"
+    fi
+else
+    warn "Session Activity" "SESSION_DRIVER=array - Cookie Touch Not Exercised"
 fi
 
 echo ""

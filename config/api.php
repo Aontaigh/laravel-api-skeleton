@@ -20,6 +20,22 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Public System Status Rate Limit
+    |--------------------------------------------------------------------------
+    |
+    | GET /status is a public, unauthenticated status page, so the limiter is
+    | keyed per IP only - there is no authenticated User to key on. A dedicated
+    | key keeps status-page polling from exhausting the authenticated API's
+    | budget (and vice versa).
+    |
+    */
+
+    'status_rate_limit_per_minute' => (int) env('API_STATUS_RATE_LIMIT_PER_MINUTE', 30),
+
+    'health_rate_limit_per_minute' => (int) env('API_HEALTH_RATE_LIMIT_PER_MINUTE', 60),
+
+    /*
+    |--------------------------------------------------------------------------
     | Auth Endpoint Rate Limits
     |--------------------------------------------------------------------------
     |
@@ -56,6 +72,34 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Password Reset Rate Limits
+    |--------------------------------------------------------------------------
+    |
+    | Forgot-password and reset-password share one limiter. A composite
+    | email+IP key stops link flooding against one account; the broad per-IP
+    | ceiling (dropped in `local`) stops distributed spraying across many
+    | addresses from one host.
+    |
+    */
+
+    'password_reset_rate_limit_per_minute' => (int) env('API_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE', 5),
+
+    'password_reset_ip_ceiling_per_minute' => (int) env('API_PASSWORD_RESET_IP_CEILING_PER_MINUTE', 20),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Password Length Cap
+    |--------------------------------------------------------------------------
+    |
+    | Maximum accepted length for password fields. Enforced before hash
+    | verification so long inputs cannot be abused for CPU exhaustion.
+    |
+    */
+
+    'password_max_length' => (int) env('API_PASSWORD_MAX_LENGTH', 255),
+
+    /*
+    |--------------------------------------------------------------------------
     | Client-Credentials Token Lifetime
     |--------------------------------------------------------------------------
     |
@@ -85,7 +129,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Number of days until a newly issued Sanctum token expires. Set to 0 to
-    | disable expiration (local development only — not recommended in production).
+    | disable expiration (local development only - not recommended in production).
     | Synced to config/sanctum.php for authentication enforcement.
     |
     */
@@ -147,6 +191,22 @@ return [
     | to the application base path.
     |
     */
+
+    /*
+    |--------------------------------------------------------------------------
+    | Password Reset E-Mail Destinations
+    |--------------------------------------------------------------------------
+    |
+    | The API only serves JSON, so reset links point at a separate frontend.
+    | Set both to the SPA's absolute page URLs. Empty values fall back to
+    | `url('/reset-password')` and `url('/forgot-password')` on the API host,
+    | which is only useful in local development.
+    |
+    */
+
+    'password_reset_url' => env('API_PASSWORD_RESET_URL'),
+
+    'password_forgot_url' => env('API_PASSWORD_FORGOT_URL'),
 
     'docs_basic_auth' => [
         'user' => env('API_DOCS_BASIC_AUTH_USER'),

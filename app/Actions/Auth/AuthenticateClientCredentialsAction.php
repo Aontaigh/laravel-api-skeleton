@@ -23,6 +23,8 @@ final class AuthenticateClientCredentialsAction
     */
 
     /**
+     * Create a new AuthenticateClientCredentialsAction.
+     *
      * @param (Closure(string): ?ApiClient)|null $resolveClientById optional client resolver for tests
      */
     public function __construct(
@@ -44,7 +46,7 @@ final class AuthenticateClientCredentialsAction
      * @example
      * app(AuthenticateClientCredentialsAction::class)->execute($credentials);
      *
-     * @param  ClientCredentialsData $credentials the client id and secret payload
+     * @param  ClientCredentialsData $credentials the client ID and secret payload
      * @return ApiClient             the authenticated client row
      *
      * @throws ValidationException when credentials are invalid
@@ -85,7 +87,7 @@ final class AuthenticateClientCredentialsAction
     */
 
     /**
-     * Find an active client by public client id.
+     * Find an active client by public client ID.
      *
      * @param  string         $clientId the public client identifier
      * @return ApiClient|null the matching client, or null when not found or inactive
@@ -113,7 +115,7 @@ final class AuthenticateClientCredentialsAction
     }
 
     /**
-     * Return the bcrypt hash used to normalise timing for unknown client ids.
+     * Return the bcrypt hash used to normalise timing for unknown client IDs.
      *
      * @return string the configured bcrypt hash compared against when no API Client matches
      */

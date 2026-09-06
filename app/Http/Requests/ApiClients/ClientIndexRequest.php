@@ -62,6 +62,9 @@ final class ClientIndexRequest extends ApiFormRequest
 
     /**
      * Apply additional validation after the base rules pass.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
      */
     public function withValidator(Validator $validator): void
     {

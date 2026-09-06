@@ -29,7 +29,7 @@ final class SendTwoFactorRequest extends ApiFormRequest
     */
 
     /**
-     * Public endpoint — the pending challenge lives in the session, not here.
+     * Public endpoint - the pending challenge lives in the session, not here.
      *
      * @return bool always true
      */
@@ -46,6 +46,8 @@ final class SendTwoFactorRequest extends ApiFormRequest
 
     /**
      * Normalise the requested channel before validation.
+     *
+     * @return void
      */
     protected function prepareForValidation(): void
     {

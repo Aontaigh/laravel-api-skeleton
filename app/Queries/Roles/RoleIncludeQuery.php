@@ -41,9 +41,10 @@ final class RoleIncludeQuery
     /**
      * Compose eager loads onto the query.
      *
-     * @param Builder<Role>     $query            the Role query builder
-     * @param list<string>      $includes         validated include keys
-     * @param list<string>|null $permissionFields sparse Permission columns for nested relations
+     * @param  Builder<Role>     $query            the Role query builder
+     * @param  list<string>      $includes         validated include keys
+     * @param  list<string>|null $permissionFields sparse Permission columns for nested relations
+     * @return void
      *
      * @throws InvalidArgumentException when an allowed include has no eager-load mapping
      */

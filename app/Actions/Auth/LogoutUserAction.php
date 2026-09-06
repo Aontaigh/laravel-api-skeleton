@@ -22,6 +22,8 @@ final class LogoutUserAction
     */
 
     /**
+     * Create a new LogoutUserAction.
+     *
      * @param RevokeAllWebSessionsForUserAction $revokeAllWebSessions clears the per-user session registry
      */
     public function __construct(
@@ -45,8 +47,9 @@ final class LogoutUserAction
      * @example
      * app(LogoutUserAction::class)->execute($user, $request);
      *
-     * @param User         $user    the User ending their session
-     * @param Request|null $request the inbound HTTP request when the User is logging themselves out
+     * @param  User         $user    the User ending their session
+     * @param  Request|null $request the inbound HTTP request when the User is logging themselves out
+     * @return void
      */
     public function execute(User $user, ?Request $request = null): void
     {

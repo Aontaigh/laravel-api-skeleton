@@ -16,6 +16,8 @@ final readonly class TeamFilters
     */
 
     /**
+     * Create a new TeamFilters.
+     *
      * @param string|null $search partial name search term, or null when omitted
      */
     public function __construct(

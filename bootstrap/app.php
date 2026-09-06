@@ -17,10 +17,18 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
+        /*
+         * Direct exposure trusts nothing; behind a load balancer set
+         * TRUSTED_PROXIES (comma-separated IPs/CIDRs, never `*`) so client IPs
+         * resolve for rate limits and audit rows. See App\Support\TrustedProxies.
+         */
+        $middleware->trustProxies(at: \App\Support\TrustedProxies::all());
+
         $middleware->alias([
             'api-docs' => \App\Http\Middleware\EnsureCanViewApiDocs::class,
             'active.account' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'session.version' => \App\Http\Middleware\EnsureSessionVersionMatches::class,
+            'session.touch' => \App\Http\Middleware\TouchWebSessionActivity::class,
         ]);
 
         $middleware->statefulApi();

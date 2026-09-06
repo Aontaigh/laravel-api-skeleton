@@ -40,8 +40,8 @@ so search scans every row in the current scope (team, guard, or token owner).
 | **MySQL `FULLTEXT`** on `name` (and `email` for users) | Good for word-based search; add a dedicated `filter[search_fulltext]` or swap implementation behind the same key when volume warrants |
 | **PostgreSQL `tsvector` + GIN** | Same idea if you migrate off MySQL |
 | **Dedicated search** (Meilisearch, OpenSearch, Typesense) | Best for fuzzy match, ranking, and multi-field search across resources |
-| **Prefix-only search** (`term%`) | Can use B-tree indexes but changes UX — only match starts-with |
+| **Prefix-only search** (`term%`) | Can use B-tree indexes but changes UX - only match starts-with |
 
 Wildcard **neutralisation** (via `LikePattern` + `ESCAPE`) is already enforced
-so `%` and `_` in user input cannot become match-all probes — that is a
+so `%` and `_` in user input cannot become match-all probes - that is a
 correctness and CPU guard, not an index strategy.

@@ -91,7 +91,7 @@ final class DestroyTokenControllerTest extends TestCase
     {
         /*
          * Route binding is scoped to the caller's own tokens, so a foreign
-         * token id returns 404 — not 403 — and cannot be probed for existence.
+         * token id returns 404 - not 403 - and cannot be probed for existence.
          */
 
         // Arrange

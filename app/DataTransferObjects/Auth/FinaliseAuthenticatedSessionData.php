@@ -11,6 +11,12 @@ use App\Models\User;
  */
 final readonly class FinaliseAuthenticatedSessionData
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constructor
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Create a new FinaliseAuthenticatedSessionData value object.
      *
@@ -19,7 +25,7 @@ final readonly class FinaliseAuthenticatedSessionData
      * @param bool        $remember          whether to apply remember-me state
      * @param string      $ipAddress         the caller's IP address for audit
      * @param string|null $userAgent         the caller's user agent for audit
-     * @param bool        $regenerateSession whether to rotate the web session id
+     * @param bool        $regenerateSession whether to rotate the web session ID
      */
     public function __construct(
         public User $user,

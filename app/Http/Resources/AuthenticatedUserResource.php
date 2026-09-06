@@ -12,7 +12,7 @@ use Illuminate\Http\Resources\Json\JsonResource;
 /**
  * API representation of the authenticated User on login and registration.
  *
- * Always includes `email` for the session owner — unlike {@see UserResource},
+ * Always includes `email` for the session owner - unlike {@see UserResource},
  * which gates email behind `users.view-email`.
  *
  * @property-read User $resource

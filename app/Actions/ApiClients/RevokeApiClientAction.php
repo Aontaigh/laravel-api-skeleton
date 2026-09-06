@@ -23,7 +23,8 @@ final class RevokeApiClientAction
      * @example
      * app(RevokeApiClientAction::class)->execute($client);
      *
-     * @param ApiClient $client the client to revoke
+     * @param  ApiClient $client the client to revoke
+     * @return void
      */
     public function execute(ApiClient $client): void
     {

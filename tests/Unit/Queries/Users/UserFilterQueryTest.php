@@ -96,7 +96,7 @@ final class UserFilterQueryTest extends UnitTestCase
         /*
          * `team_id` is a nullable foreign key. A viewer with no Team must
          * still scope to that null value rather than fall through to an
-         * unscoped query — otherwise a stray User would see every row.
+         * unscoped query - otherwise a stray User would see every row.
          */
 
         // Arrange
@@ -171,6 +171,7 @@ final class UserFilterQueryTest extends UnitTestCase
             viewer: $this->teamScopedViewer(),
             listsAllTeams: true,
             search: $term,
+            canViewEmails: true,
         );
 
         // Act

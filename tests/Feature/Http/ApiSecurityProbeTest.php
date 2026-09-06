@@ -18,7 +18,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Adversarial feature probes — hostile input, injection-shaped payloads, and abuse attempts.
+ * Adversarial feature probes - hostile input, injection-shaped payloads, and abuse attempts.
  */
 #[CoversClass(ApiResponse::class)]
 final class ApiSecurityProbeTest extends TestCase
@@ -124,6 +124,10 @@ final class ApiSecurityProbeTest extends TestCase
             'password' => 'super-secret',
             'team_id' => Team::factory()->create()->id,
             'is_admin' => true,
+            'role' => 'Admin',
+            'is_service_account' => true,
+            'session_version' => 999,
+            'suspended_at' => '2026-01-01T00:00:00Z',
             'remember_token' => 'stolen',
         ]);
 
@@ -135,6 +139,7 @@ final class ApiSecurityProbeTest extends TestCase
             'id' => $member->id,
             'name' => 'Member',
             'email' => 'member@example.com',
+            'is_service_account' => false,
             'team_id' => $team->id,
         ]);
     }

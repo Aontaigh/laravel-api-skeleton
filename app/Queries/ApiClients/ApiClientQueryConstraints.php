@@ -41,6 +41,8 @@ final class ApiClientQueryConstraints
     */
 
     /**
+     * Columns that must always be selected for an Api Client query.
+     *
      * @param  list<string> $includes validated include keys
      * @return list<string>
      */

@@ -23,8 +23,9 @@ final class RoleFilterQuery
     /**
      * Compose filter and guard constraints onto the query.
      *
-     * @param Builder<Role> $query   the Role query builder
-     * @param RoleFilters   $filters the validated filter DTO
+     * @param  Builder<Role> $query   the Role query builder
+     * @param  RoleFilters   $filters the validated filter DTO
+     * @return void
      */
     public function apply(Builder $query, RoleFilters $filters): void
     {

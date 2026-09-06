@@ -140,7 +140,7 @@ return [
     'teams' => false,
 
     /*
-     * The class to use to resolve the permissions team id
+     * The class to use to resolve the permissions team ID
      */
     'team_resolver' => DefaultTeamResolver::class,
 

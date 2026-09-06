@@ -11,7 +11,7 @@ SEMGREP_IMAGE="${SEMGREP_IMAGE:-semgrep/semgrep:1.173.0}"
 
 # Community packs: language rules plus the OWASP / CWE / secrets / PHP audit
 # sets that Semgrep and Trail of Bits recommend for a blocking web-app gate.
-# Laravel rules use r/php.laravel.security (p/laravel is not published — HTTP 404).
+# Laravel rules use r/php.laravel.security (p/laravel is not published - HTTP 404).
 # p/trailofbits is omitted: it flags Sail binding 0.0.0.0, which is required
 # for host access to the app container.
 CONFIGS=(

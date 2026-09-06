@@ -11,7 +11,7 @@ use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Force-logout Users by id — revokes every token, session, and remember-me state.
+ * Force-logout Users by ID - revokes every token, session, and remember-me state.
  *
  * @example
  * POST /api/users/logout {"ids": [2, 5]}

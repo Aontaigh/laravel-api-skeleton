@@ -30,6 +30,8 @@ final class AuthEventOccurred
     */
 
     /**
+     * Create a new AuthEventOccurred event.
+     *
      * @param RecordAuthAuditData $data the audit payload to record
      */
     public function __construct(

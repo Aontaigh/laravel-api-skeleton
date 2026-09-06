@@ -25,6 +25,11 @@ final class ApiAuthenticationTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    /*
+     * Authentication Tests
+     * --------------------
+     */
+
     /**
      * Return the standard envelope when no bearer token is sent.
      */
@@ -64,6 +69,11 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertJsonPath('message', 'Unauthenticated');
         $response->assertJsonPath('data', null);
     }
+
+    /*
+     * Error Envelope Tests
+     * --------------------
+     */
 
     /**
      * Return the standard envelope when the caller is forbidden.
@@ -120,6 +130,11 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertJsonPath('data', null);
         $response->assertJsonPath('meta', []);
     }
+
+    /*
+     * Client Compatibility Tests
+     * --------------------------
+     */
 
     /**
      * Never redirect unauthenticated API requests to a web login route.

@@ -24,8 +24,9 @@ final class PermissionFilterQuery
     /**
      * Compose filter and guard constraints onto the query.
      *
-     * @param Builder<Permission> $query   the Permission query builder
-     * @param PermissionFilters   $filters the validated filter DTO
+     * @param  Builder<Permission> $query   the Permission query builder
+     * @param  PermissionFilters   $filters the validated filter DTO
+     * @return void
      */
     public function apply(Builder $query, PermissionFilters $filters): void
     {

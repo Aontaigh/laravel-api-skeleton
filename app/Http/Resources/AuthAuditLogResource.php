@@ -32,6 +32,9 @@ final class AuthAuditLogResource extends JsonResource
     */
 
     /**
+     * Transform the Auth Audit Log into its API shape.
+     *
+     * @param  Request              $request the inbound HTTP request
      * @return array<string, mixed>
      */
     public function toArray(Request $request): array
@@ -60,6 +63,14 @@ final class AuthAuditLogResource extends JsonResource
             'user_agent' => $this->whenAttributeSelected(
                 'user_agent',
                 fn (): ?string => $this->resource->user_agent,
+            ),
+            'location_city' => $this->whenAttributeSelected(
+                'location_city',
+                fn (): ?string => $this->resource->location_city,
+            ),
+            'location_country' => $this->whenAttributeSelected(
+                'location_country',
+                fn (): ?string => $this->resource->location_country,
             ),
             'personal_access_token_id' => $this->whenAttributeSelected(
                 'personal_access_token_id',

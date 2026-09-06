@@ -24,6 +24,8 @@ final class AuthAuditLogIncludeQuery
     */
 
     /**
+     * Create a new AuthAuditLogIncludeQuery.
+     *
      * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto nested relation builders
      */
     public function __construct(
@@ -39,11 +41,12 @@ final class AuthAuditLogIncludeQuery
     /**
      * Compose eager loads onto the query.
      *
-     * @param Builder<AuthAuditLog> $query             the audit log query builder
-     * @param list<string>          $includes          validated include keys
-     * @param list<string>|null     $userFields        sparse User columns for nested relations
-     * @param list<string>|null     $allowedUserFields permission-aware allow-list for the nested user select,
-     *                                                 or null to fall back to the base set
+     * @param  Builder<AuthAuditLog> $query             the audit log query builder
+     * @param  list<string>          $includes          validated include keys
+     * @param  list<string>|null     $userFields        sparse User columns for nested relations
+     * @param  list<string>|null     $allowedUserFields permission-aware allow-list for the nested user select,
+     *                                                  or null to fall back to the base set
+     * @return void
      *
      * @throws InvalidArgumentException when an allowed include has no eager-load mapping
      */
@@ -81,6 +84,8 @@ final class AuthAuditLogIncludeQuery
     */
 
     /**
+     * Build the eager-load constraint closure for the `user` relation.
+     *
      * @param list<string>|null $userFields        sparse User columns from `fields[users]`
      * @param list<string>|null $allowedUserFields permission-aware allow-list, or null for the base set
      * @return Closure(Relation<*, *, *>): void

@@ -30,6 +30,8 @@ trait AppliesTeamShowParams
     */
 
     /**
+     * Get the requested `fields[teams]` columns, or null.
+     *
      * @return list<string>|null
      */
     public function teamFields(): ?array
@@ -43,6 +45,9 @@ trait AppliesTeamShowParams
     */
 
     /**
+     * Reject include or field keys outside the allow-list.
+     *
+     *
      * @return array<string, array<int, mixed>>
      */
     protected function teamShowRules(): array
@@ -59,6 +64,12 @@ trait AppliesTeamShowParams
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Reject include or field keys outside the allow-list.
+     *
+     * @param  Validator $validator the validator under extension
+     * @return void
+     */
     protected function validateTeamShowParams(Validator $validator): void
     {
         $this->validateFieldsKeys($validator);
@@ -72,6 +83,8 @@ trait AppliesTeamShowParams
     */
 
     /**
+     * Get the `fields[…]` resource keys this resource accepts.
+     *
      * @return list<string>
      */
     protected function allowedFieldsResourceKeys(): array
@@ -80,6 +93,9 @@ trait AppliesTeamShowParams
     }
 
     /**
+     * Get the field allow-list for the given resource key.
+     *
+     * @param  string       $resourceKey the `fields[…]` key being resolved
      * @return list<string>
      */
     protected function allowedFieldsFor(string $resourceKey): array

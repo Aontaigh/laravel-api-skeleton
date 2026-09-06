@@ -86,7 +86,7 @@ final class LoginController
         |--------------------------------------------------------------------------
         |
         | When the User has MFA enrolled, the credential check is the first
-        | factor only — a pending challenge is stashed in the session and the
+        | factor only - a pending challenge is stashed in the session and the
         | caller must complete verification before a token is issued.
         |
         */

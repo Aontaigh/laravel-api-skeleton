@@ -24,7 +24,7 @@ trait SerialisesSparseAttributes
      * Conditionally include a value in the serialised output.
      *
      * Declared abstractly so the dependency on the host JsonResource is a
-     * contract PHP enforces. `protected` matches Laravel exactly — an
+     * contract PHP enforces. `protected` matches Laravel exactly - an
      * abstract `public` method cannot be satisfied by a protected
      * implementation.
      *

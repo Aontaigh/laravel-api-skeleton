@@ -19,6 +19,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property string|null                     $email
  * @property string|null                     $ip_address
  * @property string|null                     $user_agent
+ * @property string|null                     $location_city
+ * @property string|null                     $location_country
  * @property int|null                        $personal_access_token_id
  * @property int|null                        $api_client_id
  * @property bool                            $remember_me
@@ -49,6 +51,8 @@ final class AuthAuditLog extends Model
         'email',
         'ip_address',
         'user_agent',
+        'location_city',
+        'location_country',
         'personal_access_token_id',
         'api_client_id',
         'remember_me',

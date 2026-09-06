@@ -23,8 +23,9 @@ final class TeamFilterQuery
     /**
      * Apply filter constraints to the query.
      *
-     * @param Builder<Team> $query   the Team query builder
-     * @param TeamFilters   $filters the validated filter DTO
+     * @param  Builder<Team> $query   the Team query builder
+     * @param  TeamFilters   $filters the validated filter DTO
+     * @return void
      */
     public function apply(Builder $query, TeamFilters $filters): void
     {

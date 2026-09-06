@@ -30,6 +30,8 @@ final class TeamIndexController
     */
 
     /**
+     * Create a new TeamIndexController.
+     *
      * @param TeamFilterQuery  $filterQuery composes validated filters onto any Team builder
      * @param IndexSortQuery   $sortQuery   composes validated sort onto any single-table builder
      * @param IndexFieldsQuery $fieldsQuery composes sparse fieldsets onto any single-table builder
