@@ -92,6 +92,16 @@ curl -s -X POST -H "Content-Type: application/json" \
 # Login audit is queued off the request; drain before asserting the index example
 artisan queue:work --stop-when-empty --quiet 2>/dev/null || true
 
+# GeoIP enrichment varies by environment (`local` may resolve a fallback public
+# IP; CI `testing` leaves loopback unmapped). Normalise the seeded Login row so
+# the example envelope matches regardless of MMDB presence.
+artisan tinker --execute="
+\App\Models\AuthAuditLog::query()
+    ->where('event', 'Login')
+    ->where('email', 'admin@example.com')
+    ->update(['location_city' => null, 'location_country' => null]);
+" 2>/dev/null | tail -1
+
 check AuditLogsIndexSuccess "$(openapi_example AuditLogsIndexSuccess)" \
   "$(api GET '/audit-logs?per_page=1&sort=id&filter%5Bevent%5D=Login&filter%5Bsearch%5D=admin%40&include=user&fields%5Busers%5D=id,name,email')"
 

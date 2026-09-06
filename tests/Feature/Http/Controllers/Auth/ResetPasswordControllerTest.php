@@ -14,6 +14,7 @@ use App\Models\WebSession;
 use App\Notifications\Auth\PasswordChangedNotification;
 use App\Notifications\Auth\ResetPasswordNotification;
 use App\Support\ApiResponse;
+use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -65,6 +66,23 @@ final class ResetPasswordControllerTest extends TestCase
         $this->assertTrue(Hash::check('OldPassword#1', $fresh->password));
 
         Notification::assertNotSentTo($this->user, PasswordChangedNotification::class);
+    }
+
+    /**
+     * Issue a password-reset token for the given User.
+     *
+     * `Password::broker()` is typed as the contract; the concrete broker exposes
+     * `createToken()` for tests that need a known-good token without HTTP.
+     */
+    private function resetTokenFor(User $user): string
+    {
+        $broker = Password::broker();
+
+        if (! $broker instanceof PasswordBroker) {
+            throw new \RuntimeException('Password Broker Is Not the Expected Concrete Implementation');
+        }
+
+        return $broker->createToken($user);
     }
 
     /*
@@ -126,7 +144,7 @@ final class ResetPasswordControllerTest extends TestCase
     {
         // Arrange
 
-        $token = Password::broker()->createToken($this->user);
+        $token = $this->resetTokenFor($this->user);
 
         /** @var int $versionBefore */
         $versionBefore = $this->user->session_version;
@@ -175,7 +193,7 @@ final class ResetPasswordControllerTest extends TestCase
     {
         // Arrange
 
-        $token = Password::broker()->createToken($this->user);
+        $token = $this->resetTokenFor($this->user);
 
         // Act
 
@@ -235,7 +253,7 @@ final class ResetPasswordControllerTest extends TestCase
         /** @var User $other */
         $other = User::factory()->create(['password' => Hash::make('OldPassword#1')]);
 
-        $token = Password::broker()->createToken($this->user);
+        $token = $this->resetTokenFor($this->user);
 
         // Act
 
@@ -264,7 +282,7 @@ final class ResetPasswordControllerTest extends TestCase
     {
         // Arrange
 
-        $token = Password::broker()->createToken($this->user);
+        $token = $this->resetTokenFor($this->user);
         $payload = [
             'token' => $token,
             'email' => $this->user->email,
@@ -308,7 +326,7 @@ final class ResetPasswordControllerTest extends TestCase
     {
         // Arrange
 
-        $token = Password::broker()->createToken($this->user);
+        $token = $this->resetTokenFor($this->user);
 
         DB::table(config()->string('auth.passwords.users.table'))
             ->where('email', $this->user->email)
@@ -341,7 +359,7 @@ final class ResetPasswordControllerTest extends TestCase
     {
         // Arrange
 
-        $token = Password::broker()->createToken($this->user);
+        $token = $this->resetTokenFor($this->user);
 
         // Act
 
