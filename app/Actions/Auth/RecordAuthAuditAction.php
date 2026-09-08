@@ -52,6 +52,7 @@ final class RecordAuthAuditAction
             'remember_me' => $data->rememberMe,
             'location_city' => $data->locationCity,
             'location_country' => $data->locationCountry,
+            'request_id' => $data->requestId,
         ]);
 
         return $log;

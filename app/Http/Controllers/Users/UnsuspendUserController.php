@@ -11,6 +11,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Users\UnsuspendUserRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -54,6 +55,7 @@ final class UnsuspendUserController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

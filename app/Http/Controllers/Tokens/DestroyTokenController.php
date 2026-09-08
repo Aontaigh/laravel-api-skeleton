@@ -11,6 +11,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Tokens\DestroyTokenRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Laravel\Sanctum\PersonalAccessToken;
 
@@ -64,6 +65,7 @@ final class DestroyTokenController
             personalAccessTokenId: $token->id,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

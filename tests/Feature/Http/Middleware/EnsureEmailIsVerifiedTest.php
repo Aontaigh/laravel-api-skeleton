@@ -174,4 +174,25 @@ final class EnsureEmailIsVerifiedTest extends TestCase
 
         $response->assertForbidden();
     }
+
+    /**
+     * Exempt service accounts: they authenticate via client credentials, never
+     * email, so there is no mailbox to verify - blocking them would disable
+     * machine-to-machine access entirely.
+     */
+    #[Test]
+    public function it_exempts_service_accounts_from_verification(): void
+    {
+        // Arrange
+
+        $serviceUser = User::factory()->serviceAccount()->service()->unverified()->create();
+
+        // Act
+
+        $response = $this->actingAs($serviceUser)->getJson('/api/roles');
+
+        // Assert
+
+        $response->assertOk();
+    }
 }

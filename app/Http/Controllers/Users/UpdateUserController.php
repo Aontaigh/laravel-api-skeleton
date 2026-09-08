@@ -14,6 +14,7 @@ use App\Http\Requests\Users\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -76,6 +77,7 @@ final class UpdateUserController
                 email: $updatedUser->email,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             ));
         }
 

@@ -84,6 +84,10 @@ final class AuthAuditLogResource extends JsonResource
                 'remember_me',
                 fn (): bool => $this->resource->remember_me,
             ),
+            'request_id' => $this->whenAttributeSelected(
+                'request_id',
+                fn (): ?string => $this->resource->request_id,
+            ),
             'created_at' => $this->whenAttributeSelected(
                 'created_at',
                 fn (): ?string => ApiDateTime::serialize($this->resource->created_at),

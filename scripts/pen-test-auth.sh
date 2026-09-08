@@ -955,6 +955,9 @@ else
 
         code=$(auth_get "$BASE/me" "$SERVICE_TOKEN")
         expect_code "Service token cannot call GET /me" "403" "$code"
+
+        code=$(auth_get "$BASE/roles" "$SERVICE_TOKEN")
+        expect_code "Service token can list roles (email verification exempt)" "200" "$code"
     else
         warn "Service Token Probes" "Could Not Exchange Demo Client Credentials"
     fi

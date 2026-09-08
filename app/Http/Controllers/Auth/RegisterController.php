@@ -12,6 +12,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Support\ApiResponse;
 use App\Support\Auth\PendingTwoFactor;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -71,6 +72,7 @@ final class RegisterController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

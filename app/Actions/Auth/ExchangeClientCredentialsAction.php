@@ -46,17 +46,19 @@ final class ExchangeClientCredentialsAction
      * Authenticate the client and issue a bearer token for its service User.
      *
      * @example
-     * app(ExchangeClientCredentialsAction::class)->execute($credentials, $ip, $userAgent);
+     * app(ExchangeClientCredentialsAction::class)->execute($credentials, $ip, $userAgent, $requestId);
      *
      * @param  ClientCredentialsData                           $credentials the client ID and secret payload
      * @param  string|null                                     $ipAddress   the caller IP address
      * @param  string|null                                     $userAgent   the caller user agent
+     * @param  string|null                                     $requestId   the request correlation ID
      * @return array{client: ApiClient, token: NewAccessToken} the client row and issued token
      */
     public function execute(
         ClientCredentialsData $credentials,
         ?string $ipAddress,
         ?string $userAgent,
+        ?string $requestId = null,
     ): array {
         $client = $this->authenticate->execute($credentials);
         $user = $client->user;
@@ -82,6 +84,7 @@ final class ExchangeClientCredentialsAction
             userAgent: $userAgent,
             personalAccessTokenId: $newToken->accessToken->id,
             apiClientId: $client->id,
+            requestId: $requestId,
         ));
 
         return [

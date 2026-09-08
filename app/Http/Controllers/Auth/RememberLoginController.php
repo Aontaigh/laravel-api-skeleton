@@ -18,6 +18,7 @@ use App\Http\Resources\AuthenticatedUserResource;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\ValidatedInput;
 
@@ -129,6 +130,7 @@ final class RememberLoginController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
             personalAccessTokenId: $newToken->accessToken->id,
             rememberMe: true,
         ));

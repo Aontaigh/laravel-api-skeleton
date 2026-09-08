@@ -31,6 +31,7 @@ final readonly class RecordAuthAuditData
      * @param bool           $rememberMe            whether remember-me was requested
      * @param string|null    $locationCity          the city resolved from the IP at persist time
      * @param string|null    $locationCountry       the ISO 3166-1 alpha-2 country resolved at persist time
+     * @param string|null    $requestId             the request correlation ID for joining logs and responses
      */
     public function __construct(
         public AuthAuditEvent $event,
@@ -43,6 +44,7 @@ final readonly class RecordAuthAuditData
         public bool $rememberMe = false,
         public ?string $locationCity = null,
         public ?string $locationCountry = null,
+        public ?string $requestId = null,
     ) {}
 
     /*
@@ -74,6 +76,7 @@ final readonly class RecordAuthAuditData
             rememberMe: $this->rememberMe,
             locationCity: $location?->city,
             locationCountry: $location?->country,
+            requestId: $this->requestId,
         );
     }
 }

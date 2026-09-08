@@ -93,6 +93,7 @@ final class FinaliseAuthenticatedSessionAction
             userAgent: $data->userAgent,
             personalAccessTokenId: $newToken->accessToken->id,
             rememberMe: $data->remember,
+            requestId: $data->requestId,
         ));
 
         return $newToken;

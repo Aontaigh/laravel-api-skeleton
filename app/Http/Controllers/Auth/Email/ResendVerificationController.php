@@ -10,6 +10,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\ResendVerificationRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -57,6 +58,7 @@ final class ResendVerificationController
                 email: $user->email,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             ));
         }
 

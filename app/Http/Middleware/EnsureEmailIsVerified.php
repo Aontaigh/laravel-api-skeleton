@@ -6,7 +6,6 @@ namespace App\Http\Middleware;
 
 use App\Support\ApiResponse;
 use Closure;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -16,7 +15,9 @@ use Symfony\Component\HttpFoundation\Response;
  * Applied to the business route groups only. The identity endpoints
  * (`POST /auth/email/resend`, `POST /logout`, `GET /me`) deliberately sit
  * outside this gate so the SPA can still route an unverified User to the
- * verification screen and let them sign out.
+ * verification screen and let them sign out. Service accounts pass through:
+ * they authenticate via client credentials, never email, so there is no
+ * mailbox to verify - and blocking them would disable machine-to-machine access.
  */
 final class EnsureEmailIsVerified
 {
@@ -38,7 +39,7 @@ final class EnsureEmailIsVerified
     {
         $user = $request->user();
 
-        if ($user instanceof MustVerifyEmail && ! $user->hasVerifiedEmail()) {
+        if ($user !== null && ! $user->hasVerifiedEmail() && ! $user->isServiceAccount()) {
             return ApiResponse::error(message: 'E-Mail Not Verified', statusCode: 403);
         }
 

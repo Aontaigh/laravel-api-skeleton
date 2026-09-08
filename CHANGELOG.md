@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-09-08
+
+### Added
+
+- Request correlation IDs: every response carries `X-Request-ID` (caller-supplied value honoured
+  when well-formed, W3C `traceparent` trace ID as fallback, fresh UUID otherwise - never
+  authentication); the ID rides the log context and is persisted on `auth_audit_logs.request_id`
+  so one value joins responses, logs, and audit rows
+
+### Fixed
+
+- Service accounts blocked by e-mail verification: the `email.verified` gate turned away every
+  machine-to-machine bearer token with `E-Mail Not Verified`, silently disabling the OAuth
+  client-credentials flow. Service accounts authenticate via client credentials and have no mailbox
+  to verify, so they now pass the gate; only interactive Users are held until confirmed
+
 ## [1.11.0] - 2026-09-08
 
 ### Added
@@ -363,7 +379,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.1...v1.9.0

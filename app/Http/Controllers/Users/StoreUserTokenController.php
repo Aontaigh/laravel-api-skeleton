@@ -13,6 +13,7 @@ use App\Http\Requests\Users\StoreUserTokenRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -71,6 +72,7 @@ final class StoreUserTokenController
             personalAccessTokenId: $newToken->accessToken->id,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

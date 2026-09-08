@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Notifications\Auth\PasswordChangedNotification;
 use App\Services\UserAgent\Contracts\UserAgentParser;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Auth\Events\PasswordReset as PasswordResetEvent;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -95,6 +96,7 @@ final class ResetPasswordController
                 email: $credentials['email'],
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             )));
 
             return ApiResponse::error(
@@ -114,6 +116,7 @@ final class ResetPasswordController
                 email: $credentials['email'],
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             )));
 
             /*

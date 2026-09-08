@@ -12,6 +12,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Sessions\DestroyOtherSessionsRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
 
@@ -83,6 +84,7 @@ final class DestroyOtherSessionsController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

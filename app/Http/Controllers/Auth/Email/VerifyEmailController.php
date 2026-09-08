@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth\Email;
 
 use App\Actions\Auth\VerifyEmailAction;
 use App\Http\Requests\Auth\VerifyEmailRequest;
+use App\Support\RequestId;
 use Illuminate\Http\RedirectResponse;
 
 /**
@@ -54,6 +55,7 @@ final class VerifyEmailController
             hash: $hash,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         );
 
         /*

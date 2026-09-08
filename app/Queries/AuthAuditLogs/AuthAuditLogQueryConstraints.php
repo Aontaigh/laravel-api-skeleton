@@ -36,6 +36,7 @@ final class AuthAuditLogQueryConstraints
         'personal_access_token_id',
         'api_client_id',
         'remember_me',
+        'request_id',
         'created_at',
     ];
 

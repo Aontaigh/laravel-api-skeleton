@@ -14,6 +14,7 @@ use App\Http\Resources\ApiClientResource;
 use App\Models\ApiClient;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -74,6 +75,7 @@ final class UpdateClientController
             email: $actor->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

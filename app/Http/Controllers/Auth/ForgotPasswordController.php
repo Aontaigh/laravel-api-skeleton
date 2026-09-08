@@ -10,6 +10,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
 
@@ -64,6 +65,7 @@ final class ForgotPasswordController
             email: $email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         )));
 
         /*

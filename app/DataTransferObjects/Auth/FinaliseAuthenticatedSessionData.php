@@ -26,6 +26,7 @@ final readonly class FinaliseAuthenticatedSessionData
      * @param string      $ipAddress         the caller's IP address for audit
      * @param string|null $userAgent         the caller's user agent for audit
      * @param bool        $regenerateSession whether to rotate the web session ID
+     * @param string|null $requestId         the request correlation ID for audit
      */
     public function __construct(
         public User $user,
@@ -34,5 +35,6 @@ final readonly class FinaliseAuthenticatedSessionData
         public string $ipAddress,
         public ?string $userAgent,
         public bool $regenerateSession,
+        public ?string $requestId = null,
     ) {}
 }

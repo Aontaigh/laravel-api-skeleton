@@ -12,6 +12,7 @@ use App\Http\Requests\Sessions\DestroySessionRequest;
 use App\Models\User;
 use App\Models\WebSession;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -64,6 +65,7 @@ final class DestroySessionController
             email: is_string($ownerEmail) ? $ownerEmail : null,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

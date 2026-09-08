@@ -17,6 +17,7 @@ use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\Auth\PendingTwoFactor;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -120,6 +121,7 @@ final class VerifyTwoFactorController
                 email: $user->email,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             ));
 
             return ApiResponse::error(message: $exception->getMessage(), statusCode: 422);
@@ -145,6 +147,7 @@ final class VerifyTwoFactorController
             ipAddress: (string) $request->ip(),
             userAgent: $request->userAgent(),
             regenerateSession: $request->hasSession(),
+            requestId: RequestId::current($request),
         ));
 
         PendingTwoFactor::forget($pending->token);
@@ -155,6 +158,7 @@ final class VerifyTwoFactorController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

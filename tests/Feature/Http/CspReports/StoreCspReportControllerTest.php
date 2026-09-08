@@ -160,6 +160,12 @@ final class StoreCspReportControllerTest extends TestCase
         $oversizedBody = json_encode(['csp-report' => ['document-uri' => str_repeat('a', 20 * 1024)]]);
         self::assertIsString($oversizedBody);
 
+        /*
+         * The global request-ID middleware attaches log context on every
+         * request, so the context call must be allowed while the channel
+         * itself stays forbidden.
+         */
+        Log::shouldReceive('withContext')->zeroOrMoreTimes()->andReturnSelf();
         Log::shouldReceive('channel')->never();
 
         // Act

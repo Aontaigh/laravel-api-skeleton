@@ -12,6 +12,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\ClientTokenExchangeRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
@@ -64,12 +65,14 @@ final class ClientTokenExchangeController
                 credentials: $credentials,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             );
         } catch (ValidationException $exception) {
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::ClientTokenExchangeFailed,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             ));
 
             throw $exception;

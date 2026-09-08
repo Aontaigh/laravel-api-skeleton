@@ -37,15 +37,16 @@ final class VerifyEmailAction
      * distinguishes the cause.
      *
      * @example
-     * app(VerifyEmailAction::class)->execute($id, $hash, $ip, $agent);
+     * app(VerifyEmailAction::class)->execute($id, $hash, $ip, $agent, $requestId);
      *
      * @param  string      $id        the User ID from the signed URL
      * @param  string      $hash      the e-mail hash from the signed URL
      * @param  string|null $ipAddress the caller IP captured at the HTTP boundary
      * @param  string|null $userAgent the caller User-Agent captured at the boundary
+     * @param  string|null $requestId the request correlation ID captured at the boundary
      * @return bool        true when the mailbox is (or already was) verified
      */
-    public function execute(string $id, string $hash, ?string $ipAddress, ?string $userAgent): bool
+    public function execute(string $id, string $hash, ?string $ipAddress, ?string $userAgent, ?string $requestId = null): bool
     {
         $user = User::query()->find($id);
 
@@ -56,6 +57,7 @@ final class VerifyEmailAction
                 userId: $user?->id,
                 ipAddress: $ipAddress,
                 userAgent: $userAgent,
+                requestId: $requestId,
             ));
 
             Log::warning('E-Mail Verification Link Rejected', [
@@ -77,6 +79,7 @@ final class VerifyEmailAction
             email: $user->email,
             ipAddress: $ipAddress,
             userAgent: $userAgent,
+            requestId: $requestId,
         ));
 
         return true;

@@ -17,6 +17,7 @@ use App\Http\Resources\PersonalAccessTokenResource;
 use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\Auth\PendingTwoFactor;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
@@ -75,6 +76,7 @@ final class LoginController
                 email: $credentials->email,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             ));
 
             throw $exception;
@@ -118,6 +120,7 @@ final class LoginController
             ipAddress: (string) $request->ip(),
             userAgent: $request->userAgent(),
             regenerateSession: $request->hasSession(),
+            requestId: RequestId::current($request),
         ));
 
         /*

@@ -12,6 +12,7 @@ use App\Events\AuthEventOccurred;
 use App\Http\Requests\Tokens\StoreTokenRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -71,6 +72,7 @@ final class StoreTokenController
             personalAccessTokenId: $newToken->accessToken->id,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

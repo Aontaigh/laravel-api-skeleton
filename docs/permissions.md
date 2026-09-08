@@ -186,6 +186,9 @@ password login:
 - Each client is linked to a **service User** (`is_service_account = true`) with the
   `Service` role. Token abilities are stored on the client and further scope API access.
 - Service accounts cannot log in, self-issue tokens, or be force-logged out.
+- E-Mail verification never applies to service accounts: they authenticate via
+  client credentials and have no mailbox to verify, so the `email.verified` gate
+  lets them through and only interactive Users are held at `403` until confirmed.
 - Admins manage clients via `GET /api/clients`, `POST /api/clients`,
   `PATCH /api/clients/{client}`, and `DELETE /api/clients/{client}`. The plaintext
   `client_secret` is returned once on create.

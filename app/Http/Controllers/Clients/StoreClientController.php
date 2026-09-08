@@ -13,6 +13,7 @@ use App\Http\Requests\ApiClients\StoreClientRequest;
 use App\Http\Resources\ApiClientResource;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -70,6 +71,7 @@ final class StoreClientController
             email: $actor->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

@@ -12,6 +12,7 @@ use App\Http\Requests\Auth\SendTwoFactorRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\Auth\PendingTwoFactor;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -95,6 +96,7 @@ final class SendTwoFactorController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

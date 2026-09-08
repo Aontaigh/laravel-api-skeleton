@@ -18,6 +18,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
 
         /*
+         * Correlation IDs ride before everything else that logs or audits so
+         * the resolved value is on the request before any listener reads it.
+         */
+        $middleware->append(\App\Http\Middleware\EnsureRequestId::class);
+
+        /*
          * Direct exposure trusts nothing; behind a load balancer set
          * TRUSTED_PROXIES (comma-separated IPs/CIDRs, never `*`) so client IPs
          * resolve for rate limits and audit rows. See App\Support\TrustedProxies.

@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null                        $personal_access_token_id
  * @property int|null                        $api_client_id
  * @property bool                            $remember_me
+ * @property string|null                     $request_id
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
  */
@@ -56,6 +57,7 @@ final class AuthAuditLog extends Model
         'personal_access_token_id',
         'api_client_id',
         'remember_me',
+        'request_id',
     ];
 
     /*

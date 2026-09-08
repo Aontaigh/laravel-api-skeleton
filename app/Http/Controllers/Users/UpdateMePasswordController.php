@@ -15,6 +15,7 @@ use App\Models\User;
 use App\Notifications\Auth\PasswordChangedNotification;
 use App\Services\UserAgent\Contracts\UserAgentParser;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 use Throwable;
@@ -76,6 +77,7 @@ final class UpdateMePasswordController
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

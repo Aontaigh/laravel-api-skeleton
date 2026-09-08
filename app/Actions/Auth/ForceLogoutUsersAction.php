@@ -8,6 +8,7 @@ use App\DataTransferObjects\Auth\ForceLogoutUsersData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\Enums\AuthAuditEvent;
 use App\Models\User;
+use App\Support\RequestId;
 use Illuminate\Http\Request;
 
 /**
@@ -66,6 +67,7 @@ final class ForceLogoutUsersAction
                 email: $user->email,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
             ));
 
             $this->logoutUser->execute($user);

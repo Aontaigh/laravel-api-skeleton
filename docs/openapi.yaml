@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.11.0
+  version: 1.12.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -2656,6 +2656,7 @@ components:
             personal_access_token_id: 4
             api_client_id: null
             remember_me: false
+            request_id: 123e4567-e89b-12d3-a456-426614174000
             created_at: '2026-08-14T16:12:25+00:00'
             user:
               id: 1
@@ -2959,7 +2960,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.11.0
+          version: 1.12.0
         meta: {}
 
     HealthUnavailable:
@@ -3569,7 +3570,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.11.0
+          example: 1.12.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -3889,6 +3890,11 @@ components:
             - type: 'null'
         remember_me:
           type: boolean
+        request_id:
+          oneOf:
+            - type: string
+            - type: 'null'
+          description: Correlation ID joining the row to response headers and log lines; null for rows written outside an HTTP request
         created_at:
           $ref: '#/components/schemas/ApiDateTime'
         user:
