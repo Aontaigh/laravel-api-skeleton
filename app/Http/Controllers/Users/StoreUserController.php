@@ -53,6 +53,7 @@ final class StoreUserController
                 ? RoleName::from($input->string('role')->toString())
                 : RoleName::User,
             teamId: $input->has('team_id') ? $input->integer('team_id') : null,
+            phone: $input->filled('phone') ? $input->string('phone')->toString() : null,
         );
 
         /*

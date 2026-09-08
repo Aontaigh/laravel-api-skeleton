@@ -110,4 +110,47 @@ final class TeamPolicyTest extends TestCase
         $this->actingAs($serviceUser)->getJson('/api/teams')->assertForbidden();
         $this->actingAs($serviceUser)->getJson("/api/teams/{$team->id}")->assertForbidden();
     }
+
+    /**
+     * Allow admins to create, update, and delete Teams.
+     */
+    #[Test]
+    public function it_allows_admins_to_write_teams(): void
+    {
+        /* Arrange */
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var Team $team */
+        $team = Team::factory()->create(['name' => 'Engineering']);
+
+        /* Act & Assert */
+
+        $this->actingAs($admin)->postJson('/api/teams', ['name' => 'Platform'])->assertCreated();
+        $this->actingAs($admin)->patchJson("/api/teams/{$team->id}", ['name' => 'Engineering Two'])->assertOk();
+
+        /** @var Team $emptyTeam */
+        $emptyTeam = Team::factory()->create(['name' => 'Empty']);
+        $this->actingAs($admin)->deleteJson("/api/teams/{$emptyTeam->id}")->assertOk();
+    }
+
+    /**
+     * Deny Managers the write endpoints: they hold `teams.list` only.
+     */
+    #[Test]
+    public function it_denies_managers_the_write_endpoints(): void
+    {
+        /* Arrange */
+
+        /** @var User $manager */
+        $manager = User::factory()->manager()->create();
+        /** @var Team $team */
+        $team = Team::factory()->create(['name' => 'Engineering']);
+
+        /* Act & Assert */
+
+        $this->actingAs($manager)->postJson('/api/teams', ['name' => 'Platform'])->assertForbidden();
+        $this->actingAs($manager)->patchJson("/api/teams/{$team->id}", ['name' => 'Platform'])->assertForbidden();
+        $this->actingAs($manager)->deleteJson("/api/teams/{$team->id}")->assertForbidden();
+    }
 }

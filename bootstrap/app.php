@@ -29,6 +29,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'active.account' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'session.version' => \App\Http\Middleware\EnsureSessionVersionMatches::class,
             'session.touch' => \App\Http\Middleware\TouchWebSessionActivity::class,
+            'email.verified' => \App\Http\Middleware\EnsureEmailIsVerified::class,
         ]);
 
         $middleware->statefulApi();

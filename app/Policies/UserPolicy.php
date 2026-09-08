@@ -134,6 +134,32 @@ final class UserPolicy
     }
 
     /**
+     * Whether the User may change another User's role.
+     *
+     * Requires `users.assign-role`. Only Admins hold this permission. Callers
+     * may never change their own role through this endpoint - a misclick
+     * could demote the only Admin with no one left to restore access.
+     * Service accounts are structural identities managed through API clients,
+     * so their role is never reassigned here.
+     *
+     * @param  User $user  the authenticated User
+     * @param  User $model the User whose role would change
+     * @return bool true when the User may change that record's role
+     */
+    public function assignRole(User $user, User $model): bool
+    {
+        if (! $user->can('users.assign-role')) {
+            return false;
+        }
+
+        if ($user->id === $model->id) {
+            return false;
+        }
+
+        return ! $model->isServiceAccount();
+    }
+
+    /**
      * Whether the User may force-logout other Users everywhere.
      *
      * Requires `users.force-logout`. Only Admins hold this permission.

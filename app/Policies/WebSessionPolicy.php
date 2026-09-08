@@ -30,6 +30,31 @@ final class WebSessionPolicy
     }
 
     /**
+     * Whether the User may view a single web session record.
+     *
+     * Row scope matches revoke: holders of `sessions.list-all` see every row,
+     * everyone else only their own. The scoped `{web_session}` route binding
+     * already 404s out-of-scope rows, so this is the second gate, not the only
+     * one - a denied viewer never learns whether the row exists.
+     *
+     * @param  User       $user       the authenticated User
+     * @param  WebSession $webSession the session being viewed
+     * @return bool       true when the User may view that session
+     */
+    public function view(User $user, WebSession $webSession): bool
+    {
+        if ($user->can('sessions.list-all')) {
+            return true;
+        }
+
+        if (! $user->can('sessions.list-own') || $user->isServiceAccount()) {
+            return false;
+        }
+
+        return $webSession->user_id === $user->id;
+    }
+
+    /**
      * Whether the User may revoke the given web session.
      *
      * @param  User       $user       the authenticated User

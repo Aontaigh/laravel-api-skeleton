@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DataTransferObjects\Users;
 
+use App\Enums\RoleName;
 use App\Models\User;
 
 /**
@@ -20,13 +21,17 @@ final readonly class UpdateUserData
     /**
      * Create a new UpdateUserData value object.
      *
-     * @param User        $user   the User being updated
-     * @param string|null $name   the new display name, or null to leave unchanged
-     * @param int|null    $teamId the new Team ID, or null to leave unchanged
+     * @param User          $user   the User being updated
+     * @param string|null   $name   the new display name, or null to leave unchanged
+     * @param int|null      $teamId the new Team ID, or null to leave unchanged
+     * @param RoleName|null $role   the new role, or null to leave unchanged
+     * @param string|null   $phone  the new phone number, or null to leave unchanged
      */
     public function __construct(
         public User $user,
         public ?string $name = null,
         public ?int $teamId = null,
+        public ?RoleName $role = null,
+        public ?string $phone = null,
     ) {}
 }

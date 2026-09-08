@@ -109,14 +109,14 @@ final class ApiValidationTest extends TestCase
 
         $allowed = $this->apiMetaAllowed($response);
         $this->assertSame(['role', 'team'], $allowed['include'] ?? null);
-        $this->assertSame(['created_at', 'email', 'id', 'name'], $allowed['fields.users'] ?? null);
+        $this->assertSame(['created_at', 'email', 'id', 'name', 'phone'], $allowed['fields.users'] ?? null);
         $this->assertSame(['created_at', 'id', 'name'], $allowed['fields.roles'] ?? null);
 
         $response->assertJsonFragment([
             'Unsupported Include: roles (Supported: role, team)',
         ]);
         $response->assertJsonFragment([
-            'Unsupported Field: i (Supported: created_at, email, id, name)',
+            'Unsupported Field: i (Supported: created_at, email, id, name, phone)',
         ]);
         $response->assertJsonFragment([
             'Unsupported Field: bad (Supported: created_at, id, name)',
@@ -154,7 +154,7 @@ final class ApiValidationTest extends TestCase
         $allowed = $this->apiMetaAllowed($response);
         $this->assertSame(AllowListValidation::sorted(['created_at', 'email', 'id', 'name']), $allowed['sort'] ?? null);
         $this->assertSame(AllowListValidation::sorted(UserQueryConstraints::ALLOWED_INCLUDES), $allowed['include'] ?? null);
-        $this->assertSame(['created_at', 'email', 'id', 'name'], $allowed['fields.users'] ?? null);
+        $this->assertSame(['created_at', 'email', 'id', 'name', 'phone'], $allowed['fields.users'] ?? null);
         $this->assertSame(['search'], $allowed['filter'] ?? null);
     }
 }

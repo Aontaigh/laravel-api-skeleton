@@ -102,7 +102,8 @@ tests.
 against a running Sail stack: account enumeration, SQLi-shaped input, rate
 limits, bearer and reset-token abuse, replay, remember-me and CSRF boundaries,
 suspension and soft-delete handling, web-session IDOR, credential rotation on
-password reset, and session-activity tracking. 41 sections print `PASS` /
+password reset, session-activity tracking, team management boundaries, and
+retired flat auth paths. 46 sections print `PASS` /
 `FAIL` / `WARN` lines and the script exits non-zero on any failure.
 
 ```bash

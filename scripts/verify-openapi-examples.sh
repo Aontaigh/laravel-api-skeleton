@@ -118,6 +118,27 @@ check RolesIndexSuccess "$(openapi_example RolesIndexSuccess)" \
 check RoleShowSuccess "$(openapi_example RoleShowSuccess)" \
   "$(api GET '/roles/1?include=permissions&fields%5Broles%5D=id,name&fields%5Bpermissions%5D=id,name')"
 
+check TeamsIndexSuccess "$(openapi_example TeamsIndexSuccess)" \
+  "$(api GET '/teams?per_page=2&fields%5Bteams%5D=id,name')"
+
+check TeamShowSuccess "$(openapi_example TeamShowSuccess)" \
+  "$(api GET '/teams/1?fields%5Bteams%5D=id,name')"
+
+TEAM_CREATE="$(api POST '/teams' "$ADMIN_TOKEN" "{\"name\":\"openapi-team-$RANDOM\"}")"
+check TeamCreateSuccess "$(openapi_example TeamCreateSuccess)" "$TEAM_CREATE"
+TEAM_ID="$(echo "$TEAM_CREATE" | "$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["id"];')"
+check TeamUpdateSuccess "$(openapi_example TeamUpdateSuccess)" \
+  "$(api PATCH "/teams/${TEAM_ID}" "$ADMIN_TOKEN" '{"name":"openapi-team-renamed"}')"
+check TeamDeleteSuccess "$(openapi_example TeamDeleteSuccess)" \
+  "$(api DELETE "/teams/${TEAM_ID}" "$ADMIN_TOKEN")"
+
+SESSION_ID="$(artisan tinker --execute="\$u=App\Models\User::where('email','admin@example.com')->first(); echo App\Models\WebSession::factory()->for(\$u)->create()->id;" 2>/dev/null | tail -1)"
+check SessionShowSuccess "$(openapi_example SessionShowSuccess)" \
+  "$(api GET "/sessions/${SESSION_ID}?fields%5Bsessions%5D=id,device_name,remember_me,last_activity_at,created_at")"
+
+check OtherSessionsRevokedSuccess "$(openapi_example OtherSessionsRevokedSuccess)" \
+  "$(api DELETE '/sessions/others' "$ADMIN_TOKEN")"
+
 check PermissionsIndexSuccess "$(openapi_example PermissionsIndexSuccess)" \
   "$(api GET '/permissions?per_page=2&fields%5Bpermissions%5D=id,name')"
 

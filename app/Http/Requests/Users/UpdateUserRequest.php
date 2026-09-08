@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Users;
 
+use App\Enums\RoleName;
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
 use App\Models\User;
+use App\Rules\E164PhoneNumber;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
@@ -67,6 +69,32 @@ final class UpdateUserRequest extends ApiFormRequest
                 'integer',
                 Rule::exists('teams', 'id'),
             ],
+            'role' => [
+                Rule::prohibitedIf(fn (): bool => $this->user()?->can('assignRole', $this->route('user')) !== true),
+                'sometimes',
+                'required',
+                'string',
+                Rule::in(RoleName::Admin->value, RoleName::Manager->value, RoleName::User->value),
+            ],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:32', new E164PhoneNumber],
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'role.in' => 'The Selected Role Is Invalid',
         ];
     }
 
@@ -85,7 +113,7 @@ final class UpdateUserRequest extends ApiFormRequest
     public function withValidator(Validator $validator): void
     {
         $validator->after(function (Validator $validator): void {
-            if ($this->hasAny(['name', 'team_id'])) {
+            if ($this->hasAny(['name', 'team_id', 'role', 'phone'])) {
                 return;
             }
 

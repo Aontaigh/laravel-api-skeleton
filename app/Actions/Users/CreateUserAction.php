@@ -37,6 +37,7 @@ final class CreateUserAction
             $user = User::query()->create([
                 'name' => $data->name,
                 'email' => EmailAddress::normalise($data->email),
+                'phone' => $data->phone,
                 'password' => $data->password,
                 'team_id' => $data->teamId,
                 'email_verified_at' => null,

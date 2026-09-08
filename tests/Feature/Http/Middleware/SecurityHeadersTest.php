@@ -123,6 +123,25 @@ final class SecurityHeadersTest extends TestCase
         $this->assertStringNotContainsString("script-src 'self' 'unsafe-inline'", $csp);
     }
 
+    /**
+     * Point the CSP at the first-party violation receiver.
+     */
+    #[Test]
+    public function it_points_csp_report_uri_at_the_first_party_receiver(): void
+    {
+        // Act
+
+        /** @var TestResponse<Response> $response */
+        $response = $this->get('/health');
+
+        // Assert
+
+        $csp = (string) $response->headers->get('Content-Security-Policy');
+
+        $this->assertStringContainsString('report-uri', $csp);
+        $this->assertStringContainsString('/api/csp-reports', $csp);
+    }
+
     /*
      * Environment Behaviour Tests
      * ---------------------------

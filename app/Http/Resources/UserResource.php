@@ -40,6 +40,8 @@ final class UserResource extends JsonResource
      * viewing their own record - a sparse-fieldset omission alone is not enough,
      * because a request that never constrains `fields[users]` runs an unqualified
      * `SELECT *` and would otherwise leak the column regardless of permission.
+     * `phone` follows `name` visibility: it is optional contact metadata, not
+     * an identity key, and is always returned once selected.
      *
      * @param  Request              $request the inbound HTTP request
      * @return array<string, mixed> the serialised User
@@ -62,6 +64,10 @@ final class UserResource extends JsonResource
                         || $request->user()?->can('users.view-email') === true
                     ),
                 fn (): string => $this->resource->email,
+            ),
+            'phone' => $this->whenAttributeSelected(
+                'phone',
+                fn (): ?string => $this->resource->phone,
             ),
             'created_at' => $this->whenAttributeSelected(
                 'created_at',

@@ -728,11 +728,11 @@ final class UserIndexControllerTest extends TestCase
 
         $allowed = $this->apiMetaAllowed($response);
         $this->assertSame(
-            ['created_at', 'id', 'name'],
+            ['created_at', 'id', 'name', 'phone'],
             $allowed['fields.users'] ?? null,
         );
         $response->assertJsonFragment([
-            'Unsupported Field: i (Supported: created_at, id, name)',
+            'Unsupported Field: i (Supported: created_at, id, name, phone)',
         ]);
     }
 

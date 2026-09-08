@@ -23,4 +23,7 @@ enum AuthAuditEvent: string
     case PasswordResetRequested = 'Password Reset Requested';
     case PasswordReset = 'Password Reset';
     case PasswordResetFailed = 'Password Reset Failed';
+    case EmailVerificationSent = 'Email Verification Sent';
+    case EmailVerified = 'Email Verified';
+    case EmailVerificationFailed = 'Email Verification Failed';
 }

@@ -34,7 +34,7 @@ final class UserQueryConstraints
     public const ALLOWED_INCLUDES = ['team', 'role'];
 
     /** @var list<string> columns every viewer may request via `fields[users]=` */
-    public const ALLOWED_FIELDS = ['id', 'name', 'created_at'];
+    public const ALLOWED_FIELDS = ['id', 'name', 'phone', 'created_at'];
 
     /** @var list<string> `fields[…]` keys accepted on the User Index */
     public const ALLOWED_FIELDS_KEYS = ['users', 'teams', 'roles'];

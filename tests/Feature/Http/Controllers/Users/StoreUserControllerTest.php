@@ -22,6 +22,7 @@ use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\AssertsApiEnvelope;
 use Tests\TestCase;
 
 /**
@@ -36,6 +37,7 @@ use Tests\TestCase;
 #[CoversClass(ApiResponse::class)]
 final class StoreUserControllerTest extends TestCase
 {
+    use AssertsApiEnvelope;
     /*
     |--------------------------------------------------------------------------
     | Traits
@@ -444,5 +446,66 @@ final class StoreUserControllerTest extends TestCase
                 'password',
             ],
         ];
+    }
+
+    /**
+     * Store an optional canonical E.164 phone number.
+     */
+    #[Test]
+    public function it_stores_an_optional_phone_number(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->postJson('/api/users', [
+            'name' => 'Alice',
+            'email' => 'alice-phone@example.com',
+            'password' => 'Xq7#mK2$vL9pTzW4',
+            'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
+            'phone' => '+353851046420',
+        ]);
+
+        // Assert
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.phone', '+353851046420');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'alice-phone@example.com',
+            'phone' => '+353851046420',
+        ]);
+    }
+
+    /**
+     * Reject a non-E.164 phone number.
+     */
+    #[Test]
+    public function it_rejects_a_non_e164_phone_number(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->postJson('/api/users', [
+            'name' => 'Alice',
+            'email' => 'alice-bad-phone@example.com',
+            'password' => 'Xq7#mK2$vL9pTzW4',
+            'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
+            'phone' => '+44 7700 900013',
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['phone']);
     }
 }

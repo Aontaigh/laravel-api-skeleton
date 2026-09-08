@@ -15,6 +15,7 @@ Policy or request concern.
 [ApiClientPolicy](../app/Policies/ApiClientPolicy.php),
 [AuthAuditLogPolicy](../app/Policies/AuthAuditLogPolicy.php),
 [PermissionPolicy](../app/Policies/PermissionPolicy.php),
+[TeamPolicy](../app/Policies/TeamPolicy.php),
 [WebSessionPolicy](../app/Policies/WebSessionPolicy.php).
 
 ## Permissions
@@ -26,6 +27,7 @@ Policy or request concern.
 | `users.view-email` | See and select the `email` column on user records | [AppliesUserFilters](../app/Http/Requests/Concerns/Users/AppliesUserFilters.php) and [UserResource](../app/Http/Resources/UserResource.php) |
 | `users.create` | Create a user via `POST /api/users` | `UserPolicy::create()` |
 | `users.update` | Update a user via `PATCH /api/users/{user}` | `UserPolicy::update()` |
+| `users.assign-role` | Change `role` on `PATCH /api/users/{user}` | `UserPolicy::assignRole()` |
 | `users.reassign-team` | Reassign `team_id` on `PATCH /api/users/{user}` | `UserPolicy::reassignTeam()` |
 | `users.delete` | Soft-delete a user via `DELETE /api/users/{user}` | `UserPolicy::delete()` |
 | `users.force-logout` | Force-logout Users via `POST /api/users/logout` | `UserPolicy::forceLogout()` |
@@ -44,6 +46,10 @@ Policy or request concern.
 | `api-clients.update` | Access to `PATCH /api/clients/{client}` | `ApiClientPolicy::update()` |
 | `api-clients.delete` | Access to `DELETE /api/clients/{client}` | `ApiClientPolicy::delete()` |
 | `audit-logs.list` | Access to `GET /api/audit-logs` and `GET /api/audit-logs/{auth_audit_log}` (Admin role only for now) | `AuthAuditLogPolicy::viewAny()` and `AuthAuditLogPolicy::view()` |
+| `teams.list` | Access to `GET /api/teams` and `GET /api/teams/{team}` | `TeamPolicy::viewAny()` and `TeamPolicy::view()` |
+| `teams.create` | Access to `POST /api/teams` | `TeamPolicy::create()` |
+| `teams.update` | Access to `PATCH /api/teams/{team}` | `TeamPolicy::update()` |
+| `teams.delete` | Access to `DELETE /api/teams/{team}` | `TeamPolicy::delete()` |
 | `permissions.list` | Access to `GET /api/permissions` | `PermissionPolicy::viewAny()` |
 
 ### Notes
@@ -75,20 +81,39 @@ requires `sessions.list-all` (admin session management). The checks live in
 `WebSessionResource`, not only in the query allow-list - omitting `fields[sessions]`
 runs an unqualified `SELECT *` and would otherwise leak those columns.
 
+#### `GET /api/sessions/{web_session}` and `DELETE /api/sessions/others`
+
+Single-session show needs no new permission: the scoped `{web_session}` binding
+404s out-of-scope rows and `WebSessionPolicy::view()` mirrors the revoke scope
+(`sessions.list-all` sees all, everyone else only their own). Revoked rows stay
+invisible on show, matching the index. `DELETE /api/sessions/others` ("sign out
+other devices") is gated by `sessions.revoke-own` and only ever touches the
+caller's own rows - bearer tokens are untouched and the current browser stays
+signed in.
+
 #### `users.create`
 
 Admin-only creation of interactive user accounts via `POST /api/users`. Assigns
-role (`Admin`, `Manager`, or `User`; defaults to `User`) and optional `team_id`.
-Email addresses are normalised to lowercase before validation and persistence.
+role (`Admin`, `Manager`, or `User`; defaults to `User`), optional `team_id`,
+and optional canonical E.164 `phone`. Email addresses are normalised to lowercase before validation and persistence.
 `email_verified_at` remains null and no bearer token is returned. New accounts
 are auto-enrolled in email two-factor authentication (`mfa_method: email`).
 
 #### `users.update`
 
-Updates the target user's `name`. Admins may also reassign `team_id` when they
-hold `users.reassign-team`. `email` and `password` are not accepted on this
-endpoint. Managers may update users on their own team, including their own
+Updates the target user's `name` and `phone`. Admins may also reassign `team_id` when they
+hold `users.reassign-team`, and `role` when they hold `users.assign-role`. `email` and
+`password` are not accepted on this endpoint. Managers may update users on their own team, including their own
 account. Regular Users cannot update any account.
+
+#### `users.assign-role`
+
+Admin-only role changes via the `role` field on `PATCH /api/users/{user}`
+(`Admin`, `Manager`, or `User`; enforced with the same `prohibitedIf` pattern
+as `team_id`). Callers cannot change their own role or the role of a service
+account (`403`), and demoting the last remaining Admin answers `422`
+(domain guard in `UpdateUserAction`, so the API can never strand itself with
+no administrator).
 
 #### `users.delete`
 
@@ -175,6 +200,14 @@ After `migrate:fresh --seed`:
 
 Demo client credentials: `client_id` `demo-integration-client`, secret `DemoClientSecret12`
 (override via `API_DEMO_CLIENT_SECRET`).
+
+#### Teams
+
+Team listing is shared with Managers (`teams.list` on Admin and Manager), while
+creation, update, and deletion are Admin-only (`teams.create`, `teams.update`,
+`teams.delete`). `DELETE /api/teams/{team}` answers `422` while the Team still
+has assigned Users - the guard lives in `DeleteTeamAction`, so members are never
+silently un-scoped to `team_id` null. Reassign or remove the members first.
 
 ## Adding a Permission
 

@@ -232,6 +232,38 @@ final class AppServiceProvider extends ServiceProvider
                 ...$this->perIpCeiling(config()->integer('api.password_reset_ip_ceiling_per_minute'), $request),
             ];
         });
+
+        /*
+         * The signed e-mail-verification link. The signature already makes it
+         * unforgeable, so this only bounds lookup abuse: a per-IP ceiling
+         * (dropped in `local`), generous enough for a shared NAT.
+         */
+        RateLimiter::for('email-verify', fn (Request $request): array => $this->perIpCeiling(
+            config()->integer('api.email_verify_ip_ceiling_per_minute'),
+            $request,
+        ));
+
+        /*
+         * Verification resend is authenticated and takes no input, so it keys
+         * on the current User ID + IP.
+         */
+        RateLimiter::for('auth-verification', function (Request $request): array {
+            $identifier = $request->user()?->getAuthIdentifier();
+            $key = (is_scalar($identifier) ? (string) $identifier : (string) $request->ip()).'|'.$request->ip();
+
+            return [Limit::perMinute(config()->integer('api.email_verification_rate_limit_per_minute'))->by($key)];
+        });
+
+        /*
+         * Browser CSP violation reports. The caller is anonymous and a single
+         * misconfigured page can burst dozens of reports at once, so the
+         * ceiling is more generous than the other public endpoints. Per IP
+         * in every environment except `local`, like the other public limiters.
+         */
+        RateLimiter::for('csp-reports', fn (Request $request): array => $this->perIpCeiling(
+            config()->integer('api.csp_report_ip_ceiling_per_minute'),
+            $request,
+        ));
     }
 
     /**

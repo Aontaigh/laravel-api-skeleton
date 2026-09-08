@@ -22,6 +22,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\AssertsApiEnvelope;
 use Tests\TestCase;
 
 /**
@@ -36,6 +37,7 @@ use Tests\TestCase;
 #[CoversClass(ApiResponse::class)]
 final class UpdateUserControllerTest extends TestCase
 {
+    use AssertsApiEnvelope;
     /*
     |--------------------------------------------------------------------------
     | Traits
@@ -435,6 +437,229 @@ final class UpdateUserControllerTest extends TestCase
         // Assert
 
         $response->assertUnauthorized();
+    }
+
+    /*
+     * Role Assignment Tests
+     * ---------------------
+     */
+
+    /**
+     * Assign a new role to a User as an Admin.
+     */
+    #[Test]
+    public function it_assigns_a_role_as_an_admin(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$this->teamMember->id}",
+            ['role' => RoleName::Manager->value],
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertTrue($this->teamMember->refresh()->hasRole(RoleName::Manager));
+        $this->assertFalse($this->teamMember->hasRole(RoleName::User));
+    }
+
+    /**
+     * Demote an Admin while another Admin remains.
+     */
+    #[Test]
+    public function it_demotes_an_admin_while_another_remains(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->withoutTeam()->admin()->create();
+
+        /** @var User $otherAdmin */
+        $otherAdmin = User::factory()->withoutTeam()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$otherAdmin->id}",
+            ['role' => RoleName::Manager->value],
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertTrue($otherAdmin->refresh()->hasRole(RoleName::Manager));
+    }
+
+    /**
+     * Reject a role change from a Manager: `role` is prohibited without
+     * `users.assign-role`, and nothing else in the payload applies either.
+     */
+    #[Test]
+    public function it_rejects_a_role_change_from_a_manager(): void
+    {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->manager)->patchJson(
+            "/api/users/{$this->teamMember->id}",
+            ['name' => 'Should Not Apply', 'role' => RoleName::Admin->value],
+        );
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['role']);
+        $this->assertDatabaseHas('users', [
+            'id' => $this->teamMember->id,
+            'name' => 'Team Member',
+        ]);
+        $this->assertTrue($this->teamMember->refresh()->hasRole(RoleName::User));
+    }
+
+    /**
+     * Reject an Admin changing their own role.
+     */
+    #[Test]
+    public function it_rejects_an_admin_changing_their_own_role(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$admin->id}",
+            ['role' => RoleName::Manager->value],
+        );
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['role']);
+        $this->assertTrue($admin->refresh()->hasRole(RoleName::Admin));
+    }
+
+    /**
+     * Reject an unknown role value.
+     */
+    #[Test]
+    public function it_rejects_an_unknown_role(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$this->teamMember->id}",
+            ['role' => 'Superuser'],
+        );
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['role']);
+    }
+
+    /**
+     * Reject a role change on a service account.
+     */
+    #[Test]
+    public function it_rejects_a_role_change_on_a_service_account(): void
+    {        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create();
+
+        /** @var User $serviceUser */
+        $serviceUser = User::factory()->serviceAccount()->service()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$serviceUser->id}",
+            ['role' => RoleName::Manager->value],
+        );
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['role']);
+        $this->assertTrue($serviceUser->refresh()->hasRole(RoleName::Service));
+    }
+
+    /*
+     * Phone Tests
+     * -----------
+     */
+
+    /**
+     * Update the phone number to a canonical E.164 value.
+     */
+    #[Test]
+    public function it_updates_the_phone_number(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$this->teamMember->id}",
+            ['phone' => '+353851046420'],
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.phone', '+353851046420');
+        $this->assertDatabaseHas('users', [
+            'id' => $this->teamMember->id,
+            'phone' => '+353851046420',
+        ]);
+    }
+
+    /**
+     * Reject a non-E.164 phone number.
+     */
+    #[Test]
+    public function it_rejects_a_non_e164_phone_number(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$this->teamMember->id}",
+            ['phone' => '0851046420'],
+        );
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['phone']);
     }
 
     /*

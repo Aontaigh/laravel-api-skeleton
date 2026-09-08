@@ -141,7 +141,7 @@ final class IndexFieldsQueryTest extends UnitTestCase
         // Assert
 
         $this->assertSame(
-            ['users.id', 'users.name', 'users.created_at'],
+            ['users.id', 'users.name', 'users.phone', 'users.created_at'],
             $query->getQuery()->columns,
         );
     }

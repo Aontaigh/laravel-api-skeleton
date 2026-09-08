@@ -75,6 +75,19 @@ return [
             'replace_placeholders' => true,
         ],
 
+        /*
+         * CSP violation reports write here, never to `single`/`stack`, so
+         * browser noise (a misconfigured policy can generate thousands of
+         * reports per minute) cannot drown out the main application log.
+         */
+        'csp-reports' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/csp-reports.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'days' => env('LOG_DAILY_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

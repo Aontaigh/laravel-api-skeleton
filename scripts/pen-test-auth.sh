@@ -5,7 +5,8 @@
 # suspensions, soft-delete, read endpoints (audit-logs, permissions, clients),
 # OAuth client-credentials, queued audit persistence, web-session registry
 # (IDOR, scope, surgical revoke vs global logout), password reset (enumeration,
-# token abuse, replay, credential rotation), session activity tracking, and
+# token abuse, replay, credential rotation), session activity tracking,
+# team management (admin-only writes, guarded delete), and
 # retired flat auth paths.
 #
 # Usage:
@@ -296,6 +297,10 @@ register_and_login_token() {
         echo ""
         return 1
     fi
+
+    # Business-route probes require a verified e-mail (the `email.verified`
+    # gate); mark the fresh probe account verified via tinker.
+    artisan_tinker "App\\Models\\User::where('email','${email}')->update(['email_verified_at' => now()]);" > /dev/null
 
     local tfa_required
     tfa_required="$(json_path 'data.two_factor_required' | tr '[:upper:]' '[:lower:]')"
@@ -1642,6 +1647,258 @@ else
     warn "Session Activity" "SESSION_DRIVER=array - Cookie Touch Not Exercised"
 fi
 
+
+# --- 42. Email verification: signed link abuse ---
+echo "--- 42. Email Verification: Tampered Signature ---"
+reset_rate_limits
+VERIF_EMAIL="verif-probe-${RANDOM}@example.com"
+VERIF_PASS="${STRONG_PASS}"
+post_json "$BASE/auth/register" -d "{\"name\":\"Verif Probe\",\"email\":\"${VERIF_EMAIL}\",\"password\":\"${VERIF_PASS}\",\"password_confirmation\":\"${VERIF_PASS}\"}" > /dev/null
+VERIF_ID=$(artisan_tinker "echo App\\Models\\User::where('email','${VERIF_EMAIL}')->value('id');")
+
+TAMPER_URL="$BASE/auth/email/verify/${VERIF_ID}/$(echo -n "$VERIF_EMAIL" | shasum -a 256 | cut -c1-64)?expires=9999999999&signature=0000000000000000000000000000000000000000000000000000000000000000"
+TAMPER_CODE=$(status_code "$TAMPER_URL")
+if [[ "$TAMPER_CODE" == "403" ]]; then
+    pass "Tampered signature rejected (403)"
+else
+    fail "Tampered Signature Not Rejected (got $TAMPER_CODE)"
+fi
+
+# --- 43. Email verification: foreign mailbox hash ---
+echo "--- 43. Email Verification: Foreign Mailbox Hash ---"
+reset_rate_limits
+FORGED_URL=$(artisan_tinker "echo URL::temporarySignedRoute('email.verification.verify', now()->addMinutes(60), ['id' => ${VERIF_ID}, 'hash' => sha1('attacker@example.com')]);")
+FORGED_CODE=$(status_code "$FORGED_URL")
+FORGED_LOC=$(curl -s -o /dev/null -w '%{redirect_url}' "$FORGED_URL")
+if [[ "$FORGED_CODE" == "302" && "$FORGED_LOC" == *"verified=0"* ]]; then
+    pass "Foreign mailbox hash answered verified=0 (generic failure)"
+else
+    fail "Foreign Mailbox Hash Mishandled (code=$FORGED_CODE)"
+fi
+
+# --- 44. Email verification: resend requires authentication ---
+echo "--- 44. Email Verification: Resend Authenticated Only ---"
+reset_rate_limits
+RESEND_CODE=$(status_code -X POST -H "Accept: application/json" "$BASE/auth/email/resend")
+if [[ "$RESEND_CODE" == "401" ]]; then
+    pass "Unauthenticated resend rejected (401)"
+else
+    fail "Unauthenticated Resend Not Rejected (got $RESEND_CODE)"
+fi
+
+# --- 45. Team management boundaries ---
+echo "--- 45. Team Management Boundaries ---"
+reset_rate_limits
+TEAM_ADMIN_TOKEN="$(login_token admin@example.com password)"
+TEAM_MANAGER_TOKEN="$(login_token manager@example.com password)"
+TEAM_USER_TOKEN="$(login_token test@example.com password)"
+TEAM_SERVICE_TOKEN="$(oauth_token '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"DemoClientSecret12"}')"
+
+if [[ -z "$TEAM_ADMIN_TOKEN" || -z "$TEAM_MANAGER_TOKEN" || -z "$TEAM_USER_TOKEN" ]]; then
+    fail "Could Not Obtain Tokens for Team Management Probes"
+else
+    code=$(status_code -X POST "$BASE/teams" -H "Accept: application/json" \
+        -H "Content-Type: application/json" -d '{"name":"No Token Team"}')
+    expect_code "Create team without token" "401" "$code"
+
+    code=$(auth_get "$BASE/teams" "$TEAM_USER_TOKEN")
+    expect_code "User cannot list teams" "403" "$code"
+
+    code=$(auth_get "$BASE/teams" "$TEAM_MANAGER_TOKEN")
+    expect_code "Manager can list teams" "200" "$code"
+
+    TEAM_A_NAME="Pen Test Team ${RANDOM}"
+    code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d "{\"name\":\"${TEAM_A_NAME}\"}")
+    expect_code "Admin can create team" "201" "$code"
+    TEAM_A_ID="$(json_path 'data.id')"
+
+    code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d "{\"name\":\"${TEAM_A_NAME}\"}")
+    expect_code "Duplicate team name rejected" "422" "$code"
+
+    code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d "{\"name\":\"${TEAM_A_NAME} \"}")
+    expect_code "Duplicate team name with trailing space rejected" "422" "$code"
+
+    code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d '{}')
+    expect_code "Create team without name rejected" "422" "$code"
+
+    code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d '{"name":null}')
+    expect_code "Create team with null name rejected" "422" "$code"
+
+    LONG_TEAM="$(python3 -c "print('t'*10000)")"
+    code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d "{\"name\":\"${LONG_TEAM}\"}")
+    expect_code "Oversized team name rejected" "422" "$code"
+
+    for payload in "' OR 1=1--" "'; DROP TABLE teams;--" "%' OR '1'='1"; do
+        code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d "{\"name\":\"${payload}${RANDOM}\"}")
+        expect_not_500 "Team create SQLi-shaped name" "$code"
+    done
+
+    XSS_TEAM_NAME="<script>alert(1)</script>Probe ${RANDOM}"
+    code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d "{\"name\":\"${XSS_TEAM_NAME}\"}")
+    if [[ "$code" == "201" ]]; then
+        STORED_TEAM_NAME="$(json_path 'data.name')"
+        if [[ "$STORED_TEAM_NAME" != *"<script>"* ]]; then
+            pass "Team name strips script tags ($STORED_TEAM_NAME)"
+        else
+            fail "XSS in Team Name Persisted"
+        fi
+    else
+        fail "XSS Team Create Returned $code"
+    fi
+
+    code=$(auth_post "$BASE/teams" "$TEAM_MANAGER_TOKEN" -d '{"name":"Manager Team"}')
+    expect_code "Manager cannot create team" "403" "$code"
+
+    code=$(auth_post "$BASE/teams" "$TEAM_USER_TOKEN" -d '{"name":"User Team"}')
+    expect_code "User cannot create team" "403" "$code"
+
+    if [[ -n "$TEAM_SERVICE_TOKEN" ]]; then
+        code=$(auth_post "$BASE/teams" "$TEAM_SERVICE_TOKEN" -d '{"name":"Service Team"}')
+        expect_code "Service token cannot create team" "403" "$code"
+
+        code=$(auth_get "$BASE/teams" "$TEAM_SERVICE_TOKEN")
+        expect_code "Service token cannot list teams" "403" "$code"
+    else
+        warn "Team Service Probes" "No Service Token"
+    fi
+
+    if [[ -z "$TEAM_A_ID" ]]; then
+        fail "Could Not Capture Created Team ID for Update Probes"
+    else
+        TEAM_B_NAME="Pen Test Team B ${RANDOM}"
+        code=$(auth_post "$BASE/teams" "$TEAM_ADMIN_TOKEN" -d "{\"name\":\"${TEAM_B_NAME}\"}")
+        TEAM_B_ID="$(json_path 'data.id')"
+
+        code=$(status_code -X PATCH "$BASE/teams/${TEAM_A_ID}" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{"name":"Renamed Pen Team"}')
+        expect_code "Admin can rename team" "200" "$code"
+
+        code=$(status_code -X PATCH "$BASE/teams/${TEAM_B_ID}" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d "{\"name\":\"Renamed Pen Team\"}")
+        expect_code "Rename team to another team name rejected" "422" "$code"
+
+        code=$(status_code -X PATCH "$BASE/teams/${TEAM_A_ID}" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{}')
+        expect_code "Empty team update rejected" "422" "$code"
+
+        code=$(status_code -X PATCH "$BASE/teams/${TEAM_A_ID}" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_MANAGER_TOKEN}" -d '{"name":"Manager Rename"}')
+        expect_code "Manager cannot rename team" "403" "$code"
+
+        code=$(status_code -X PATCH "$BASE/teams/${TEAM_A_ID}" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_USER_TOKEN}" -d '{"name":"User Rename"}')
+        expect_code "User cannot rename team" "403" "$code"
+
+        code=$(status_code -X PATCH "$BASE/teams/999999" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{"name":"Ghost"}')
+        expect_code "Update nonexistent team" "404" "$code"
+
+        code=$(status_code -X PATCH "$BASE/teams/abc" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{"name":"Ghost"}')
+        expect_code "Update non-numeric team id" "404" "$code"
+
+        code=$(status_code -X PUT "$BASE/teams" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{"name":"Put Team"}')
+        expect_code "PUT /teams rejected" "405" "$code"
+
+        code=$(auth_delete "$BASE/teams/${TEAM_A_ID}" "$TEAM_MANAGER_TOKEN")
+        expect_code "Manager cannot delete team" "403" "$code"
+
+        code=$(auth_delete "$BASE/teams/${TEAM_A_ID}" "$TEAM_USER_TOKEN")
+        expect_code "User cannot delete team" "403" "$code"
+
+        code=$(auth_delete "$BASE/teams/999999" "$TEAM_ADMIN_TOKEN")
+        expect_code "Delete nonexistent team" "404" "$code"
+
+        # Guarded delete: a team with members must survive, then delete cleanly
+        # once unassigned.
+        TEAM_MEMBER_EMAIL="team-member-${RANDOM}@example.com"
+        register_and_login_token "$TEAM_MEMBER_EMAIL" "$STRONG_PASS" "Team Member" > /dev/null
+        artisan_tinker "App\\Models\\User::where('email','${TEAM_MEMBER_EMAIL}')->update(['team_id' => ${TEAM_A_ID}]);" > /dev/null
+
+        code=$(auth_delete "$BASE/teams/${TEAM_A_ID}" "$TEAM_ADMIN_TOKEN")
+        expect_code "Delete team with assigned users refused" "422" "$code"
+
+        TEAM_SURVIVES="$(artisan_tinker "echo App\\Models\\Team::where('id', ${TEAM_A_ID})->exists() ? 'yes' : 'no';")"
+        if [[ "$TEAM_SURVIVES" == "yes" ]]; then
+            pass "Refused delete left team row intact"
+        else
+            fail "Refused Delete Removed the Team Row"
+        fi
+
+        artisan_tinker "App\\Models\\User::where('email','${TEAM_MEMBER_EMAIL}')->update(['team_id' => null]);" > /dev/null
+        code=$(auth_delete "$BASE/teams/${TEAM_A_ID}" "$TEAM_ADMIN_TOKEN")
+        expect_code "Delete unassigned team" "200" "$code"
+
+        code=$(auth_delete "$BASE/teams/${TEAM_B_ID}" "$TEAM_ADMIN_TOKEN")
+        expect_code "Delete second probe team" "200" "$code"
+    fi
+fi
+
+# --- 46. New management surfaces (roles, sessions, telemetry) ---
+echo "--- 46. New Management Surfaces ---"
+reset_rate_limits
+ROLE_ADMIN_TOKEN="$(login_token admin@example.com password)"
+ROLE_MANAGER_TOKEN="$(login_token manager@example.com password)"
+ROLE_USER_TOKEN="$(login_token test@example.com password)"
+ROLE_TARGET_ID="$(artisan_tinker "echo App\\Models\\User::where('email','test@example.com')->value('id');")"
+ROLE_SERVICE_ID="$(artisan_tinker "echo App\\Models\\User::where('email','integrations@clients.internal')->value('id');")"
+
+if [[ -z "$ROLE_ADMIN_TOKEN" || -z "$ROLE_TARGET_ID" ]]; then
+    fail "Could Not Obtain Tokens for New Surface Probes"
+else
+    code=$(status_code -X PATCH "$BASE/users/${ROLE_TARGET_ID}" \
+        -H "Accept: application/json" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${ROLE_MANAGER_TOKEN}" -d '{"role":"Admin"}')
+    expect_code "Manager cannot escalate role to Admin" "422" "$code"
+
+    ADMIN_SELF_ID="$(artisan_tinker "echo App\\Models\\User::where('email','admin@example.com')->value('id');")"
+    code=$(status_code -X PATCH "$BASE/users/${ADMIN_SELF_ID}" \
+        -H "Accept: application/json" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${ROLE_ADMIN_TOKEN}" -d '{"role":"Manager"}')
+    expect_code "Admin cannot change own role" "422" "$code"
+
+    if [[ -n "$ROLE_SERVICE_ID" ]]; then
+        code=$(status_code -X PATCH "$BASE/users/${ROLE_SERVICE_ID}" \
+            -H "Accept: application/json" -H "Content-Type: application/json" \
+            -H "Authorization: Bearer ${ROLE_ADMIN_TOKEN}" -d '{"role":"Manager"}')
+        expect_code "Service account role is immutable" "422" "$code"
+    fi
+
+    code=$(status_code -X PATCH "$BASE/users/${ROLE_TARGET_ID}" \
+        -H "Accept: application/json" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${ROLE_ADMIN_TOKEN}" -d '{"phone":"not-a-number"}')
+    expect_code "Non-E.164 phone rejected" "422" "$code"
+
+    FOREIGN_SESSION_ID="$(artisan_tinker "\$u=App\\Models\\User::where('email','manager@example.com')->first(); echo \$u ? App\\Models\\WebSession::factory()->for(\$u)->create()->id : '';")"
+    if [[ -n "$FOREIGN_SESSION_ID" ]]; then
+        code=$(auth_get "$BASE/sessions/${FOREIGN_SESSION_ID}" "$ROLE_USER_TOKEN")
+        expect_code "User cannot show foreign session" "404" "$code"
+    fi
+
+    code=$(auth_delete "$BASE/sessions/others" "$ROLE_MANAGER_TOKEN")
+    expect_code "Manager can revoke own other sessions" "200" "$code"
+
+    code=$(status_code -X POST "$BASE/csp-reports" -H "Content-Type: application/csp-report" -d '{"csp-report":{"document-uri":"https://example.com/"}}')
+    expect_code "Anonymous CSP report accepted" "204" "$code"
+
+    BIG_CSP="$(python3 -c "print('{\"csp-report\":{\"document-uri\":\"' + 'a'*20000 + '\"}}')")"
+    code=$(status_code -X POST "$BASE/csp-reports" -H "Content-Type: application/csp-report" -d "$BIG_CSP")
+    expect_code "Oversized CSP report rejected" "413" "$code"
+
+    code=$(status_code "${HOST}/.well-known/security.txt")
+    expect_code "security.txt served" "200" "$code"
+fi
+
+echo ""
 echo ""
 echo "=== Pen Test Complete ==="
 echo "Pass: $PASS_COUNT  Fail: $FAIL_COUNT  Warn: $WARN_COUNT"

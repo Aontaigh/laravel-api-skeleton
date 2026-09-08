@@ -39,6 +39,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'users.list-all',          // cross-team row scope on the user index
         'users.view-email',        // email column visibility on user records
         'users.update',            // PATCH /api/users/{user}
+        'users.assign-role',       // role changes on PATCH /api/users/{user}
         'users.reassign-team',     // team_id changes on PATCH /api/users/{user}
         'users.delete',            // DELETE /api/users/{user} (soft delete)
         'users.force-logout',      // POST /api/users/logout (admin session termination)
@@ -55,6 +56,9 @@ final class RolesAndPermissionsSeeder extends Seeder
         'api-clients.update',      // PATCH /api/clients/{client}
         'audit-logs.list',         // GET /api/audit-logs
         'teams.list',              // GET /api/teams and GET /api/teams/{team}
+        'teams.create',            // POST /api/teams
+        'teams.update',            // PATCH /api/teams/{team}
+        'teams.delete',            // DELETE /api/teams/{team}
         'permissions.list',        // GET /api/permissions
         'sessions.list-own',       // GET /api/sessions (own sessions only)
         'sessions.list-all',       // cross-user row scope on the session index
@@ -75,6 +79,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'users.list-all',
             'users.view-email',
             'users.update',
+            'users.assign-role',
             'users.reassign-team',
             'users.delete',
             'users.force-logout',
@@ -91,6 +96,9 @@ final class RolesAndPermissionsSeeder extends Seeder
             'api-clients.update',
             'audit-logs.list',
             'teams.list',
+            'teams.create',
+            'teams.update',
+            'teams.delete',
             'permissions.list',
             'sessions.list-own',
             'sessions.list-all',

@@ -27,6 +27,7 @@ use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 
 /**
@@ -111,14 +112,21 @@ final class PermissionIndexControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/permissions');
+        $response = $this->actingAs($admin)->getJson('/api/permissions?per_page=100');
 
         // Assert
 
         $response->assertOk();
         $response->assertJsonPath('message', 'Permissions Retrieved Successfully');
-        $response->assertJsonPath('meta.pagination.total', 25);
-        $response->assertJsonCount(25, 'data');
+
+        /*
+         * Derived from the seeded database rather than a hardcoded count, so
+         * adding a permission to the seeder cannot break this test - the index
+         * must simply return every permission the seeder created.
+         */
+        $expected = Permission::query()->orderBy('name')->pluck('name')->all();
+        $response->assertJsonPath('meta.pagination.total', count($expected));
+        $response->assertJsonCount(count($expected), 'data');
     }
 
     /**
@@ -166,7 +174,7 @@ final class PermissionIndexControllerTest extends TestCase
         // Assert
 
         $response->assertOk();
-        $response->assertJsonPath('meta.pagination.total', 25);
+        $response->assertJsonPath('meta.pagination.total', Permission::query()->count());
     }
 
     /*

@@ -88,6 +88,33 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | E-Mail Verification Rate Limits
+    |--------------------------------------------------------------------------
+    |
+    | The signed verify link is unforgeable, so `email-verify` only bounds
+    | lookup abuse with a per-IP ceiling (dropped in `local`). Resend is
+    | authenticated and keyed on the User ID + IP.
+    |
+    */
+
+    'email_verify_ip_ceiling_per_minute' => (int) env('API_EMAIL_VERIFY_IP_CEILING_PER_MINUTE', 60),
+
+    'email_verification_rate_limit_per_minute' => (int) env('API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE', 3),
+
+    /*
+    |--------------------------------------------------------------------------
+    | CSP Report Rate Limit
+    |--------------------------------------------------------------------------
+    |
+    | Browser violation reports are anonymous and bursty (one misconfigured
+    | page fires dozens at once), so the per-IP ceiling is generous. Dropped
+    | in `local` like the other public ceilings.
+    |
+    */
+
+    'csp_report_ip_ceiling_per_minute' => (int) env('API_CSP_REPORT_IP_CEILING_PER_MINUTE', 60),
+    /*
+    |--------------------------------------------------------------------------
     | Password Length Cap
     |--------------------------------------------------------------------------
     |
@@ -205,6 +232,16 @@ return [
     */
 
     'password_reset_url' => env('API_PASSWORD_RESET_URL'),
+
+    /*
+    | The SPA page showing the e-mail verification outcome. The verify
+    | controller redirects the browser here with `?verified=1|0`. Empty
+    | falls back to `url('/verify-email')` on the API host, which is only
+    | useful in local development.
+    |
+    */
+
+    'email_verification_url' => env('API_EMAIL_VERIFICATION_URL'),
 
     'password_forgot_url' => env('API_PASSWORD_FORGOT_URL'),
 

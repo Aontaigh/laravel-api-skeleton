@@ -3,7 +3,8 @@
 .env
 .env.backup
 .env.production
-.env.testing.local
+.env.local
+.env.*.local
 .phpactor.json
 .phpunit.result.cache
 /.codex

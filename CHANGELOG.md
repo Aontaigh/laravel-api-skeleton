@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-09-08
+
+### Added
+
+- **E-Mail verification flow** (ported and improved from the internal reference build): registration
+  queues a temporary signed verification link (`AUTH_VERIFICATION_EXPIRE`, default 60 minutes) via a
+  config-driven SPA destination (`API_EMAIL_VERIFICATION_URL`); `GET /api/auth/email/verify/{id}/{hash}`
+  validates the signature and expiry, binds the link to its mailbox with a constant-time hash compare,
+  and redirects the browser to the SPA result page with `verified=1|0`; `POST /api/auth/email/resend`
+  re-sends for the authenticated account only (no enumeration or spam surface) and is rate limited on
+  a User ID + IP composite key. Business routes answer **403** to unverified accounts while logout,
+  `GET /me`, resending, and ending the current session stay reachable. New audit events:
+  `Email Verification Sent`, `Email Verified`, `Email Verification Failed` (recorded on tampered or
+  foreign-mailbox link attempts with the attempted address).
+- `POST /api/teams`, `PATCH /api/teams/{team}`, and `DELETE /api/teams/{team}` - Admin-only Team
+  management (`teams.create`, `teams.update`, `teams.delete`); deletion is refused with `422` while the
+  Team still has assigned Users so members are never silently un-scoped to `team_id` null
+- `role` on `PATCH /api/users/{user}` - Admin-only role assignment (`users.assign-role`, `Admin` /
+  Manager / `User`) following the `team_id` field-gating pattern; self role changes and service-account
+  role changes answer `403`, demoting the last Admin answers `422`
+- `GET /api/sessions/{web_session}` and `DELETE /api/sessions/others` - single-session show with the
+  standard `fields` / `include` contract (out-of-scope rows answer `404` via the scoped binding) and
+  "sign out other devices" (`sessions.revoke-own`, bearer tokens untouched, current browser stays signed in)
+- `POST /api/csp-reports` - public browser CSP violation receiver (legacy `report-uri` and modern
+  Reporting API shapes, always `204`, `413` past 16 KiB, dedicated `csp-reports` log channel and per-IP
+  throttle); both CSP policies now carry `report-uri` pointing at it
+- `/.well-known/security.txt` (RFC 9116) served by route with a `security_txt` config path, plus a root
+  `SECURITY.md` disclosure policy; the suite fails the build when `Expires` goes stale
+- Optional E.164 `phone` on users (`POST` / `PATCH /api/users`, canonical form enforced by the new
+  `E164PhoneNumber` rule backed by libphonenumber, exposed through `fields[users]`); the `E164Phone`
+  support helper also ships `normalize()` for a future SMS two-factor channel
+- `EnvExampleParityTest` - asserts application config keys are documented in `.env.example` and that
+  `.env.ci` mirrors the same section banners and key contract
+
+### Changed
+
+- `.env.example` and `.env.ci` restructured to the `create-env-file` skill: purpose headers, canonical
+  section order (GeoIP and product features before Frontend; security edge last), `(required)` /
+  `(optional)` markers, unset-fallback comments on every commented key, and a full-mirror CI contract
+- `.gitignore` - `.env.local` and `.env.*.local` patterns so personal overlay files cannot be committed
+
 ## [1.9.0] - 2026-09-06
 
 ### Added
@@ -269,7 +310,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.0...v1.8.1
 [1.8.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.7.0...v1.8.0

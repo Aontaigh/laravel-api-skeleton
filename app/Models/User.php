@@ -6,7 +6,9 @@ namespace App\Models;
 
 use App\Enums\MfaMethod;
 use App\Notifications\Auth\ResetPasswordNotification;
+use App\Notifications\Auth\VerifyEmailNotification;
 use Database\Factories\UserFactory;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -29,6 +31,7 @@ use UnitEnum;
  * @property int|null                        $team_id
  * @property string                          $name
  * @property string                          $email
+ * @property string|null                     $phone
  * @property \Illuminate\Support\Carbon|null $email_verified_at
  * @property \Illuminate\Support\Carbon|null $created_at
  * @property \Illuminate\Support\Carbon|null $updated_at
@@ -42,7 +45,7 @@ use UnitEnum;
  *                                                   `BelongsToMany` return type carries
  *                                                   no generics for PHPStan to resolve
  */
-final class User extends Authenticatable
+final class User extends Authenticatable implements MustVerifyEmail
 {
     /*
     |--------------------------------------------------------------------------
@@ -64,6 +67,7 @@ final class User extends Authenticatable
         'team_id',
         'name',
         'email',
+        'phone',
         'password',
         'is_service_account',
         'mfa_method',
@@ -240,12 +244,23 @@ final class User extends Authenticatable
      * which only serves JSON. The app notification carries a config-driven
      * SPA destination (`api.password_reset_url`) instead.
      *
-     * @param  string $token the password reset token issued by the broker
-     * @return void
+     * @param string $token the password reset token issued by the broker
      */
     public function sendPasswordResetNotification($token): void
     {
         $this->notify(new ResetPasswordNotification($token));
+    }
+
+    /**
+     * Send the e-mail verification link through the queued app notification.
+     *
+     * The framework default would emit its own mail pointing at the API host,
+     * which only serves JSON. The app notification carries a temporary signed
+     * URL for the configured SPA destination (`api.email_verification_url`).
+     */
+    public function sendEmailVerificationNotification(): void
+    {
+        $this->notify(new VerifyEmailNotification);
     }
 
     /*

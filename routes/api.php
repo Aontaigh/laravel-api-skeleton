@@ -84,6 +84,27 @@ Route::post('/auth/reset-password', \App\Http\Controllers\Auth\ResetPasswordCont
 
 /*
 |--------------------------------------------------------------------------
+| E-Mail Verification
+|--------------------------------------------------------------------------
+|
+| The verify link is the temporary signed URL from `VerifyEmailNotification`
+| - the signature is the authorisation, so the endpoint is public. The
+| controller redirects the browser to the configured SPA result page. Resend
+| is authenticated and keyed on the current User, so it cannot enumerate or
+| spam arbitrary addresses.
+|
+*/
+
+Route::get('/auth/email/verify/{id}/{hash}', \App\Http\Controllers\Auth\Email\VerifyEmailController::class)
+    ->middleware(['signed', 'throttle:email-verify'])
+    ->name('email.verification.verify');
+
+Route::post('/auth/email/resend', \App\Http\Controllers\Auth\Email\ResendVerificationController::class)
+    ->middleware(['auth:sanctum', 'throttle:auth-verification'])
+    ->name('email.verification.resend');
+
+/*
+|--------------------------------------------------------------------------
 | Client Credentials
 |--------------------------------------------------------------------------
 |
@@ -112,35 +133,71 @@ Route::post('/oauth/token', \App\Http\Controllers\Auth\ClientTokenExchangeContro
 Route::get('/status', \App\Http\Controllers\SystemHealth\SystemStatusController::class)
     ->middleware('throttle:api-status')
     ->name('status');
+
+/*
+|--------------------------------------------------------------------------
+| Security Telemetry
+|--------------------------------------------------------------------------
+|
+| Browser-submitted CSP violation reports. Public and unauthenticated - the
+| caller is an anonymous browser, not a signed-in User - with a dedicated
+| per-IP throttle. Always answers 204: a browser discards the response and
+| never retries, so even malformed bodies are acknowledged, never 422.
+|
+*/
+
+Route::post('/csp-reports', \App\Http\Controllers\CspReports\StoreCspReportController::class)
+    ->middleware('throttle:csp-reports')
+    ->name('csp-reports.store');
 /*
 |--------------------------------------------------------------------------
 | Authenticated API
 |--------------------------------------------------------------------------
 |
 | Every route below requires a Sanctum bearer token or a stateful SPA
-| session cookie. `active.account` rejects suspended accounts, and
+| session cookie. `active.account` rejects suspended accounts,
 | `session.version` turns away cookies stamped with a superseded version
-| (force-logout, password change, password reset).
+| (force-logout, password change, password reset), and `email.verified`
+| gates business routes behind a confirmed e-mail address - the identity
+| exemptions subgroup keeps logout, `GET /me`, and ending the current
+| session reachable for unverified accounts.
 |
 */
 
-Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session.touch', 'throttle:api'])->group(function (): void {
+Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session.touch', 'email.verified', 'throttle:api'])->group(function (): void {
+
+    /*
+    |--------------------------------------------------------------------------
+    | Identity Exemptions
+    |--------------------------------------------------------------------------
+    |
+    | Routes an unverified account must still reach: sign out, read its own
+    | profile (so the SPA can route to the verification screen), and end the
+    | current registry session. Everything below the subgroup requires a
+    | verified e-mail address.
+    |
+    */
+
+    Route::withoutMiddleware([\App\Http\Middleware\EnsureEmailIsVerified::class])->group(function (): void {
+        Route::post('/logout', \App\Http\Controllers\Auth\LogoutController::class)
+            ->name('auth.logout');
+
+        Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)
+            ->name('me.show');
+
+        Route::delete('/sessions/current', \App\Http\Controllers\Sessions\DestroyCurrentSessionController::class)
+            ->name('sessions.current.destroy');
+    });
 
     /*
     |--------------------------------------------------------------------------
     | Account
     |--------------------------------------------------------------------------
     |
-    | Self-Service Surface: end the current session, view and update the
-    | caller's own profile and password.
+    | Self-Service Surface: view and update the caller's own profile and
+    | password. Requires a verified e-mail address.
     |
     */
-
-    Route::post('/logout', \App\Http\Controllers\Auth\LogoutController::class)
-        ->name('auth.logout');
-
-    Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)
-        ->name('me.show');
 
     Route::patch('/me', \App\Http\Controllers\Users\UpdateMeController::class)
         ->name('me.update');
@@ -161,11 +218,14 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
     Route::get('/sessions', \App\Http\Controllers\Sessions\SessionIndexController::class)
         ->name('sessions.index');
 
-    Route::delete('/sessions/current', \App\Http\Controllers\Sessions\DestroyCurrentSessionController::class)
-        ->name('sessions.current.destroy');
+    Route::delete('/sessions/others', \App\Http\Controllers\Sessions\DestroyOtherSessionsController::class)
+        ->name('sessions.others.destroy');
 
     Route::delete('/sessions/{web_session}', \App\Http\Controllers\Sessions\DestroySessionController::class)
         ->name('sessions.destroy');
+
+    Route::get('/sessions/{web_session}', \App\Http\Controllers\Sessions\SessionShowController::class)
+        ->name('sessions.show');
 
     /*
     |--------------------------------------------------------------------------
@@ -301,14 +361,24 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
     |--------------------------------------------------------------------------
     |
     | Query-Param-Driven Team Index and Show Endpoints (`sort`, `fields`,
-    | `filter`, pagination on index).
+    | `filter`, pagination on index) plus Admin-Managed Creation, Update, and
+    | Deletion (`teams.create`, `teams.update`, `teams.delete`).
     |
     */
 
     Route::get('/teams', \App\Http\Controllers\Teams\TeamIndexController::class)
         ->name('teams.index');
 
+    Route::post('/teams', \App\Http\Controllers\Teams\StoreTeamController::class)
+        ->name('teams.store');
+
     Route::get('/teams/{team}', \App\Http\Controllers\Teams\TeamShowController::class)
         ->name('teams.show');
+
+    Route::patch('/teams/{team}', \App\Http\Controllers\Teams\UpdateTeamController::class)
+        ->name('teams.update');
+
+    Route::delete('/teams/{team}', \App\Http\Controllers\Teams\DestroyTeamController::class)
+        ->name('teams.destroy');
 
 });

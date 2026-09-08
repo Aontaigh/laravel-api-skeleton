@@ -105,6 +105,20 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | E-Mail Verification Link TTL
+    |--------------------------------------------------------------------------
+    |
+    | Minutes a temporary signed verification link stays valid. Consumed by
+    | `VerifyEmailNotification` when it builds the signed URL.
+    |
+    */
+
+    'verification' => [
+        'expire' => (int) env('AUTH_VERIFICATION_EXPIRE', 60),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Password Confirmation Timeout
     |--------------------------------------------------------------------------
     |

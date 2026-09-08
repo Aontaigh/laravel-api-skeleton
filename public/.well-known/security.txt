@@ -1,0 +1,8 @@
+# Laravel API Starter vulnerability disclosure (RFC 9116)
+# Human-readable policy: https://github.com/Aontaigh/laravel-api-skeleton/blob/main/SECURITY.md
+# Forks: replace the Contact with your own disclosure address and update Canonical.
+
+Contact: https://github.com/Aontaigh/laravel-api-skeleton/security/advisories/new
+Expires: 2027-06-01T00:00:00.000Z
+Preferred-Languages: en
+Policy: https://github.com/Aontaigh/laravel-api-skeleton/blob/main/SECURITY.md

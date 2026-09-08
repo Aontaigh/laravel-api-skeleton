@@ -53,7 +53,7 @@ you can copy into greenfield APIs or port legacy endpoints toward over time.
 **What you get:**
 
 - 🧭 Paginated, filterable **user** index with team row scoping and permission-gated fields
-- 👥 **Role** and **team** indexes for management UIs
+- 👥 **Role** index and **team** management (create, rename, guarded delete) for management UIs
 - 🔑 Self-service **profile** update, password change, and admin-issued **API Tokens** via Sanctum
 - 🔐 Email **two-factor authentication** with stateless pending challenges and broker-based **password recovery** that rotates every credential
 - 🖥️ Device **session registry** with per-device revocation, fail-closed store handling, and an append-only **Auth Audit Log**
@@ -131,6 +131,8 @@ POST /api/auth/login/remember  # Stateful SPA re-auth via remember-me cookie or 
 POST /api/auth/register        # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}
 POST /api/auth/forgot-password # {"email": "..."} - always a generic success; link only sent for existing accounts
 POST /api/auth/reset-password  # {"token": "...", "email": "...", "password": "..."} - rotates every credential
+GET  /api/auth/email/verify/{id}/{hash} # Temporary signed link e-mailed on register and resend; redirects to the SPA result page
+POST /api/auth/email/resend    # Authenticated; queues a fresh link for an unverified account (generic response)
 POST /api/oauth/token     # {"grant_type":"client_credentials","client_id":"...","client_secret":"..."}
 POST /api/logout          # Bearer token required - revokes every token and server session
 ```
@@ -141,13 +143,21 @@ ceiling (`API_AUTH_IP_CEILING_PER_MINUTE`, default **20**). Client-credentials e
 per `client_id`+IP (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling
 pattern. The per-IP ceiling is skipped in `local` so the dev suite never self-throttles. After seed,
 use demo client `demo-integration-client` / `DemoClientSecret12`. Admins manage clients via
-`GET|POST|PATCH|DELETE /api/clients` and `GET /api/clients/{client}`. Registration assigns the default `User` role with `team_id` null, auto-enrols email two-factor authentication, and returns `two_factor_required` plus an opaque `two_factor_token` - no bearer token until send/verify complete;
-email verification is not required. Invalid login credentials return a generic
-`Invalid Credentials` message on the `email` field. Users with email MFA enrolled
-receive `two_factor_required: true` and `two_factor_token` after valid credentials - complete
-`POST /api/auth/two-factor/send` then `POST /api/auth/two-factor/verify` on the same session
-(or pass `two_factor_token` on stateless clients) before a bearer token is issued. Login, logout, registration,
-failed logins, and remember-me restores are recorded to `auth_audit_logs` - written by a
+`GET|POST|PATCH|DELETE /api/clients` and `GET /api/clients/{client}`. Registration assigns the
+default `User` role with `team_id` null, auto-enrols email two-factor authentication, and returns
+`two_factor_required` plus an opaque `two_factor_token` - no bearer token until send/verify complete.
+Invalid login credentials return a generic `Invalid Credentials` message on the `email` field. Users
+with email MFA enrolled receive `two_factor_required: true` and `two_factor_token` after valid
+credentials - complete `POST /api/auth/two-factor/send` then `POST /api/auth/two-factor/verify` on
+the same session (or pass `two_factor_token` on stateless clients) before a bearer token is issued.
+
+**E-Mail Verification:** registration queues a temporary signed link (`AUTH_VERIFICATION_EXPIRE`,
+default **60** minutes) pointing at `API_EMAIL_VERIFICATION_URL`. An unverified account can still
+log in, read `GET /me`, resend the link, and sign out - every other business route answers **403**
+until the address is confirmed. Resend is keyed on the authenticated User ID + IP
+(`API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE`, default **3**) and both answers are generic.
+Login, logout, registration, e-mail verification outcomes, failed logins, and remember-me restores
+are recorded to `auth_audit_logs` - written by a
 **queued listener** ([RecordAuthAuditLog](app/Listeners/RecordAuthAuditLog.php)) off the
 request hot path, so a queue worker must be running in non-`sync` environments.
 
@@ -272,8 +282,9 @@ required. Supports the same `fields`/`include` allow-lists as show. Service acco
 receive `403`. The authenticated User may also update their own `name` via
 `PATCH /api/me` and change their password via `PATCH /api/me/password`.
 
-**Admin Creation:** `POST /api/users` creates an account with caller-specified role and
-optional `team_id` (`users.create`, Admin only). Email is normalised to lowercase;
+**Admin Creation:** `POST /api/users` creates an account with caller-specified role,
+optional `team_id`, and optional canonical E.164 `phone` (`users.create`, Admin only).
+Email is normalised to lowercase;
 new accounts are auto-enrolled in email MFA; no bearer token is returned.
 
 **Source of Truth:** [UserQueryConstraints](app/Queries/Users/UserQueryConstraints.php),
@@ -286,9 +297,9 @@ new accounts are auto-enrolled in email MFA; no bearer token is returned.
 | `PATCH` | `/api/me` | Update own `name`; `email`/`password`/`team_id` prohibited |
 | `PATCH` | `/api/me/password` | Change own password (requires current password) |
 | `GET` | `/api/users` | Paginated index |
-| `POST` | `/api/users` | Create account (`users.create`); optional `role` and `team_id` |
+| `POST` | `/api/users` | Create account (`users.create`); optional `role`, `team_id`, and E.164 `phone` |
 | `GET` | `/api/users/{user}` | Show - same `fields`/`include` as index |
-| `PATCH` | `/api/users/{user}` | Update `name`; Admins may reassign `team_id` |
+| `PATCH` | `/api/users/{user}` | Update `name`/`phone`; Admins may reassign `team_id` (`users.reassign-team`) and `role` (`users.assign-role`, never self/service, never last Admin) |
 | `DELETE` | `/api/users/{user}` | Soft-delete; cannot delete own account |
 | `POST` | `/api/users/logout` | Admin force-logout by IDs (`users.force-logout`) |
 | `POST` | `/api/users/{user}/tokens` | Admin token issuance (`tokens.create-for-user`) |
@@ -298,12 +309,18 @@ new accounts are auto-enrolled in email MFA; no bearer token is returned.
 ### Teams
 
 ```http
-GET /api/teams?filter[search]=engineering&fields[teams]=id,name&sort=name
-GET /api/teams/{team}?fields[teams]=id,name
+GET   /api/teams?filter[search]=engineering&fields[teams]=id,name&sort=name
+POST  /api/teams                        # {"name": "..."} (teams.create, Admin only)
+GET   /api/teams/{team}?fields[teams]=id,name
+PATCH /api/teams/{team}                 # {"name": "..."} (teams.update, Admin only)
+DELETE /api/teams/{team}                # teams.delete, Admin only; 422 while Users are assigned
 ```
 
-Requires `teams.list` (Admin and Manager). Read-only index and show with the standard
+Listing and show require `teams.list` (Admin and Manager) with the standard
 sort, `fields[teams]` (`id`, `name`), and `filter[search]` contract - no includes.
+Creation, update, and deletion are Admin-only. Deleting a Team that still has
+assigned Users answers `422` - reassign or remove the members first, so nobody is
+silently un-scoped to `team_id` null.
 
 **Source of Truth:** [TeamQueryConstraints](app/Queries/Teams/TeamQueryConstraints.php),
 [TeamPolicy](app/Policies/TeamPolicy.php).
@@ -445,14 +462,16 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
 | Rate limiting | 500 req/min API; 5 req/min auth (email+IP, 20/min per-IP ceiling); 10 req/min token creation; 30 req/min public status page (per IP) | `config/api.php`, `bootstrap/app.php` |
 | Account recovery | Broker-based reset link with enumeration-neutral responses; reset rotates every credential | [ForgotPasswordController](app/Http/Controllers/Auth/ForgotPasswordController.php), [ResetUserPasswordAction](app/Actions/Auth/ResetUserPasswordAction.php) |
 | Two-factor authentication | Email OTP with pending challenges, stateless `two_factor_token` support, and per-route throttles | [SendTwoFactorController](app/Http/Controllers/Auth/SendTwoFactorController.php), [VerifyTwoFactorCodeAction](app/Actions/Auth/VerifyTwoFactorCodeAction.php) |
-| Session registry | Cookie-bound device sessions: per-device revoke, fail-closed store handling, activity tracking, and IP location enrichment (`location_city`/`location_country`, fail-open) | [SessionIndexController](app/Http/Controllers/Sessions/SessionIndexController.php), [RegisterWebSessionAction](app/Actions/Sessions/RegisterWebSessionAction.php) |
+| Session registry | Cookie-bound device sessions: list, show, per-device revoke, revoke-others, fail-closed store handling, activity tracking, and IP location enrichment (`location_city`/`location_country`, fail-open) | [SessionIndexController](app/Http/Controllers/Sessions/SessionIndexController.php), [DestroyOtherSessionsController](app/Http/Controllers/Sessions/DestroyOtherSessionsController.php), [RegisterWebSessionAction](app/Actions/Sessions/RegisterWebSessionAction.php) |
 | CORS | Env-driven allowed origins; local dev-server defaults | `config/cors.php` |
 | Input validation | FormRequests; `422` envelope via `ApiResponse` | [app/Support/ApiResponse.php](app/Support/ApiResponse.php) |
 | XSS hardening | Plain-text attribute sanitisation on name updates and token names | [SanitisesPlainTextAttributes](app/Http/Requests/Concerns/SanitisesPlainTextAttributes.php) |
 | API documentation | Scalar UI at `/api/docs`; optional HTTP Basic Auth | [routes/web.php](routes/web.php), [EnsureCanViewApiDocs](app/Http/Middleware/EnsureCanViewApiDocs.php) |
 | Debug tooling | Telescope behind `viewTelescope` gate (Admin only, local only) | [AppServiceProvider](app/Providers/AppServiceProvider.php) |
 
-Report vulnerabilities privately before opening a public issue.
+Report vulnerabilities privately before opening a public issue - see
+[SECURITY.md](SECURITY.md). Disclosure contact details are served at
+[`/.well-known/security.txt`](public/.well-known/security.txt) (RFC 9116).
 
 ## 🏗 Architecture
 

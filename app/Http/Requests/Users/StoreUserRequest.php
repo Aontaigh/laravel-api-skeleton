@@ -8,6 +8,7 @@ use App\Enums\RoleName;
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesPlainTextAndEmail;
 use App\Models\User;
+use App\Rules\E164PhoneNumber;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -59,6 +60,7 @@ final class StoreUserRequest extends ApiFormRequest
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'role' => ['sometimes', 'string', Rule::in(RoleName::Admin->value, RoleName::Manager->value, RoleName::User->value)],
             'team_id' => ['sometimes', 'integer', Rule::exists('teams', 'id')],
+            'phone' => ['sometimes', 'nullable', 'string', 'max:32', new E164PhoneNumber],
         ];
     }
 

@@ -9,6 +9,7 @@ use App\Enums\MfaMethod;
 use App\Enums\RoleName;
 use App\Models\User;
 use App\Support\EmailAddress;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -23,7 +24,12 @@ final class RegisterUserAction
     */
 
     /**
-     * Persist a new User and assign the default role.
+     * Persist a new User, assign the default role, and dispatch `Registered`
+     * so the verification e-mail goes out.
+     *
+     * The event fires **after** the transaction commits: the mail listener is
+     * not a transaction participant, so dispatching inside would queue a
+     * verification link for an account that a rollback erased.
      *
      * @example
      * app(RegisterUserAction::class)->execute($data);
@@ -33,7 +39,7 @@ final class RegisterUserAction
      */
     public function execute(RegisterUserData $data): User
     {
-        return DB::transaction(function () use ($data): User {
+        $user = DB::transaction(function () use ($data): User {
             /** @var User $user */
             $user = User::query()->create([
                 'name' => $data->name,
@@ -48,5 +54,9 @@ final class RegisterUserAction
 
             return $user;
         });
+
+        event(new Registered($user));
+
+        return $user;
     }
 }

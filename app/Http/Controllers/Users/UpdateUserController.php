@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\UpdateUserAction;
 use App\DataTransferObjects\Users\UpdateUserData;
+use App\Enums\RoleName;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -51,6 +52,10 @@ final class UpdateUserController
             user: $user,
             name: $input->has('name') ? $input->string('name')->toString() : null,
             teamId: $input->has('team_id') ? $input->integer('team_id') : null,
+            role: $input->has('role')
+                ? RoleName::from($input->string('role')->toString())
+                : null,
+            phone: $input->filled('phone') ? $input->string('phone')->toString() : null,
         );
 
         /*

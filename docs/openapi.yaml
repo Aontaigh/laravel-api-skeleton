@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.9.0
+  version: 1.10.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -128,7 +128,7 @@ tags:
   - name: Roles
     description: Role Index and Show (Read-Only)
   - name: Teams
-    description: Team Index and Show (Read-Only)
+    description: Team Index, Show, Creation, Update, and Deletion
   - name: Permissions
     description: Permission Catalog for Token and API Client Ability Pickers
   - name: API Clients
@@ -139,6 +139,8 @@ tags:
     description: Public Uptime Probe (No Auth)
   - name: System Status
     description: Public Status Page - Current State and Daily Uptime History (No Auth)
+  - name: Security
+    description: Anonymous Security Telemetry - CSP Violation Reports (No Auth)
 
 paths:
   /health:
@@ -645,6 +647,66 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/email/verify/{id}/{hash}:
+    get:
+      tags: [Authentication]
+      summary: Verify E-Mail Address
+      description: |
+        Consume the temporary signed verification link e-mailed on registration
+        or resend. The HMAC signature and expiry are validated by the framework;
+        the e-mail hash binds the link to its mailbox, and verification is
+        idempotent. The endpoint is browser-facing: it redirects to the SPA
+        result page (`API_EMAIL_VERIFICATION_URL`) carrying `verified=1|0`. A
+        tampered, expired, or foreign-mailbox link answers `verified=0`
+        indistinguishably while the `Email Verification Failed` audit row is
+        recorded server-side.
+      operationId: verifyEmail
+      security: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: hash
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Redirect to the SPA verification-result page.
+        '403':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/email/resend:
+    post:
+      tags: [Authentication]
+      summary: Resend E-Mail Verification Link
+      description: |
+        Queue a fresh verification mail for the authenticated account. Takes no
+        body - it acts on the current User only, so it cannot enumerate or spam
+        arbitrary addresses. Idempotent: an already-verified account receives
+        the same generic success without dispatching another mail. Records an
+        `Email Verification Sent` audit row.
+      operationId: resendEmailVerification
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Generic success (whether or not the account was already verified).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+              examples:
+                EmailResendSuccess:
+                  $ref: '#/components/examples/EmailResendSuccess'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
   /sessions:
     get:
       tags: [Sessions]
@@ -714,7 +776,97 @@ paths:
         '404': { $ref: '#/components/responses/NotFound' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+  /csp-reports:
+    post:
+      tags: [Security]
+      summary: Submit CSP Violation Report
+      description: |
+        Browser-submitted Content Security Policy violation report. Public and
+        unauthenticated - the caller is an anonymous browser, not a signed-in
+        User - with a dedicated per-IP throttle.
+
+        Accepts both the legacy `report-uri` shape
+        (`Content-Type: application/csp-report`, `{"csp-report": {...}}`) and
+        the modern Reporting API shape (`Content-Type: application/reports+json`,
+        an array of reports). Always answers `204` with no body - a browser
+        discards the response and never retries, so even malformed bodies are
+        acknowledged rather than surfaced as errors. Bodies past 16 KiB answer
+        `413`. Reports land in the `csp-reports` log channel, never the main log.
+      operationId: storeCspReport
+      responses:
+        '204':
+          description: Report Accepted (No Body)
+        '413':
+          description: Body Too Large
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /sessions/others:
+    delete:
+      tags: [Sessions]
+      summary: Revoke Other Web Sessions
+      description: |
+        Revoke every registered cookie-bound session except the caller's current
+        browser ("sign out other devices"). Requires `sessions.revoke-own`;
+        touches nobody's rows but the caller's, so `sessions.revoke-any` is not
+        needed. Does not revoke bearer tokens or bump `session_version`, so the
+        current browser stays signed in.
+      operationId: revokeOtherSessions
+      responses:
+        '200':
+          description: Other Sessions Revoked
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SuccessEnvelope'
+              examples:
+                default:
+                  $ref: '#/components/examples/OtherSessionsRevokedSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
   /sessions/{web_session}:
+    get:
+      tags: [Sessions]
+      summary: Show Web Session
+      description: |
+        Single registered cookie-bound session. Requires `sessions.list-own`
+        for the caller's own rows, `sessions.list-all` for another User's.
+        Rows outside the viewer's scope answer `404`, and revoked rows stay
+        invisible - the registry answers for active sessions only.
+
+        Supports `include=user` and `fields[sessions]` / `fields[users]`.
+      operationId: showSession
+      parameters:
+        - name: web_session
+          in: path
+          required: true
+          schema:
+            type: integer
+        - $ref: '#/components/parameters/QueryFieldsSessions'
+        - $ref: '#/components/parameters/QueryFieldsUsers'
+        - $ref: '#/components/parameters/QueryIncludeSessions'
+      responses:
+        '200':
+          description: Web Session Resource
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Session Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/WebSession'
+              examples:
+                default:
+                  $ref: '#/components/examples/SessionShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
     delete:
       tags: [Sessions]
       summary: Revoke Web Session
@@ -922,7 +1074,8 @@ paths:
 
         Assigns the default `User` role when `role` is omitted. Optional `role`
         may be `Admin`, `Manager`, or `User`; optional `team_id` assigns the user
-        to a team. Email addresses are normalised to lowercase before validation
+        to a team; optional `phone` stores a canonical E.164 number. Email
+        addresses are normalised to lowercase before validation
         and persistence. New accounts are auto-enrolled in email two-factor
         authentication (`mfa_method: email`). `email_verified_at` remains null -
         no verification email is sent. Does not return a bearer token.
@@ -1063,11 +1216,14 @@ paths:
       tags: [Users]
       summary: Update User
       description: |
-        Update `name` and optionally `team_id`. Requires `users.update`.
+        Update `name` and optionally `team_id`, `role`, and `phone`. Requires `users.update`.
 
-        - At least one of `name` or `team_id` is required
+        - At least one of `name`, `team_id`, `role`, or `phone` is required
         - `email` and `password` are **prohibited**
         - `team_id` requires `users.reassign-team` (Admin only)
+        - `role` requires `users.assign-role` (Admin only); one of `Admin`,
+          `Manager`, or `User`. Callers cannot change their own role or the
+          role of a service account, and demoting the last Admin answers `422`
         - Plain-text markup in `name` is stripped before validation
 
         Managers may update users on their own team (including themselves).
@@ -1854,6 +2010,43 @@ paths:
         '422': { $ref: '#/components/responses/ValidationError' }
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
+    post:
+      tags: [Teams]
+      summary: Create Team
+      description: |
+        Create a new Team. Requires `teams.create` (Admin only).
+
+        Plain-text markup in `name` is stripped before validation.
+      operationId: createTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+      responses:
+        '201':
+          description: Team Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      status_code:
+                        example: 201
+                      message:
+                        example: Team Created Successfully
+                      data:
+                        $ref: '#/components/schemas/Team'
+              examples:
+                default:
+                  $ref: '#/components/examples/TeamCreateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
   /teams/{team}:
     parameters:
       - $ref: '#/components/parameters/TeamId'
@@ -1886,6 +2079,75 @@ paths:
               examples:
                 default:
                   $ref: '#/components/examples/TeamShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    patch:
+      tags: [Teams]
+      summary: Update Team
+      description: |
+        Rename a Team. Requires `teams.update` (Admin only).
+
+        Plain-text markup in `name` is stripped before validation.
+      operationId: updateTeam
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTeamRequest'
+      responses:
+        '200':
+          description: Team Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Team Updated Successfully
+                      data:
+                        $ref: '#/components/schemas/Team'
+              examples:
+                default:
+                  $ref: '#/components/examples/TeamUpdateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    delete:
+      tags: [Teams]
+      summary: Delete Team
+      description: |
+        Delete a Team with no assigned Users. Requires `teams.delete`
+        (Admin only).
+
+        A Team that still has assigned Users answers `422`: deleting it would
+        silently un-scope every member to `team_id` null. Reassign or remove
+        the members first.
+      operationId: deleteTeam
+      responses:
+        '200':
+          description: Team Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Team Deleted Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/TeamDeleteSuccess'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1933,6 +2195,7 @@ components:
           id: 1
           name: Admin User
           email: admin@example.com
+          phone: null
           created_at: '2026-08-05T22:18:42+00:00'
           team:
             id: 1
@@ -1953,6 +2216,7 @@ components:
           id: 3
           name: Test User
           email: test@example.com
+          phone: null
           created_at: '2026-08-05T22:18:42+00:00'
           team:
             id: 1
@@ -1973,6 +2237,7 @@ components:
           id: 2
           name: Manager User
           email: manager@example.com
+          phone: null
           created_at: '2026-08-05T22:18:42+00:00'
         meta: {}
 
@@ -2391,6 +2656,15 @@ components:
           created_at: '2026-08-14T16:12:25+00:00'
         meta: {}
 
+    EmailResendSuccess:
+      summary: Verification Link Accepted
+      value:
+        status: success
+        status_code: 200
+        message: 'If the Account Is Unverified, a New Verification Link Has Been Sent'
+        data: null
+        meta: {}
+
     ClientCreateSuccess:
       summary: API Client Created
       value:
@@ -2594,6 +2868,61 @@ components:
           name: Acme Corp
         meta: {}
 
+    TeamCreateSuccess:
+      summary: Team Created
+      value:
+        status: success
+        status_code: 201
+        message: Team Created Successfully
+        data:
+          id: 2
+          name: Engineering
+        meta: {}
+
+    TeamUpdateSuccess:
+      summary: Team Updated
+      value:
+        status: success
+        status_code: 200
+        message: Team Updated Successfully
+        data:
+          id: 1
+          name: Platform
+        meta: {}
+
+    TeamDeleteSuccess:
+      summary: Team Deleted
+      value:
+        status: success
+        status_code: 200
+        message: Team Deleted Successfully
+        data: null
+        meta: {}
+
+    SessionShowSuccess:
+      summary: Web Session Resource
+      value:
+        status: success
+        status_code: 200
+        message: Session Retrieved Successfully
+        data:
+          id: 1
+          user_id: 1
+          device_name: Work Laptop
+          remember_me: false
+          last_activity_at: '2026-09-06T12:00:00+00:00'
+          created_at: '2026-09-06T12:00:00+00:00'
+        meta: {}
+
+    OtherSessionsRevokedSuccess:
+      summary: Other Sessions Revoked
+      value:
+        status: success
+        status_code: 200
+        message: Other Sessions Revoked Successfully
+        data: null
+        meta: {}
+
     HealthSuccess:
       summary: Service Healthy
       value:
@@ -2602,7 +2931,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.9.0
+          version: 1.10.0
         meta: {}
 
     HealthUnavailable:
@@ -2790,6 +3119,9 @@ components:
           - Password Reset Requested
           - Password Reset
           - Password Reset Failed
+          - Email Verification Sent
+          - Email Verified
+          - Email Verification Failed
       description: Exact Match on the Persisted Event Value.
 
     QueryFilterUserId:
@@ -3178,7 +3510,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.9.0
+          example: 1.10.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     SystemStatusData:
@@ -3306,6 +3638,9 @@ components:
           type: string
           format: email
           description: Omitted Unless the Viewer Holds `users.view-email`
+        phone:
+          type: string
+          description: Optional Canonical E.164 Number; Null When Unset
         created_at:
           $ref: '#/components/schemas/ApiDateTime'
         team:
@@ -3474,6 +3809,24 @@ components:
           items:
             type: string
 
+    CreateTeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: HTML Markup Is Stripped
+
+    UpdateTeamRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: HTML Markup Is Stripped
+
     CreateUserRequest:
       type: object
       required: [name, email, password, password_confirmation]
@@ -3498,6 +3851,10 @@ components:
         team_id:
           type: integer
           description: Optional Team Assignment
+        phone:
+          type: string
+          maxLength: 32
+          description: Optional Canonical E.164 Number (e.g. +353851046420)
 
     SendTwoFactorRequest:
       type: object
@@ -3688,6 +4045,14 @@ components:
         team_id:
           type: integer
           description: Requires `users.reassign-team` (Admin Only)
+        role:
+          type: string
+          enum: [Admin, Manager, User]
+          description: Requires `users.assign-role` (Admin Only)
+        phone:
+          type: string
+          maxLength: 32
+          description: Optional Canonical E.164 Number; Null Leaves Unchanged
         email:
           type: string
           description: Prohibited
