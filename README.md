@@ -138,8 +138,11 @@ POST /api/logout          # Bearer token required - revokes every token and serv
 ```
 
 No prior token required for login, register, and client-credentials exchange. Login and register are
-rate-limited per email+IP (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) backed by a broad per-IP
-ceiling (`API_AUTH_IP_CEILING_PER_MINUTE`, default **20**). Client-credentials exchange is rate-limited
+rate-limited per email+IP (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) backed by split per-IP
+ceilings - login `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` (default **20**), registration
+`API_AUTH_REGISTER_IP_CEILING_PER_MINUTE` (default **10**) - so account-creation spam cannot eat the
+login budget. Authenticated password change and session revokes carry their own User ID + IP buckets
+(`auth-password-change`, `auth-sessions-revoke`). Client-credentials exchange is rate-limited
 per `client_id`+IP (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling
 pattern. The per-IP ceiling is skipped in `local` so the dev suite never self-throttles. After seed,
 use demo client `demo-integration-client` / `DemoClientSecret12`. Admins manage clients via
@@ -156,10 +159,13 @@ default **60** minutes) pointing at `API_EMAIL_VERIFICATION_URL`. An unverified 
 log in, read `GET /me`, resend the link, and sign out - every other business route answers **403**
 until the address is confirmed. Resend is keyed on the authenticated User ID + IP
 (`API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE`, default **3**) and both answers are generic.
-Login, logout, registration, e-mail verification outcomes, failed logins, and remember-me restores
-are recorded to `auth_audit_logs` - written by a
+Login, logout, registration, e-mail verification outcomes, failed logins, remember-me restores,
+password changes, role changes, suspensions, session revokes, token issuance and
+revocation, and API client lifecycle are recorded to `auth_audit_logs` - written by a
 **queued listener** ([RecordAuthAuditLog](app/Listeners/RecordAuthAuditLog.php)) off the
-request hot path, so a queue worker must be running in non-`sync` environments.
+request hot path, so a queue worker must be running in non-`sync` environments. Plain
+resource administration (user create/rename/delete, team CRUD) stays out by design -
+see [docs/permissions.md](docs/permissions.md#get-apiaudit-logs).
 
 Set `remember: true` on login for industry-standard remember-me - extended Sanctum
 token lifetime (`API_REMEMBER_TOKEN_EXPIRATION_DAYS`, default **365**), a rotated
@@ -238,6 +244,8 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | [Laravel Sail](https://laravel.com/docs/sail) | Dockerised local development | [Sail](https://laravel.com/docs/sail) |
 | [Laravel Telescope](https://laravel.com/docs/telescope) | Request debugging (admin-only gate, local only) | [Telescope](https://laravel.com/docs/telescope) |
 | [Scalar](https://scalar.com) | Hosted interactive API reference at `/api/docs` | [Scalar docs](https://scalar.com/products/api-references/integrations/html-js) |
+| [giggsey/libphonenumber](https://github.com/giggsey/libphonenumber-for-php) | E.164 phone parsing and validation | [libphonenumber](https://github.com/giggsey/libphonenumber-for-php) |
+| [geoip2/geoip2](https://github.com/maxmind/GeoIP2-php) | IP city/country enrichment via MaxMind GeoLite2 | [GeoIP2](https://github.com/maxmind/GeoIP2-php) |
 
 ## 📋 Requirements
 
@@ -253,7 +261,7 @@ Every list endpoint shares this query contract:
 
 | Param | Purpose |
 | --- | --- |
-| `sort` | Whitelisted column; prefix `-` for descending (default `id` ascending) |
+| `sort` | Whitelisted column; prefix `-` for descending (default varies per resource, e.g. `id` ascending) |
 | `fields[{resource}]` | Sparse fieldset - only requested columns are selected and returned |
 | `include` | Whitelisted eager loads for nested relations |
 | `filter[{key}]` | Resource-specific filters (e.g. `filter[search]` - trimmed via `SearchTermParser`) |
@@ -387,6 +395,27 @@ token is returned once on `POST` and never stored. New tokens expire after
 **Source of Truth:** [TokenQueryConstraints](app/Queries/Tokens/TokenQueryConstraints.php),
 [PersonalAccessTokenPolicy](app/Policies/PersonalAccessTokenPolicy.php).
 
+### Web Sessions
+
+```http
+GET    /api/sessions
+GET    /api/sessions/{web_session}
+DELETE /api/sessions/{web_session}
+DELETE /api/sessions/others             # "sign out other devices"
+DELETE /api/sessions/current            # end this browser only
+```
+
+Cookie-bound device registry. List and show require `sessions.list-own` (own rows)
+or `sessions.list-all` (every User); show supports `fields[sessions]`,
+`fields[users]`, and `include=user`, and out-of-scope or revoked rows answer `404`.
+Revoking one session needs `sessions.revoke-own` (own) or `sessions.revoke-any`
+(any User); `others` needs `sessions.revoke-own` and never touches bearer tokens
+or the current browser. Destructive session routes carry their own User ID + IP
+throttle bucket. Each row carries `is_current` for the calling browser.
+
+**Source of Truth:** [SessionQueryConstraints](app/Queries/Sessions/SessionQueryConstraints.php),
+[WebSessionPolicy](app/Policies/WebSessionPolicy.php).
+
 ### Auth Audit Logs
 
 ```http
@@ -411,7 +440,7 @@ IP (MaxMind GeoLite2 via `geoip:update`; lookups fail open when the database is 
 GET /health
 ```
 
-Public uptime probe - no auth, no throttling. Served at the **root** (not under
+Public uptime probe - no auth, per-IP throttled. Served at the **root** (not under
 `/api`). Returns the application version and whether the database answers `select 1`;
 returns `503` when the database is unreachable.
 
@@ -438,6 +467,24 @@ default **30**).
 **Source of Truth:** [SystemStatusController](app/Http/Controllers/SystemHealth/SystemStatusController.php),
 [SystemHealthHistoryQuery](app/Queries/SystemHealth/SystemHealthHistoryQuery.php), [routes/console.php](routes/console.php).
 
+### Security Telemetry
+
+```http
+POST /api/csp-reports            # public; browser CSP violation reports, always 204
+GET  /api/app-info               # public; deploy-verification metadata, never secrets
+GET  /.well-known/security.txt   # public; RFC 9116 disclosure contact (served at the root, not under /api)
+```
+
+`POST /api/csp-reports` accepts legacy `report-uri` and modern Reporting API
+shapes (per-IP throttled, `413` past 16 KiB) into the dedicated `csp-reports`
+log channel; both CSP policies point `report-uri` at it. `GET /api/app-info`
+reports application, runtime, and driver names for deploy verification behind
+the status page throttle. Disclosure policy: [SECURITY.md](SECURITY.md).
+
+**Source of Truth:** [StoreCspReportController](app/Http/Controllers/CspReports/StoreCspReportController.php),
+[ShowAppInfoController](app/Http/Controllers/Api/ShowAppInfoController.php),
+[ShowSecurityTxtController](app/Http/Controllers/WellKnown/ShowSecurityTxtController.php).
+
 ## 🖥 API Reference
 
 **Interactive docs (Scalar):** [http://localhost/api/docs](http://localhost/api/docs) - try
@@ -459,7 +506,7 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
 | --- | --- | --- |
 | Authentication | Sanctum bearer tokens (90-day default expiry) | [routes/api.php](routes/api.php) (`auth:sanctum`), `config/api.php` |
 | Authorisation | Spatie permissions + Policies | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/) |
-| Rate limiting | 500 req/min API; 5 req/min auth (email+IP, 20/min per-IP ceiling); 10 req/min token creation; 30 req/min public status page (per IP) | `config/api.php`, `bootstrap/app.php` |
+| Rate limiting | 500 req/min API; 5 req/min auth (email+IP; split per-IP ceilings - 20 login, 10 register); dedicated User+IP buckets for password change and session revokes; 10 req/min token creation; 30 req/min public status page (per IP) | `config/api.php`, `bootstrap/app.php` |
 | Account recovery | Broker-based reset link with enumeration-neutral responses; reset rotates every credential | [ForgotPasswordController](app/Http/Controllers/Auth/ForgotPasswordController.php), [ResetUserPasswordAction](app/Actions/Auth/ResetUserPasswordAction.php) |
 | Two-factor authentication | Email OTP with pending challenges, stateless `two_factor_token` support, and per-route throttles | [SendTwoFactorController](app/Http/Controllers/Auth/SendTwoFactorController.php), [VerifyTwoFactorCodeAction](app/Actions/Auth/VerifyTwoFactorCodeAction.php) |
 | Session registry | Cookie-bound device sessions: list, show, per-device revoke, revoke-others, fail-closed store handling, activity tracking, and IP location enrichment (`location_city`/`location_country`, fail-open) | [SessionIndexController](app/Http/Controllers/Sessions/SessionIndexController.php), [DestroyOtherSessionsController](app/Http/Controllers/Sessions/DestroyOtherSessionsController.php), [RegisterWebSessionAction](app/Actions/Sessions/RegisterWebSessionAction.php) |
@@ -519,20 +566,23 @@ app/
 ├── Events/               # AuthEventOccurred, TwoFactorChallengeIssued
 ├── Http/
 │   ├── Controllers/
-│   │   ├── Api/          # ShowApiDocsController, ShowOpenApiSpecController, ShowHealthController
+│   │   ├── Api/          # ShowApiDocsController, ShowOpenApiSpecController, ShowHealthController, ShowAppInfoController
 │   │   ├── Auth/         # Login, two-factor, registration, password reset, logout
+│   │   ├── CspReports/   # Browser CSP violation receiver
+│   │   ├── WellKnown/    # RFC 9116 security.txt
 │   │   ├── Sessions/     # Web-session registry endpoints
 │   │   ├── SystemHealth/ # Public status page
 │   │   └── …             # Users, Clients, Roles, Permissions, Teams, Audit Logs
-│   ├── Middleware/       # EnsureSessionVersionMatches, TouchWebSessionActivity, EnsureAccountIsActive, …
+│   ├── Middleware/       # EnsureSessionVersionMatches, TouchWebSessionActivity, EnsureAccountIsActive, EnsureEmailIsVerified, …
 │   ├── Requests/         # FormRequests + Parses* concerns
 │   └── Resources/        # API Resources (sparse fieldsets)
 ├── Listeners/            # Queued audit persistence and OTP delivery
-├── Notifications/        # Reset link, password-changed alert, two-factor code
+├── Notifications/        # Reset link, password-changed alert, two-factor code, verification link
 ├── Policies/             # UserPolicy, WebSessionPolicy, ApiClientPolicy, …
-├── Queries/              # *QueryConstraints, *FilterQuery, *IncludeQuery, *SummaryQuery
-├── Services/             # PermissionAbilityCatalog, UserAgent parser, SystemHealth checks
-└── Support/              # ApiResponse, ApiExceptionRenderer, parsers, auth support, …
+├── Queries/              # *QueryConstraints, *FilterQuery, *IncludeQuery
+├── Rules/                # Custom validation rules (E.164 phones)
+├── Services/             # PermissionAbilityCatalog, UserAgent parser, SystemHealth checks, CSP report parser
+└── Support/              # ApiResponse, ApiExceptionRenderer, parsers, auth support, E.164 phones, …
 config/                   # api.php (limits), useragent.php, cors.php, …
 database/
 ├── factories/            # UserFactory, WebSessionFactory, SystemHealthCheckFactory, …
@@ -552,9 +602,9 @@ routes/
 └── web.php               # /api/docs and /api/openapi.yaml
 scripts/                  # pen-test-auth.sh, semgrep.sh, verify-openapi-examples.sh, …
 tests/
-├── Concerns/             # AssertsApiEnvelope, MakesStatefulSpaRequests
+├── Concerns/             # AssertsApiEnvelope, MakesStatefulSpaRequests, FakesBreachLookup, BuildsGeoLiteCityDatabase
 ├── Feature/              # Endpoints, Actions, middleware, listeners, console, policies
-└── Unit/                 # Queries, Support, Services, Notifications, Resources (no DB)
+└── Unit/                 # Actions, Queries, Rules, Support, Services, Providers, DTOs, Notifications, Resources (no DB)
 ```
 
 Trait coverage uses **real hosts** (feature tests and resource unit tests), not
@@ -596,11 +646,14 @@ bash scripts/semgrep.sh
 **Unit tests** ([tests/Unit/](tests/Unit/)) pin logic without a database:
 
 - [tests/Unit/Support/](tests/Unit/Support/) - parse grammar (`IndexSortParser`,
-  `SearchTermParser`, `AllowList`, `CommaSeparatedList`)
+  `SearchTermParser`, `AllowList`, `CommaSeparatedList`), E.164 phones, input bounds
 - [tests/Unit/Queries/](tests/Unit/Queries/) - query builder state (`columns`, `orders`,
   `wheres`)
 - [tests/Unit/Services/](tests/Unit/Services/) - user-agent parser, health checks and
-  registry, permission catalog
+  registry, permission catalog, CSP report parser
+- [tests/Unit/Rules/](tests/Unit/Rules/) - custom validation rules (E.164)
+- [tests/Unit/Actions/](tests/Unit/Actions/) - pure logic actions (CSP report logging)
+- [tests/Unit/Providers/](tests/Unit/Providers/) - default password policy
 - [tests/Unit/Http/Resources/](tests/Unit/Http/Resources/) - serialisation branches on real
   Resources (e.g. [UserResourceTest](tests/Unit/Http/Resources/UserResourceTest.php))
 
@@ -620,14 +673,13 @@ pins exactly-once audit and OTP dispatch. [ApiDocsTest](tests/Feature/Http/ApiDo
 feature or resource tests on production FormRequests and Resources, not `tests/Support/`
 stubs.
 
-The full run order, coverage-floor mechanics, and the 41-section adversarial pen test are
+The full run order, coverage-floor mechanics, and the 46-section adversarial pen test are
 documented in [docs/testing.md](docs/testing.md).
 
 ## 🚫 What's Not Included
 
 This starter deliberately omits features you would add per product:
 
-- Email verification (registration relies on the email OTP challenge instead)
 - OAuth / social login
 - TOTP authenticator apps, passkeys, and SMS delivery (email OTP is the only factor)
 - Multi-tenancy beyond team row scoping

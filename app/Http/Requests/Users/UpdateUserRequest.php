@@ -6,6 +6,7 @@ namespace App\Http\Requests\Users;
 
 use App\Enums\RoleName;
 use App\Http\Requests\ApiFormRequest;
+use App\Http\Requests\Concerns\NormalisesE164PhoneAttributes;
 use App\Http\Requests\Concerns\SanitisesPlainTextAttributes;
 use App\Models\User;
 use App\Rules\E164PhoneNumber;
@@ -23,6 +24,7 @@ final class UpdateUserRequest extends ApiFormRequest
     |--------------------------------------------------------------------------
     */
 
+    use NormalisesE164PhoneAttributes;
     use SanitisesPlainTextAttributes;
 
     /*
@@ -125,6 +127,26 @@ final class UpdateUserRequest extends ApiFormRequest
     }
     /*
     |--------------------------------------------------------------------------
+    | Preparation
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Prepare the data for validation.
+     *
+     * Sanitise display text first, then compact phone display forms to
+     * canonical E.164 so the strict rule sees canonical input.
+     *
+     * @return void
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->sanitisePlainTextAttributes();
+        $this->normaliseE164PhoneAttributes($this->e164PhoneAttributeKeys());
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Sanitisation
     |--------------------------------------------------------------------------
     */
@@ -137,5 +159,15 @@ final class UpdateUserRequest extends ApiFormRequest
     protected function plainTextAttributeKeys(): array
     {
         return ['name'];
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return list<string> the phone attribute names to compact before validation
+     */
+    protected function e164PhoneAttributeKeys(): array
+    {
+        return ['phone'];
     }
 }

@@ -83,7 +83,7 @@ Issue a local token:
 ## Browser Frontends (CORS)
 
 Cross-origin browser clients need CORS when the frontend origin differs from
-origin differs from the API host. Laravel's `HandleCors` middleware is enabled by
+the API host. Laravel's `HandleCors` middleware is enabled by
 default; paths are `api/*` and `sanctum/csrf-cookie`.
 
 **Bearer tokens (recommended):** send `Authorization: Bearer {token}` from your

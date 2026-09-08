@@ -6,8 +6,12 @@ namespace App\Http\Controllers\Clients;
 
 use App\Actions\ApiClients\CreateApiClientAction;
 use App\DataTransferObjects\ApiClients\CreateApiClientData;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuthAuditEvent;
+use App\Events\AuthEventOccurred;
 use App\Http\Requests\ApiClients\StoreClientRequest;
 use App\Http\Resources\ApiClientResource;
+use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
@@ -56,6 +60,17 @@ final class StoreClientController
         */
 
         $result = $action->execute($data);
+
+        /** @var User $actor the route sits behind the authenticated group */
+        $actor = $request->user();
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::ApiClientCreated,
+            userId: $actor->id,
+            email: $actor->email,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+        ));
 
         /*
         |--------------------------------------------------------------------------

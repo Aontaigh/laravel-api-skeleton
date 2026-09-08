@@ -5,7 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tokens;
 
 use App\Actions\Tokens\RevokePersonalAccessTokenAction;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuthAuditEvent;
+use App\Events\AuthEventOccurred;
 use App\Http\Requests\Tokens\DestroyTokenRequest;
+use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -44,6 +48,23 @@ final class DestroyTokenController
         */
 
         $action->execute($token);
+
+        /*
+         * The scoped `{token}` binding resolves only the caller's own tokens,
+         * so the authenticated User is the affected account here.
+         */
+
+        /** @var User $user the route sits behind the authenticated group */
+        $user = $request->user();
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::TokenRevoked,
+            userId: $user->id,
+            email: $user->email,
+            personalAccessTokenId: $token->id,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+        ));
 
         /*
         |--------------------------------------------------------------------------

@@ -6,6 +6,9 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesAuthCredentials;
+use App\Support\Auth\EmailMaxLength;
+use App\Support\Auth\PasswordMaxLength;
+use App\Support\Auth\PasswordResetTokenMaxLength;
 use Illuminate\Validation\Rules\Password;
 
 /**
@@ -48,17 +51,37 @@ final class ResetPasswordRequest extends ApiFormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * The hashed reset token stored by the broker is 64 characters; the bound
-     * is generous enough for alternate broker tables without accepting abuse.
+     * The raw reset token is bounded to the broker's 64 characters before
+     * hash comparison; the database column stores the hash, not the token.
      *
      * @return array<string, array<int, mixed>> the rules
      */
     public function rules(): array
     {
         return [
-            'token' => ['required', 'string', 'max:128'],
-            'email' => ['required', 'string', 'email', 'max:255'],
-            'password' => ['bail', 'required', 'string', 'max:255', Password::defaults()],
+            'token' => ['required', 'string', PasswordResetTokenMaxLength::rule()],
+            'email' => ['required', 'string', 'email', EmailMaxLength::rule()],
+            'password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), Password::defaults()],
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'token.max' => PasswordResetTokenMaxLength::MESSAGE,
+            'email.max' => EmailMaxLength::MESSAGE,
+            'password.max' => PasswordMaxLength::MESSAGE,
         ];
     }
 

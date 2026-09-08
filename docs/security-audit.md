@@ -11,9 +11,9 @@ material auth change.
 
 No critical findings. Four high-severity findings were fixed in this pass; the
 remaining high and medium findings were fixed or accepted as noted below. The
-suite is green after remediation: 822 tests, 92.4% line coverage, Larastan level
+suite is green after remediation: 993 tests, 93.3% line coverage, Larastan level
 9, Semgrep 0 findings, `composer audit` and `npm audit` clean, and the
-41-section adversarial pen test at 0 failures.
+46-section adversarial pen test at 0 failures.
 
 ## Findings and Dispositions
 
@@ -51,7 +51,7 @@ suite is green after remediation: 822 tests, 92.4% line coverage, Larastan level
 | `/health` discloses the app version | **Accepted.** Standard practice for service health endpoints; the version is equally present in the OpenAPI spec served alongside it |
 | Docs Basic Auth brute-forceable when enabled | **Accepted.** The credential is operator-managed and rotated like any secret; a dedicated limiter is tracked as backlog |
 | CI third-party actions tag-pinned, not SHA-pinned | **Accepted.** Dependabot keeps the tags current; SHA conversion is mechanical churn tracked as backlog |
-| Synchronous fail-open HIBP breach check (30s) in reset/registration validation | **Accepted.** Fail-open is deliberate (an HIBP outage must not block account recovery); worker pinning is bounded by the queue's retry config |
+| Synchronous fail-open HIBP breach check in reset/registration validation | **Fixed.** Fail-open is deliberate (an HIBP outage must not block account recovery); the verifier now runs with a 3-second timeout so a slow endpoint cannot stall workers |
 | Client token accumulation per exchange with no listing surface | **Accepted.** Tokens expire in 30 days; deactivation now revokes immediately (high finding above) |
 
 ## Test Coverage Added by the Audit
@@ -64,8 +64,9 @@ suite is green after remediation: 822 tests, 92.4% line coverage, Larastan level
 
 ## Deliberately Out of Scope
 
-Email verification, OAuth social login, TOTP/passkeys, and SMS delivery remain
-starter omissions by design (see the README's "What's Not Included"). The
+OAuth social login, TOTP/passkeys, and SMS delivery remain
+starter omissions by design (see the README's "What's Not Included" - email
+verification has since shipped). The
 pen-test suite ([scripts/pen-test-auth.sh](../scripts/pen-test-auth.sh)) is the
-continuous regression net for everything above: 41 adversarial sections, 0
+continuous regression net for everything above: 46 adversarial sections, 0
 failures after remediation.

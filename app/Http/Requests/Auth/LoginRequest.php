@@ -6,6 +6,8 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesAuthCredentials;
+use App\Support\Auth\EmailMaxLength;
+use App\Support\Auth\PasswordMaxLength;
 
 /**
  * Validates and authorises password-based login.
@@ -50,10 +52,29 @@ final class LoginRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:255'],
-            'password' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'email', EmailMaxLength::rule()],
+            'password' => ['required', 'string', PasswordMaxLength::rule()],
             'remember' => ['sometimes', 'boolean'],
             'device_name' => ['sometimes', 'string', 'max:255'],
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.max' => EmailMaxLength::MESSAGE,
+            'password.max' => PasswordMaxLength::MESSAGE,
         ];
     }
     /*

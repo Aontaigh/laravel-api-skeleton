@@ -11,8 +11,9 @@ use Illuminate\Contracts\Validation\ValidationRule;
 /**
  * Validate that the input is a canonical E.164 phone number.
  *
- * Spaced or punctuated display forms (e.g. `+44 7700 900100`) are rejected;
- * clients must submit compact E.164 (e.g. `+447700900100`).
+ * HTTP callers submit display forms (`+44 7700 900100`) that FormRequests
+ * compact to canonical E.164 before validation, so by the time this rule runs
+ * the value must already be compact (`+447700900100`). Anything else fails.
  */
 final class E164PhoneNumber implements ValidationRule
 {

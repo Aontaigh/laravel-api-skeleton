@@ -22,6 +22,7 @@ use Illuminate\Support\Facades\Notification;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FakesBreachLookup;
 use Tests\TestCase;
 
 /**
@@ -42,6 +43,7 @@ final class UpdateMePasswordControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    use FakesBreachLookup;
     use RefreshDatabase;
 
     /*
@@ -58,6 +60,7 @@ final class UpdateMePasswordControllerTest extends TestCase
         parent::setUp();
 
         $this->seed(RolesAndPermissionsSeeder::class);
+        $this->fakeBreachLookup(['Password123']);
     }
 
     /*

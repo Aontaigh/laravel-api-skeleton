@@ -142,6 +142,30 @@ final class SecurityHeadersTest extends TestCase
         $this->assertStringContainsString('/api/csp-reports', $csp);
     }
 
+    /**
+     * Advertise the report collector through the modern and legacy headers together.
+     */
+    #[Test]
+    public function it_advertises_reporting_endpoints_alongside_the_policy(): void
+    {
+        // Act
+
+        /** @var TestResponse<Response> $response */
+        $response = $this->get('/health');
+
+        // Assert
+
+        $endpoints = (string) $response->headers->get('Reporting-Endpoints');
+
+        $this->assertStringContainsString('csp-endpoint=', $endpoints);
+        $this->assertStringContainsString('/api/csp-reports', $endpoints);
+
+        /** @var array{endpoints: list<array{url: string}>} $reportTo */
+        $reportTo = json_decode((string) $response->headers->get('Report-To'), true);
+
+        $this->assertStringEndsWith('/api/csp-reports', $reportTo['endpoints'][0]['url'] ?? '');
+    }
+
     /*
      * Environment Behaviour Tests
      * ---------------------------

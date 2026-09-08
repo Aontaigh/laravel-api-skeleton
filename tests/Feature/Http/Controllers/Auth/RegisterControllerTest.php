@@ -26,6 +26,7 @@ use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FakesBreachLookup;
 use Tests\TestCase;
 
 /**
@@ -48,6 +49,7 @@ final class RegisterControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    use FakesBreachLookup;
     use RefreshDatabase;
 
     /*
@@ -64,6 +66,7 @@ final class RegisterControllerTest extends TestCase
         parent::setUp();
 
         $this->seed(RolesAndPermissionsSeeder::class);
+        $this->fakeBreachLookup(['Password123']);
     }
 
     /*
@@ -395,6 +398,33 @@ final class RegisterControllerTest extends TestCase
 
         $this->assertApiValidationErrors($response, ['password']);
         $this->assertDatabaseMissing('users', ['email' => 'weak@example.com']);
+    }
+
+    /**
+     * Reject an overlong password before any hash or breach lookup runs.
+     */
+    #[Test]
+    public function it_rejects_an_overlong_password(): void
+    {
+        // Arrange
+
+        $password = 'Aa1!'.str_repeat('x', 296);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/register', [
+            'name' => 'Alice',
+            'email' => 'longpass@example.com',
+            'password' => $password,
+            'password_confirmation' => $password,
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('meta.errors.password.0', 'Password Is Too Long');
+        $this->assertDatabaseMissing('users', ['email' => 'longpass@example.com']);
     }
 
     /*

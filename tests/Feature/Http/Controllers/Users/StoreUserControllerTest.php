@@ -500,12 +500,45 @@ final class StoreUserControllerTest extends TestCase
             'email' => 'alice-bad-phone@example.com',
             'password' => 'Xq7#mK2$vL9pTzW4',
             'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
-            'phone' => '+44 7700 900013',
+            'phone' => '0851046420',
         ]);
 
         // Assert
 
         $response->assertUnprocessable();
         $this->assertApiValidationErrors($response, ['phone']);
+    }
+
+    /**
+     * Compact a display-form phone number to canonical E.164 before validation.
+     */
+    #[Test]
+    public function it_compacts_a_display_form_phone_number(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->postJson('/api/users', [
+            'name' => 'Alice',
+            'email' => 'alice-display-phone@example.com',
+            'password' => 'Xq7#mK2$vL9pTzW4',
+            'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
+            'phone' => '+44 7700 900013',
+        ]);
+
+        // Assert
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.phone', '+447700900013');
+
+        $this->assertDatabaseHas('users', [
+            'email' => 'alice-display-phone@example.com',
+            'phone' => '+447700900013',
+        ]);
     }
 }

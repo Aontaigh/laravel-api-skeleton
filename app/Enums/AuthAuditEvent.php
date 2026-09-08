@@ -26,4 +26,14 @@ enum AuthAuditEvent: string
     case EmailVerificationSent = 'Email Verification Sent';
     case EmailVerified = 'Email Verified';
     case EmailVerificationFailed = 'Email Verification Failed';
+    case PasswordChanged = 'Password Changed';
+    case UserSuspended = 'User Suspended';
+    case UserUnsuspended = 'User Unsuspended';
+    case UserRoleChanged = 'User Role Changed';
+    case SessionRevoked = 'Session Revoked';
+    case TokenCreated = 'Token Created';
+    case TokenRevoked = 'Token Revoked';
+    case ApiClientCreated = 'API Client Created';
+    case ApiClientUpdated = 'API Client Updated';
+    case ApiClientDeleted = 'API Client Deleted';
 }

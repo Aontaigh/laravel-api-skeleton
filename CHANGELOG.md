@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-09-08
+
+### Added
+
+- `GET /api/app-info` - public deploy-verification metadata (application, runtime, driver names, never
+  secrets) sharing the status page throttle, with an OpenAPI schema and example
+- Focused mutation audit: the log now records password changes, role changes, suspensions,
+  session revokes, token issuance and revocation, and API client lifecycle - credential, session,
+  and access-control events only. Plain resource administration (user create/rename/delete, team
+  CRUD) stays out by design so incident response is never buried under admin noise. Covered by a
+  cross-cutting `AuthAuditCoverageTest` plus pen-test section 46 and OpenAPI verify checks
+- Split auth rate limits: login and registration keep the shared email+IP rate but carry separate
+  per-IP ceilings (`API_AUTH_LOGIN_IP_CEILING_PER_MINUTE`, default 20, and
+  `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE`, default 10); new User ID + IP buckets for password
+  change (`auth-password-change`) and session revokes (`auth-sessions-revoke`); two-factor status
+  polling gains a per-IP ceiling; the email-verify ceiling tightens to 15
+- Centralised input bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` helpers beside the
+  existing `PasswordMaxLength` (config-driven `max` rules with Title Case copy on login, register,
+  recovery, and admin creation; reset tokens bound to the broker's 64 characters); `Password::defaults()`
+  now caps length so overlong input never reaches Argon2id, and the breach verifier runs with a
+  3-second timeout so a slow HIBP endpoint cannot stall workers
+
+### Changed
+
+- `phone` fields now compact display forms to canonical E.164 in `prepareForValidation()` before the
+  strict `E164PhoneNumber` rule runs (previously rejected outright); `composer.lock` now materialises
+  the `giggsey/libphonenumber-for-php` dependency
+- CSP reporting hardened: `report-to` directive and `Reporting-Endpoints` / legacy `Report-To`
+  headers so modern and older Chromium both report (no nonce minted: no served page runs inline scripts)
+- Test hermetics: breach assertions fake HIBP via a shared `FakesBreachLookup` concern instead of
+  touching the live endpoint
+- Documentation accuracy pass: new Web Sessions and Security Telemetry API sections, corrected
+  `/health` throttling, role matrix, audit coverage, and suite counts across README, permissions,
+  testing, and security-audit docs
+- Corrected the v1.10.0 note: self and service-account role changes answer `422` (prohibited
+  field), not `403`; behaviour never changed
+
 ## [1.10.0] - 2026-09-08
 
 ### Added
@@ -35,9 +72,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   throttle); both CSP policies now carry `report-uri` pointing at it
 - `/.well-known/security.txt` (RFC 9116) served by route with a `security_txt` config path, plus a root
   `SECURITY.md` disclosure policy; the suite fails the build when `Expires` goes stale
+- `GET /api/app-info` - public deploy-verification metadata (application, runtime, driver names, never
+  secrets) sharing the status page throttle, with an OpenAPI schema and example
+- Focused mutation audit: the log now records password changes, role changes, suspensions,
+  session revokes, token issuance and revocation, and API client lifecycle - credential, session,
+  and access-control events only. Plain resource administration (user create/rename/delete, team
+  CRUD) stays out by design so incident response is never buried under admin noise
 - Optional E.164 `phone` on users (`POST` / `PATCH /api/users`, canonical form enforced by the new
   `E164PhoneNumber` rule backed by libphonenumber, exposed through `fields[users]`); the `E164Phone`
   support helper also ships `normalize()` for a future SMS two-factor channel
+- Split auth rate limits: login and registration keep the shared email+IP rate but carry separate
+  per-IP ceilings (`API_AUTH_LOGIN_IP_CEILING_PER_MINUTE`, default 20, and
+  `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE`, default 10); new User ID + IP buckets for password
+  change (`auth-password-change`) and session revokes (`auth-sessions-revoke`); two-factor status
+  polling gains a per-IP ceiling; the email-verify ceiling tightens to 15
+- Centralised input bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` helpers beside the
+  existing `PasswordMaxLength` (config-driven `max` rules with Title Case copy on login, register,
+  recovery, and admin creation; reset tokens bound to the broker's 64 characters); `Password::defaults()`
+  now caps length so overlong input never reaches Argon2id, and the breach verifier runs with a
+  3-second timeout so a slow HIBP endpoint cannot stall workers
 - `EnvExampleParityTest` - asserts application config keys are documented in `.env.example` and that
   `.env.ci` mirrors the same section banners and key contract
 
@@ -310,7 +363,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.9.0...v1.10.0
 [1.9.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.1...v1.9.0
 [1.8.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.0...v1.8.1

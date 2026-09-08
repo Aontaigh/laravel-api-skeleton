@@ -380,4 +380,25 @@ final class ResetPasswordControllerTest extends TestCase
         $this->assertNotNull($fresh);
         $this->assertTrue(Hash::check('OldPassword#1', $fresh->password));
     }
+
+    /**
+     * Reject an oversized reset token before any broker lookup runs.
+     */
+    #[Test]
+    public function it_rejects_an_oversized_reset_token(): void
+    {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/reset-password', [
+            'token' => str_repeat('a', 100),
+            'email' => $this->user->email,
+            'password' => 'NewSecretPass13',
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('meta.errors.token.0', 'Reset Token Is Too Long');
+    }
 }

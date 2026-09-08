@@ -41,17 +41,36 @@ return [
     |
     | Login and registration each combine a composite email+IP key (stops
     | credential stuffing against one account) with a broader per-IP ceiling
-    | (stops distributed spraying across many accounts from one address). A
-    | bare per-email counter is deliberately avoided: it would let an attacker
-    | lock a victim out simply by hammering their address. The per-IP ceiling
-    | is dropped in `local`, where the whole test suite shares one container
-    | IP and a hard cap would only lock the developer out.
+    | (stops distributed spraying across many accounts from one address). The
+    | ceilings are split: registration is cheaper to abuse for account-creation
+    | spam (tighter ceiling), while login needs headroom for a NAT full of
+    | legitimate users. A bare per-email counter is deliberately avoided: it
+    | would let an attacker lock a victim out simply by hammering their address.
+    | The per-IP ceiling is dropped in `local`, where the whole test suite
+    | shares one container IP and a hard cap would only lock the developer out.
     |
     */
 
     'auth_rate_limit_per_minute' => (int) env('API_AUTH_RATE_LIMIT_PER_MINUTE', 5),
 
-    'auth_ip_ceiling_per_minute' => (int) env('API_AUTH_IP_CEILING_PER_MINUTE', 20),
+    'auth_login_ip_ceiling_per_minute' => (int) env('API_AUTH_LOGIN_IP_CEILING_PER_MINUTE', 20),
+
+    'auth_register_ip_ceiling_per_minute' => (int) env('API_AUTH_REGISTER_IP_CEILING_PER_MINUTE', 10),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authenticated Credential Rate Limits
+    |--------------------------------------------------------------------------
+    |
+    | Password change and session revokes key on User ID + IP rather than
+    | email: these requests carry no email field, so an email-keyed limiter
+    | would collapse every caller on an IP into one bucket. The old shared
+    | `auth_ip_ceiling_per_minute` key is removed - every consumer now names
+    | its own ceiling below.
+    |
+    */
+
+    'auth_password_ip_ceiling_per_minute' => (int) env('API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE', 15),
 
     'two_factor_send_rate_limit_per_minute' => (int) env('API_TWO_FACTOR_SEND_RATE_LIMIT_PER_MINUTE', 5),
 
@@ -62,9 +81,13 @@ return [
     'two_factor_verify_ip_ceiling_per_minute' => (int) env('API_TWO_FACTOR_VERIFY_IP_CEILING_PER_MINUTE', 20),
 
     /*
-     * Generous allowance for SPA polling while a challenge is pending.
+     * Generous allowance for SPA polling while a challenge is pending, with a
+     * broad per-IP ceiling so one chatty client cannot starve polling for
+     * everyone else behind the same address.
      */
     'two_factor_status_rate_limit_per_minute' => (int) env('API_TWO_FACTOR_STATUS_RATE_LIMIT_PER_MINUTE', 60),
+
+    'two_factor_status_ip_ceiling_per_minute' => (int) env('API_TWO_FACTOR_STATUS_IP_CEILING_PER_MINUTE', 60),
 
     'client_auth_rate_limit_per_minute' => (int) env('API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE', 5),
 
@@ -97,7 +120,7 @@ return [
     |
     */
 
-    'email_verify_ip_ceiling_per_minute' => (int) env('API_EMAIL_VERIFY_IP_CEILING_PER_MINUTE', 60),
+    'email_verify_ip_ceiling_per_minute' => (int) env('API_EMAIL_VERIFY_IP_CEILING_PER_MINUTE', 15),
 
     'email_verification_rate_limit_per_minute' => (int) env('API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE', 3),
 
@@ -124,6 +147,14 @@ return [
     */
 
     'password_max_length' => (int) env('API_PASSWORD_MAX_LENGTH', 255),
+
+    'email_max_length' => (int) env('API_EMAIL_MAX_LENGTH', 255),
+
+    /*
+     * Laravel issues 64-character password-reset tokens. Bound the raw token
+     * before hash comparison; the database column stores the hash, not the token.
+     */
+    'password_reset_token_max_length' => (int) env('API_PASSWORD_RESET_TOKEN_MAX_LENGTH', 64),
 
     /*
     |--------------------------------------------------------------------------

@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\UpdatePasswordAction;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Users\UpdatePasswordData;
+use App\Enums\AuthAuditEvent;
 use App\Enums\PasswordChangeSource;
+use App\Events\AuthEventOccurred;
 use App\Http\Requests\Users\UpdateMePasswordRequest;
 use App\Models\User;
 use App\Notifications\Auth\PasswordChangedNotification;
@@ -66,6 +69,14 @@ final class UpdateMePasswordController
         */
 
         $action->execute($user, $data);
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::PasswordChanged,
+            userId: $user->id,
+            email: $user->email,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+        ));
 
         /*
         |--------------------------------------------------------------------------

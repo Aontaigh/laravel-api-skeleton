@@ -15,7 +15,7 @@ This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 
 ## Release Checklist
 
-- [ ] 1. App version bumped - `composer.json`, `docs/openapi.yaml`, and changelog (see [App version](#app-version))
+- [ ] 1. App version bumped - `composer.json`, `docs/openapi.yaml`, `.env.example` / `.env.ci`, and changelog (see [App version](#app-version))
 - [ ] 2. `CHANGELOG.md` updated - `## [X.Y.Z] - YYYY-MM-DD` with today's date
 - [ ] 3. Quality gates green locally (see below)
 - [ ] 4. Release commit pushed to `main`, CI green **on that commit**
@@ -45,10 +45,13 @@ fallback in `config/app.php`. Keep these in sync on every release:
 | --- | --- |
 | [`composer.json`](../composer.json) | `"version": "X.Y.Z"` - **source of truth** |
 | [`docs/openapi.yaml`](../docs/openapi.yaml) | `info.version`, the `HealthSuccess` example, and the `HealthData.version` schema example |
+| [`.env.example`](../.env.example) and [`.env.ci`](../.env.ci) | Commented `# APP_VERSION=X.Y.Z` placeholder in the Application section (documents the optional override; keep in sync with `composer.json` on every release) |
 | Git tag | `vX.Y.Z` (must match composer version without the `v` prefix) |
 
 `APP_VERSION` in `.env` is an optional override for deployed environments. Local
-dev and CI do not need it when `composer.json` is current.
+dev and CI do not need it when `composer.json` is current. The commented
+placeholder in `.env.example` is operator documentation only - it is not
+enforced by CI, so update it manually when bumping the version.
 
 CI enforces sync via `composer verify:version` (also part of `composer ci`):
 
@@ -94,7 +97,7 @@ Sail port notes when Docker ports on your machine are already in use.
 ## 3. Commit and Push, Then Wait for CI
 
 ```bash
-git add CHANGELOG.md composer.json docs/
+git add CHANGELOG.md composer.json docs/ .env.example .env.ci
 git commit -m "chore(release): prepare vX.Y.Z"
 git push origin main
 gh run watch --exit-status

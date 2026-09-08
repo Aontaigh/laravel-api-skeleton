@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\SuspendUserAction;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuthAuditEvent;
+use App\Events\AuthEventOccurred;
 use App\Http\Requests\Users\SuspendUserRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
@@ -44,6 +47,14 @@ final class SuspendUserController
         */
 
         $action->execute($user);
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::UserSuspended,
+            userId: $user->id,
+            email: $user->email,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+        ));
 
         /*
         |--------------------------------------------------------------------------

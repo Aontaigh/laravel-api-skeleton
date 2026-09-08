@@ -55,6 +55,13 @@ return [
 
     'csp_report_uri' => $cspReportUri,
 
+    /*
+     * Group name for the modern `Reporting-Endpoints` header (and the legacy
+     * `Report-To` header sent alongside it). Must match the `report-to`
+     * token if one is ever added to the policy strings above.
+     */
+    'csp_report_to_group' => 'csp-endpoint',
+
     'csp_policy' => implode('; ', [
         "default-src 'self'",
         "base-uri 'self'",
@@ -67,6 +74,7 @@ return [
         "connect-src 'self'",
         "form-action 'self'",
         "report-uri {$cspReportUri}",
+        'report-to csp-endpoint',
     ]),
 
     'csp_docs_policy' => implode('; ', [
@@ -81,6 +89,7 @@ return [
         "connect-src 'self'",
         "form-action 'self'",
         "report-uri {$cspReportUri}",
+        'report-to csp-endpoint',
     ]),
 
     /*

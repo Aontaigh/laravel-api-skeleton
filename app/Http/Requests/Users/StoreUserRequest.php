@@ -9,6 +9,8 @@ use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesPlainTextAndEmail;
 use App\Models\User;
 use App\Rules\E164PhoneNumber;
+use App\Support\Auth\EmailMaxLength;
+use App\Support\Auth\PasswordMaxLength;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
@@ -56,7 +58,7 @@ final class StoreUserRequest extends ApiFormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'string', 'email', EmailMaxLength::rule(), 'unique:users,email'],
             'password' => ['required', 'string', 'confirmed', Password::defaults()],
             'role' => ['sometimes', 'string', Rule::in(RoleName::Admin->value, RoleName::Manager->value, RoleName::User->value)],
             'team_id' => ['sometimes', 'integer', Rule::exists('teams', 'id')],
@@ -79,6 +81,8 @@ final class StoreUserRequest extends ApiFormRequest
     {
         return [
             'role.in' => 'The Selected Role Is Invalid',
+            'email.max' => EmailMaxLength::MESSAGE,
+            'password.max' => PasswordMaxLength::MESSAGE,
         ];
     }
     /*
@@ -95,5 +99,15 @@ final class StoreUserRequest extends ApiFormRequest
     protected function plainTextAttributeKeys(): array
     {
         return ['name'];
+    }
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return list<string> the phone attribute names to compact before validation
+     */
+    protected function e164PhoneAttributeKeys(): array
+    {
+        return ['phone'];
     }
 }

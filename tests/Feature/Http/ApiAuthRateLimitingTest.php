@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http;
 
+use App\Models\User;
 use App\Providers\AppServiceProvider;
 use App\Support\ApiResponse;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -39,7 +40,7 @@ final class ApiAuthRateLimitingTest extends TestCase
     */
 
     /**
-     * Tighten the auth limit for the test run.
+     * Tighten the auth limits for the test run.
      */
     protected function setUp(): void
     {
@@ -47,11 +48,14 @@ final class ApiAuthRateLimitingTest extends TestCase
 
         $this->seed(RolesAndPermissionsSeeder::class);
 
-        RateLimiter::for('api-auth', static function (Request $request) {
+        $tighten = static function (Request $request) {
             $email = $request->string('email', '')->lower()->toString();
 
             return Limit::perMinute(2)->by($request->ip().'|'.$email);
-        });
+        };
+
+        RateLimiter::for('api-auth-login', $tighten);
+        RateLimiter::for('api-auth-register', $tighten);
     }
 
     /*
@@ -164,7 +168,7 @@ final class ApiAuthRateLimitingTest extends TestCase
          * ceiling that the fourth distinct email must trip.
          */
 
-        RateLimiter::for('api-auth', function (Request $request): array {
+        RateLimiter::for('api-auth-login', function (Request $request): array {
             $email = $request->string('email', '')->lower()->toString();
 
             return [
@@ -187,6 +191,110 @@ final class ApiAuthRateLimitingTest extends TestCase
             'email' => 'd@example.com',
             'password' => 'WrongPass1',
         ]);
+
+        // Assert
+
+        $this->assertApiErrorEnvelope($response, 429, 'Too Many Requests');
+    }
+
+    /**
+     * Isolate login and registration budgets: exhausting registration must not
+     * throttle login from the same address.
+     */
+    #[Test]
+    public function it_isolates_login_and_registration_budgets(): void
+    {
+        // Arrange
+
+        RateLimiter::for('api-auth-register', static function (Request $request) {
+            $email = $request->string('email', '')->lower()->toString();
+
+            return Limit::perMinute(1)->by($request->ip().'|'.$email);
+        });
+
+        $payload = [
+            'name' => 'Alice',
+            'email' => 'budget@example.com',
+            'password' => 'Xq7#mK2$vL9pTzW4',
+            'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
+        ];
+
+        // Act
+
+        $this->postJson('/api/auth/register', $payload)->assertCreated();
+        $this->postJson('/api/auth/register', $payload)->assertStatus(429);
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'budget@example.com',
+            'password' => 'WrongPass1',
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+    }
+
+    /**
+     * Return the standard envelope when password change is rate limited.
+     */
+    #[Test]
+    public function it_returns_the_standard_envelope_when_password_change_is_rate_limited(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->user()->create();
+
+        RateLimiter::for('auth-password-change', static function (Request $request) {
+            $identifier = $request->user()?->getAuthIdentifier();
+
+            return Limit::perMinute(2)->by((is_scalar($identifier) ? (string) $identifier : (string) $request->ip()).'|'.$request->ip());
+        });
+
+        $payload = [
+            'current_password' => 'WrongPass1',
+            'password' => 'NewSecretPass13',
+            'password_confirmation' => 'NewSecretPass13',
+        ];
+
+        // Act
+
+        $this->actingAs($user)->patchJson('/api/me/password', $payload)->assertUnprocessable();
+        $this->actingAs($user)->patchJson('/api/me/password', $payload)->assertUnprocessable();
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($user)->patchJson('/api/me/password', $payload);
+
+        // Assert
+
+        $this->assertApiErrorEnvelope($response, 429, 'Too Many Requests');
+    }
+
+    /**
+     * Return the standard envelope when session revokes are rate limited.
+     */
+    #[Test]
+    public function it_returns_the_standard_envelope_when_session_revokes_are_rate_limited(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->user()->create();
+
+        RateLimiter::for('auth-sessions-revoke', static function (Request $request) {
+            $identifier = $request->user()?->getAuthIdentifier();
+
+            return Limit::perMinute(2)->by((is_scalar($identifier) ? (string) $identifier : (string) $request->ip()).'|'.$request->ip());
+        });
+
+        // Act
+
+        $this->actingAs($user)->deleteJson('/api/sessions/999999')->assertNotFound();
+        $this->actingAs($user)->deleteJson('/api/sessions/999999')->assertNotFound();
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($user)->deleteJson('/api/sessions/999999');
 
         // Assert
 

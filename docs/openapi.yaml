@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.10.0
+  version: 1.11.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -774,6 +774,34 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /app-info:
+    get:
+      tags: [System Status]
+      summary: Application Info
+      description: |
+        Public deploy-verification metadata: application, runtime, and driver
+        names - never secrets. No authentication; shares the status page's
+        per-IP throttle.
+      operationId: showAppInfo
+      responses:
+        '200':
+          description: Application Info
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: App Info Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/AppInfo'
+              examples:
+                default:
+                  $ref: '#/components/examples/AppInfoSuccess'
         '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /csp-reports:
@@ -2931,7 +2959,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.10.0
+          version: 1.11.0
         meta: {}
 
     HealthUnavailable:
@@ -2941,6 +2969,37 @@ components:
         status_code: 503
         message: Service Unavailable
         data: null
+        meta: {}
+
+    AppInfoSuccess:
+      summary: Application Info
+      value:
+        status: success
+        status_code: 200
+        message: App Info Retrieved Successfully
+        data:
+          app:
+            name: Laravel API Starter
+            environment: production
+            debug: false
+            url: https://api.example.com
+            locale: en
+            timezone: UTC
+          php:
+            version: 8.5.0
+            sapi: fpm-fcgi
+          server:
+            os: Linux
+            architecture: x86_64
+          laravel:
+            version: 13.0.0
+          drivers:
+            cache: redis
+            session: redis
+            queue: redis
+            database: mysql
+            mail: smtp
+            filesystem: s3
         meta: {}
     SystemStatusSuccess:
       summary: Public Status Page With Monitoring Data
@@ -3510,8 +3569,61 @@ components:
           example: up
         version:
           type: string
-          example: 1.10.0
+          example: 1.11.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
+
+    AppInfo:
+      type: object
+      properties:
+        app:
+          type: object
+          properties:
+            name:
+              type: string
+            environment:
+              type: string
+            debug:
+              type: boolean
+            url:
+              type: string
+            locale:
+              type: string
+            timezone:
+              type: string
+        php:
+          type: object
+          properties:
+            version:
+              type: string
+            sapi:
+              type: string
+        server:
+          type: object
+          properties:
+            os:
+              type: string
+            architecture:
+              type: string
+        laravel:
+          type: object
+          properties:
+            version:
+              type: string
+        drivers:
+          type: object
+          properties:
+            cache:
+              type: string
+            session:
+              type: string
+            queue:
+              type: string
+            database:
+              type: string
+            mail:
+              type: string
+            filesystem:
+              type: string
 
     SystemStatusData:
       type: object
@@ -3854,7 +3966,7 @@ components:
         phone:
           type: string
           maxLength: 32
-          description: Optional Canonical E.164 Number (e.g. +353851046420)
+          description: Optional E.164 Number; Display Forms Compact to Canonical E.164 (e.g. +353851046420)
 
     SendTwoFactorRequest:
       type: object
@@ -4052,7 +4164,7 @@ components:
         phone:
           type: string
           maxLength: 32
-          description: Optional Canonical E.164 Number; Null Leaves Unchanged
+          description: Optional E.164 Number; Display Forms Compact to Canonical E.164; Null Leaves Unchanged
         email:
           type: string
           description: Prohibited

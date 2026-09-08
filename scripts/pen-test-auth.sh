@@ -1413,6 +1413,11 @@ else
         fail "Double Revoke Returned $code (Want 404 or Idempotent 200)"
     fi
 
+    # Fresh revoke budget: the two revokes above already spent most of the
+    # per-User `auth-sessions-revoke` bucket, and these probes assert routing
+    # shape (404/405/422), not rate limiting (covered in section 4).
+    reset_rate_limits
+
     for forged in "0" "-1" "999999999" "current" "../1" "1%00"; do
         code=$(auth_delete "$BASE/sessions/${forged}" "$HARDEN_TOKEN")
         if [[ "$code" == "404" || "$code" == "405" || "$code" == "422" ]]; then

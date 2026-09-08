@@ -5,7 +5,10 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Tokens;
 
 use App\Actions\Tokens\CreatePersonalAccessTokenAction;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
+use App\Enums\AuthAuditEvent;
+use App\Events\AuthEventOccurred;
 use App\Http\Requests\Tokens\StoreTokenRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Support\ApiResponse;
@@ -58,6 +61,17 @@ final class StoreTokenController
         */
 
         $newToken = $action->execute($data);
+
+        $viewer = $request->viewer();
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::TokenCreated,
+            userId: $viewer->id,
+            email: $viewer->email,
+            personalAccessTokenId: $newToken->accessToken->id,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+        ));
 
         /*
         |--------------------------------------------------------------------------

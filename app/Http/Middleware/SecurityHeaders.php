@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Vite;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 /**
  * Attaches the baseline security headers to every response.
@@ -20,6 +21,26 @@ use Symfony\Component\HttpFoundation\Response;
  */
 final class SecurityHeaders
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constants
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * `max_age` advertised on the legacy `Report-To` header, in seconds.
+     *
+     * 10,886,400 seconds (18 weeks) matches Chrome's own historical NEL /
+     * Report-To default - long enough that a browser does not need to
+     * re-fetch the endpoint configuration on every visit.
+     */
+    private const int REPORT_TO_MAX_AGE_SECONDS = 10_886_400;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
     /*
     |--------------------------------------------------------------------------
     | Public
@@ -61,6 +82,13 @@ final class SecurityHeaders
             ? 'Content-Security-Policy'
             : 'Content-Security-Policy-Report-Only';
         $headers->set($cspHeader, $this->resolveCspPolicy($request));
+
+        /*
+         * No CSP nonce is minted: no served page runs inline scripts (Scalar
+         * loads an external bundle, Vite injects its own), so a nonce would
+         * be dead header bytes. Revisit if an inline bootstrap ever lands.
+         */
+        $this->setReportingHeaders($headers);
 
         /*
          * Cookie-authenticated SPA responses carry PII and token metadata and
@@ -105,5 +133,32 @@ final class SecurityHeaders
         }
 
         return config()->string('security.csp_policy');
+    }
+
+    /**
+     * Advertise the CSP report collector via both the modern and legacy headers.
+     *
+     * `Reporting-Endpoints` is the current W3C Reporting API mechanism Chrome
+     * now expects; the deprecated `Report-To` header is sent alongside it for
+     * older Chromium that has not adopted the replacement. Neither header is
+     * read by browsers that only support `report-uri` (already set in the CSP
+     * policy string itself), so sending all three is the current
+     * belt-and-braces approach for reporting compatibility.
+     *
+     * @param  ResponseHeaderBag $headers the outgoing response headers
+     * @return void
+     */
+    private function setReportingHeaders(ResponseHeaderBag $headers): void
+    {
+        $group = config()->string('security.csp_report_to_group');
+        $reportUri = config()->string('security.csp_report_uri');
+
+        $headers->set('Reporting-Endpoints', sprintf('%s="%s"', $group, $reportUri));
+
+        $headers->set('Report-To', (string) json_encode([
+            'group' => $group,
+            'max_age' => self::REPORT_TO_MAX_AGE_SECONDS,
+            'endpoints' => [['url' => $reportUri]],
+        ]));
     }
 }

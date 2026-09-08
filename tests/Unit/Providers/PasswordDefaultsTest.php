@@ -8,6 +8,7 @@ use App\Providers\AppServiceProvider;
 use Illuminate\Validation\Rules\Password;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FakesBreachLookup;
 use Tests\UnitTestCase;
 
 /**
@@ -16,6 +17,14 @@ use Tests\UnitTestCase;
 #[CoversClass(AppServiceProvider::class)]
 final class PasswordDefaultsTest extends UnitTestCase
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
+    use FakesBreachLookup;
+
     /*
     |--------------------------------------------------------------------------
     | Tests
@@ -29,6 +38,8 @@ final class PasswordDefaultsTest extends UnitTestCase
     public function it_applies_the_strict_default_password_policy(): void
     {
         // Arrange
+
+        $this->fakeBreachLookup(['Password123']);
 
         /** @var Password $default */
         $default = Password::defaults();
@@ -55,9 +66,31 @@ final class PasswordDefaultsTest extends UnitTestCase
         $this->assertTrue($strong);
     }
 
+    /**
+     * Reject an overlong password before any hash or breach lookup runs.
+     */
+    #[Test]
+    public function it_rejects_an_overlong_password(): void
+    {
+        // Arrange
+
+        $this->fakeBreachLookup(['Password123']);
+
+        /** @var Password $default */
+        $default = Password::defaults();
+
+        // Act
+
+        $passes = $this->passes($default, 'Aa1!'.str_repeat('x', 296));
+
+        // Assert
+
+        $this->assertFalse($passes);
+    }
+
     /*
     |--------------------------------------------------------------------------
-    | Private
+    | Setup
     |--------------------------------------------------------------------------
     */
 

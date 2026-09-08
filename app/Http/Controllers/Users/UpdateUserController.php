@@ -5,8 +5,11 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\UpdateUserAction;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Users\UpdateUserData;
+use App\Enums\AuthAuditEvent;
 use App\Enums\RoleName;
+use App\Events\AuthEventOccurred;
 use App\Http\Requests\Users\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
@@ -65,6 +68,16 @@ final class UpdateUserController
         */
 
         $updatedUser = $action->execute($data);
+
+        if ($input->has('role')) {
+            AuthEventOccurred::dispatch(new RecordAuthAuditData(
+                event: AuthAuditEvent::UserRoleChanged,
+                userId: $updatedUser->id,
+                email: $updatedUser->email,
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+            ));
+        }
 
         /*
         |--------------------------------------------------------------------------

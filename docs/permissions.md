@@ -39,7 +39,7 @@ Policy or request concern.
 | `tokens.create-for-user` | Access to `POST /api/users/{user}/tokens` (issue a token for another user) | `PersonalAccessTokenPolicy::createForUser()` |
 | `sessions.list-own` | Access to `GET /api/sessions` (own sessions only) | `WebSessionPolicy::viewAny()` |
 | `sessions.list-all` | List web sessions across every User (not just the caller's) | [AppliesSessionFilters](../app/Http/Requests/Concerns/Sessions/AppliesSessionFilters.php) → [SessionFilterQuery](../app/Queries/Sessions/SessionFilterQuery.php) |
-| `sessions.revoke-own` | Access to `DELETE /api/sessions/{web_session}` and `DELETE /api/sessions/current` when the session belongs to the caller | `WebSessionPolicy::delete()` |
+| `sessions.revoke-own` | Access to `DELETE /api/sessions/{web_session}`, `DELETE /api/sessions/current`, and `DELETE /api/sessions/others` when the sessions belong to the caller | `WebSessionPolicy::delete()` |
 | `sessions.revoke-any` | Revoke any User's web session via `DELETE /api/sessions/{web_session}` | `WebSessionPolicy::delete()` |
 | `api-clients.list` | Access to `GET /api/clients` and `GET /api/clients/{client}` | `ApiClientPolicy::viewAny()` and `ApiClientPolicy::view()` |
 | `api-clients.create` | Access to `POST /api/clients` | `ApiClientPolicy::create()` |
@@ -95,7 +95,8 @@ signed in.
 
 Admin-only creation of interactive user accounts via `POST /api/users`. Assigns
 role (`Admin`, `Manager`, or `User`; defaults to `User`), optional `team_id`,
-and optional canonical E.164 `phone`. Email addresses are normalised to lowercase before validation and persistence.
+and optional `phone` (display forms are compacted to canonical E.164 before
+validation). Email addresses are normalised to lowercase before validation and persistence.
 `email_verified_at` remains null and no bearer token is returned. New accounts
 are auto-enrolled in email two-factor authentication (`mfa_method: email`).
 
@@ -111,7 +112,8 @@ account. Regular Users cannot update any account.
 Admin-only role changes via the `role` field on `PATCH /api/users/{user}`
 (`Admin`, `Manager`, or `User`; enforced with the same `prohibitedIf` pattern
 as `team_id`). Callers cannot change their own role or the role of a service
-account (`403`), and demoting the last remaining Admin answers `422`
+account (the field is prohibited, so both answer `422`), and demoting the last
+remaining Admin answers `422`
 (domain guard in `UpdateUserAction`, so the API can never strand itself with
 no administrator).
 
@@ -121,6 +123,14 @@ Soft-deletes the target user (`deleted_at` is set; the row remains in the databa
 Managers may delete users on their own team; Admins may delete any user. Callers
 cannot delete their own account through this endpoint. Soft-deleted users are
 excluded from the index and return 404 on show.
+
+#### Teams
+
+Team listing is shared with Managers (`teams.list` on Admin and Manager), while
+creation, update, and deletion are Admin-only (`teams.create`, `teams.update`,
+`teams.delete`). `DELETE /api/teams/{team}` answers `422` while the Team still
+has assigned Users - the guard lives in `DeleteTeamAction`, so members are never
+silently un-scoped to `team_id` null. Reassign or remove the members first.
 
 #### Token Permissions Are Self-Scoped
 
@@ -133,6 +143,14 @@ excluded from the index and return 404 on show.
 Admin-only read-only index of `auth_audit_logs`. The Policy requires the `Admin`
 role and rejects service accounts even when `audit-logs.list` is present on the
 role. Managers, Users, and Service identities cannot list or show audit rows.
+
+The log covers authentication (login, logout, registration, 2FA, recovery,
+email verification) and access-control changes: password changes, role changes,
+suspensions, session revokes, token issuance and revocation, and API client
+lifecycle. Plain resource administration (user create/rename/delete, team CRUD)
+stays out by design, so incident response is never buried under admin noise.
+User-targeted rows carry the affected account; token and client rows carry the
+acting Admin alongside the issued credential ID where one exists.
 
 #### `GET /api/permissions`
 
@@ -183,8 +201,8 @@ After `migrate:fresh --seed`, a demo client is available:
 | Role | Permissions |
 | --- | --- |
 | **Admin** | All permissions |
-| **Manager** | `users.list`, `users.update`, `users.delete`, `roles.list`, `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list` |
-| **User** | `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list` |
+| **Manager** | `users.list`, `users.update`, `users.delete`, `roles.list`, `teams.list`, `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list`, `sessions.list-own`, `sessions.revoke-own` |
+| **User** | `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list`, `sessions.list-own`, `sessions.revoke-own` |
 | **Service** | `users.list`, `users.list-all`, `users.view-email`, `roles.list` (machine identity only - no interactive login) |
 
 ## Seeded Accounts
@@ -200,14 +218,6 @@ After `migrate:fresh --seed`:
 
 Demo client credentials: `client_id` `demo-integration-client`, secret `DemoClientSecret12`
 (override via `API_DEMO_CLIENT_SECRET`).
-
-#### Teams
-
-Team listing is shared with Managers (`teams.list` on Admin and Manager), while
-creation, update, and deletion are Admin-only (`teams.create`, `teams.update`,
-`teams.delete`). `DELETE /api/teams/{team}` answers `422` while the Team still
-has assigned Users - the guard lives in `DeleteTeamAction`, so members are never
-silently un-scoped to `team_id` null. Reassign or remove the members first.
 
 ## Adding a Permission
 

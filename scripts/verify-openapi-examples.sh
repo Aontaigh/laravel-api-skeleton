@@ -139,6 +139,9 @@ check SessionShowSuccess "$(openapi_example SessionShowSuccess)" \
 check OtherSessionsRevokedSuccess "$(openapi_example OtherSessionsRevokedSuccess)" \
   "$(api DELETE '/sessions/others' "$ADMIN_TOKEN")"
 
+check AppInfoSuccess "$(openapi_example AppInfoSuccess)" \
+  "$(api GET '/app-info')"
+
 check PermissionsIndexSuccess "$(openapi_example PermissionsIndexSuccess)" \
   "$(api GET '/permissions?per_page=2&fields%5Bpermissions%5D=id,name')"
 

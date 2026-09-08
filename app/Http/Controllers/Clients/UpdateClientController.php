@@ -6,9 +6,13 @@ namespace App\Http\Controllers\Clients;
 
 use App\Actions\ApiClients\UpdateApiClientAction;
 use App\DataTransferObjects\ApiClients\UpdateApiClientData;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuthAuditEvent;
+use App\Events\AuthEventOccurred;
 use App\Http\Requests\ApiClients\UpdateClientRequest;
 use App\Http\Resources\ApiClientResource;
 use App\Models\ApiClient;
+use App\Models\User;
 use App\Support\ApiResponse;
 use Illuminate\Http\JsonResponse;
 
@@ -60,6 +64,17 @@ final class UpdateClientController
         */
 
         $result = $action->execute($client, $data);
+
+        /** @var User $actor the route sits behind the authenticated group */
+        $actor = $request->user();
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::ApiClientUpdated,
+            userId: $actor->id,
+            email: $actor->email,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+        ));
 
         /*
         |--------------------------------------------------------------------------

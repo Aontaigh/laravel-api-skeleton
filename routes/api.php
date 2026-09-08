@@ -27,15 +27,18 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::prefix('auth')->middleware(['throttle:api-auth'])->group(function (): void {
+Route::prefix('auth')->group(function (): void {
 
     Route::post('/login', \App\Http\Controllers\Auth\LoginController::class)
+        ->middleware('throttle:api-auth-login')
         ->name('auth.login');
 
     Route::post('/login/remember', \App\Http\Controllers\Auth\RememberLoginController::class)
+        ->middleware('throttle:api-auth-login')
         ->name('auth.login.remember');
 
     Route::post('/register', \App\Http\Controllers\Auth\RegisterController::class)
+        ->middleware('throttle:api-auth-register')
         ->name('auth.register');
 
 });
@@ -136,6 +139,21 @@ Route::get('/status', \App\Http\Controllers\SystemHealth\SystemStatusController:
 
 /*
 |--------------------------------------------------------------------------
+| Application Info
+|--------------------------------------------------------------------------
+|
+| Public, unauthenticated deploy-verification metadata: application,
+| runtime, and driver names - never secrets. Shares the status page's
+| per-IP throttle; both are anonymous operational reads.
+|
+*/
+
+Route::get('/app-info', \App\Http\Controllers\Api\ShowAppInfoController::class)
+    ->middleware('throttle:api-status')
+    ->name('app-info.show');
+
+/*
+|--------------------------------------------------------------------------
 | Security Telemetry
 |--------------------------------------------------------------------------
 |
@@ -186,6 +204,7 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
             ->name('me.show');
 
         Route::delete('/sessions/current', \App\Http\Controllers\Sessions\DestroyCurrentSessionController::class)
+            ->middleware('throttle:auth-sessions-revoke')
             ->name('sessions.current.destroy');
     });
 
@@ -203,6 +222,7 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
         ->name('me.update');
 
     Route::patch('/me/password', \App\Http\Controllers\Users\UpdateMePasswordController::class)
+        ->middleware('throttle:auth-password-change')
         ->name('me.password.update');
 
     /*
@@ -219,9 +239,11 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
         ->name('sessions.index');
 
     Route::delete('/sessions/others', \App\Http\Controllers\Sessions\DestroyOtherSessionsController::class)
+        ->middleware('throttle:auth-sessions-revoke')
         ->name('sessions.others.destroy');
 
     Route::delete('/sessions/{web_session}', \App\Http\Controllers\Sessions\DestroySessionController::class)
+        ->middleware('throttle:auth-sessions-revoke')
         ->name('sessions.destroy');
 
     Route::get('/sessions/{web_session}', \App\Http\Controllers\Sessions\SessionShowController::class)

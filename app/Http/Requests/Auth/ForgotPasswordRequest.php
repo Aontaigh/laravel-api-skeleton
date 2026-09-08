@@ -6,6 +6,7 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesAuthCredentials;
+use App\Support\Auth\EmailMaxLength;
 
 /**
  * Validates the forgot-password request.
@@ -50,7 +51,25 @@ final class ForgotPasswordRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:255'],
+            'email' => ['required', 'string', 'email', EmailMaxLength::rule()],
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'email.max' => EmailMaxLength::MESSAGE,
         ];
     }
 

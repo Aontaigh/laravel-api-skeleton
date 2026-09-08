@@ -19,14 +19,19 @@ use App\Policies\WebSessionPolicy;
 use App\Services\GeoIp\GeoIpDatabase;
 use App\Services\GeoIp\MaxMindGeoIpLocator;
 use App\Services\UserAgent\Contracts\UserAgentParser;
+use App\Support\Auth\PasswordMaxLength;
 use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Contracts\Validation\UncompromisedVerifier;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\NotPwnedVerifier;
 use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
 use Laravel\Sanctum\PersonalAccessToken;
@@ -38,6 +43,21 @@ use Spatie\Permission\Models\Role;
  */
 final class AppServiceProvider extends ServiceProvider
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Constants
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Seconds to wait for HaveIBeenPwned before the HTTP client gives up.
+     *
+     * Kept short so a slow HIBP endpoint cannot stall registration or
+     * password reset; the verifier treats an unreachable HIBP as
+     * "not compromised" either way.
+     */
+    private const int UNCOMPROMISED_TIMEOUT_SECONDS = 3;
+
     /*
     |--------------------------------------------------------------------------
     | Public
@@ -62,6 +82,28 @@ final class AppServiceProvider extends ServiceProvider
 
         $this->registerUserAgentParser();
         $this->registerGeoIp();
+        $this->registerBreachVerifier();
+    }
+
+    /**
+     * Rebind the HaveIBeenPwned breach verifier with a short timeout.
+     *
+     * The framework default waits up to 30 seconds: a slow HIBP endpoint
+     * would stall registration and password reset for that long. Three
+     * seconds bounds the worst case; an unreachable HIBP is treated as
+     * "not compromised" by the verifier either way.
+     *
+     * @return void
+     */
+    private function registerBreachVerifier(): void
+    {
+        $this->app->bind(
+            UncompromisedVerifier::class,
+            fn (Application $app): NotPwnedVerifier => new NotPwnedVerifier(
+                $app->make(HttpFactory::class),
+                self::UNCOMPROMISED_TIMEOUT_SECONDS,
+            ),
+        );
     }
 
     /**
@@ -166,11 +208,26 @@ final class AppServiceProvider extends ServiceProvider
                 ->by($user !== null ? (string) $user->id : $request->ip());
         });
 
-        RateLimiter::for('api-auth', function (Request $request): array {
+        /*
+         * Login and registration share the composite email+IP shape but carry
+         * separate per-IP ceilings: registration is cheaper to abuse for
+         * account-creation spam (tighter ceiling), while login needs headroom
+         * for a NAT full of legitimate users. Sharing one bucket would let
+         * register abuse eat the login budget and vice versa.
+         */
+        RateLimiter::for('api-auth-login', function (Request $request): array {
             return [
                 Limit::perMinute(config()->integer('api.auth_rate_limit_per_minute'))
                     ->by($this->authCompositeKey($request, 'email')),
-                ...$this->perIpCeiling(config()->integer('api.auth_ip_ceiling_per_minute'), $request),
+                ...$this->perIpCeiling(config()->integer('api.auth_login_ip_ceiling_per_minute'), $request),
+            ];
+        });
+
+        RateLimiter::for('api-auth-register', function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.auth_rate_limit_per_minute'))
+                    ->by($this->authCompositeKey($request, 'email')),
+                ...$this->perIpCeiling(config()->integer('api.auth_register_ip_ceiling_per_minute'), $request),
             ];
         });
 
@@ -198,10 +255,16 @@ final class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        /*
+         * Generous allowance for SPA polling while a challenge is pending,
+         * with a broad per-IP ceiling so one chatty client cannot starve
+         * polling for everyone else behind the same address.
+         */
         RateLimiter::for('api-auth-two-factor-status', function (Request $request): array {
             return [
                 Limit::perMinute(config()->integer('api.two_factor_status_rate_limit_per_minute'))
                     ->by($this->twoFactorCompositeKey($request)),
+                ...$this->perIpCeiling(config()->integer('api.two_factor_status_ip_ceiling_per_minute'), $request),
             ];
         });
 
@@ -234,6 +297,29 @@ final class AppServiceProvider extends ServiceProvider
         });
 
         /*
+         * Authenticated password change and session revokes key on User ID +
+         * IP, not email: these requests carry no email field, so an email-keyed
+         * limiter would collapse every caller on an IP into one bucket. The
+         * dedicated buckets keep a hijacked session from burning through
+         * password guesses or mass-revoking without hitting a tight ceiling.
+         */
+        RateLimiter::for('auth-password-change', function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.auth_rate_limit_per_minute'))
+                    ->by($this->authenticatedUserKey($request)),
+                ...$this->perIpCeiling(config()->integer('api.auth_password_ip_ceiling_per_minute'), $request),
+            ];
+        });
+
+        RateLimiter::for('auth-sessions-revoke', function (Request $request): array {
+            return [
+                Limit::perMinute(config()->integer('api.auth_rate_limit_per_minute'))
+                    ->by($this->authenticatedUserKey($request)),
+                ...$this->perIpCeiling(config()->integer('api.auth_password_ip_ceiling_per_minute'), $request),
+            ];
+        });
+
+        /*
          * The signed e-mail-verification link. The signature already makes it
          * unforgeable, so this only bounds lookup abuse: a per-IP ceiling
          * (dropped in `local`), generous enough for a shared NAT.
@@ -248,10 +334,7 @@ final class AppServiceProvider extends ServiceProvider
          * on the current User ID + IP.
          */
         RateLimiter::for('auth-verification', function (Request $request): array {
-            $identifier = $request->user()?->getAuthIdentifier();
-            $key = (is_scalar($identifier) ? (string) $identifier : (string) $request->ip()).'|'.$request->ip();
-
-            return [Limit::perMinute(config()->integer('api.email_verification_rate_limit_per_minute'))->by($key)];
+            return [Limit::perMinute(config()->integer('api.email_verification_rate_limit_per_minute'))->by($this->authenticatedUserKey($request))];
         });
 
         /*
@@ -278,6 +361,24 @@ final class AppServiceProvider extends ServiceProvider
         $value = $request->string($field, '')->lower()->toString();
 
         return $value.'|'.$request->ip();
+    }
+
+    /**
+     * Build a composite rate-limit key from the authenticated User ID and the IP.
+     *
+     * Used by limiters on requests that carry no credential field (password
+     * change, session revokes, verification resend): an email-keyed limiter
+     * would collapse every caller on an IP into one bucket, while a bare
+     * User-ID key would let one attacker rotate IPs to dodge it.
+     *
+     * @param  Request $request the incoming request
+     * @return string  the `user-id|ip` limiter key
+     */
+    private function authenticatedUserKey(Request $request): string
+    {
+        $identifier = $request->user()?->getAuthIdentifier();
+
+        return (is_scalar($identifier) ? (string) $identifier : (string) $request->ip()).'|'.$request->ip();
     }
 
     /**
@@ -331,8 +432,10 @@ final class AppServiceProvider extends ServiceProvider
      * Define the application-wide default password policy.
      *
      * Applied wherever a FormRequest uses `Password::defaults()`, currently
-     * registration. Min 12 characters, letters, mixed case, numbers, and a
-     * HaveIBeenPwned breach check (`uncompromised()`).
+     * registration. Min 12 characters, letters, mixed case, numbers, a
+     * length cap (long inputs are rejected before Argon2id verification so
+     * they cannot be abused for CPU exhaustion), and a HaveIBeenPwned breach
+     * check (`uncompromised()`).
      *
      * @return void
      */
@@ -342,6 +445,7 @@ final class AppServiceProvider extends ServiceProvider
             ->letters()
             ->mixedCase()
             ->numbers()
+            ->max(PasswordMaxLength::value())
             ->uncompromised());
     }
 
