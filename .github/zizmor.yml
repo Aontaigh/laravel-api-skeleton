@@ -1,0 +1,14 @@
+# Zizmor policy: how `uses:` references may be pinned.
+#
+# First-party `actions/*` steps accept ref-pins (tags) - GitHub's own org,
+# audited by Dependabot weekly. Everything else must be hash-pinned to a full
+# commit SHA with the tag kept as a trailing comment (`uses: owner/action@<sha>
+# # vX`), which Dependabot reads when proposing updates. This codifies the
+# security-audit decision on CI supply chain: tag-pins for first-party,
+# hash-pins for third-party - enforced here, not in prose.
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "actions/*": ref-pin
+        "*": hash-pin

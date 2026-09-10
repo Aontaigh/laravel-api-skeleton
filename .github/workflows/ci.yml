@@ -45,16 +45,18 @@ jobs:
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
 
             - name: Setup PHP
-              uses: shivammathur/setup-php@v2
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
               with:
                   php-version: ${{ env.PHP_VERSION }}
                   coverage: none
                   tools: composer:v2
 
             - name: Install Composer Dependencies
-              uses: ramsey/composer-install@v4
+              uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
               with:
                   composer-options: '--prefer-dist --no-progress'
 
@@ -73,16 +75,18 @@ jobs:
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
 
             - name: Setup PHP
-              uses: shivammathur/setup-php@v2
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
               with:
                   php-version: ${{ env.PHP_VERSION }}
                   coverage: none
                   tools: composer:v2
 
             - name: Install Composer Dependencies
-              uses: ramsey/composer-install@v4
+              uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
               with:
                   composer-options: '--prefer-dist --no-progress'
 
@@ -120,9 +124,11 @@ jobs:
 
         steps:
             - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
 
             - name: Setup PHP
-              uses: shivammathur/setup-php@v2
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
               with:
                   php-version: ${{ env.PHP_VERSION }}
                   extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif
@@ -130,7 +136,7 @@ jobs:
                   tools: composer:v2
 
             - name: Install Composer Dependencies
-              uses: ramsey/composer-install@v4
+              uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
               with:
                   composer-options: '--prefer-dist --no-progress'
 
@@ -166,16 +172,18 @@ jobs:
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
 
             - name: Setup PHP
-              uses: shivammathur/setup-php@v2
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
               with:
                   php-version: ${{ env.PHP_VERSION }}
                   coverage: none
                   tools: composer:v2
 
             - name: Install Composer Dependencies
-              uses: ramsey/composer-install@v4
+              uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
               with:
                   composer-options: '--prefer-dist --no-progress'
 
@@ -227,9 +235,11 @@ jobs:
 
         steps:
             - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
 
             - name: Setup PHP
-              uses: shivammathur/setup-php@v2
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
               with:
                   php-version: ${{ env.PHP_VERSION }}
                   extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif
@@ -237,7 +247,7 @@ jobs:
                   tools: composer:v2
 
             - name: Install Composer Dependencies
-              uses: ramsey/composer-install@v4
+              uses: ramsey/composer-install@65e4f84970763564f46a70b8a54b90d033b3bdda # 4.0.0
               with:
                   composer-options: '--prefer-dist --no-progress'
 
@@ -293,6 +303,8 @@ jobs:
             security-events: write
         steps:
             - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
 
             - name: Scan PHP, Laravel, and GitHub Actions
               id: scan
@@ -305,7 +317,7 @@ jobs:
                   github.event.pull_request.head.repo.full_name == github.repository)
               # Code scanning upload needs GHAS on private repos; the scan step below is the merge gate
               continue-on-error: true
-              uses: github/codeql-action/upload-sarif@v4
+              uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
               with:
                   sarif_file: semgrep.sarif
                   category: semgrep
@@ -319,6 +331,28 @@ jobs:
                   fi
 
     # ---------------------------------------------------------------------
+    # SAST - Zizmor (GitHub Actions supply chain)
+    # ---------------------------------------------------------------------
+    zizmor:
+        name: Zizmor
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        permissions:
+            contents: read
+            security-events: write
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Audit Workflows
+              # Pinned third-party action per .github/zizmor.yml policy.
+              uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+              with:
+                  version: v1.30.1
+                  config: .github/zizmor.yml
+
+    # ---------------------------------------------------------------------
     # Summary Gate
     #
     # Single required check for branch protection — fails when any job above
@@ -327,7 +361,7 @@ jobs:
     ci:
         name: All Quality Gates
         runs-on: ubuntu-latest
-        needs: [format, static-analysis, tests, audit, openapi-examples, semgrep]
+        needs: [format, static-analysis, tests, audit, openapi-examples, semgrep, zizmor]
         if: always()
         steps:
             - name: Require Every Gate to Pass
@@ -345,6 +379,7 @@ jobs:
                   check "Security Audit" "${{ needs.audit.result }}"
                   check "OpenAPI Examples" "${{ needs.openapi-examples.result }}"
                   check "Semgrep" "${{ needs.semgrep.result }}"
+                  check "Zizmor" "${{ needs.zizmor.result }}"
                   if [ "$failed" -ne 0 ]; then
                       exit 1
                   fi

@@ -679,14 +679,23 @@ Local (Sail - matches PHP 8.5 when host PHP is older):
 > on the host) - CI runs it as a separate parallel job.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, Larastan, PHPUnit with
-coverage, `composer audit`, Semgrep, and OpenAPI verification on every pull request and
-push to `main`. Require the **All Quality Gates** check for branch protection. CI uses
+coverage, `composer audit`, Semgrep, Zizmor, and OpenAPI verification on every pull request
+and push to `main`. Require the **All Quality Gates** check for branch protection. CI uses
 native PHP 8.5 with a MySQL service container - not Sail.
 
 Run Semgrep locally on the host (Docker or a local CLI - not inside Sail):
 
 ```bash
 bash scripts/semgrep.sh
+```
+
+Run Zizmor locally the same way (a local CLI - it needs no Sail services). The policy
+lives in [`.github/zizmor.yml`](.github/zizmor.yml): first-party `actions/*` steps accept
+ref-pins, every third-party `uses:` must be a full-commit SHA pin with the tag kept as a
+trailing `# vX` comment for Dependabot:
+
+```bash
+zizmor --config .github/zizmor.yml .github/workflows/
 ```
 
 ## 🧪 Testing

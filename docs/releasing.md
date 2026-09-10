@@ -121,7 +121,7 @@ publisher token needs push on `main` and release creation, so verify
 
 CI must be green on the commit you are about to tag. The **All Quality Gates** summary
 job must pass - Pint, app version sync, Larastan, PHPUnit + coverage, Security Audit,
-Semgrep, and OpenAPI Examples.
+Semgrep, Zizmor, and OpenAPI Examples.
 
 ## 4. Tag the CI-Green Commit
 

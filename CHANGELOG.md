@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Zizmor supply-chain gate for GitHub Actions: a blocking CI job audits the
+  workflow against `.github/zizmor.yml`, which accepts ref-pins for first-party
+  `actions/*` and requires full-commit SHA pins (tag kept as a trailing comment
+  for Dependabot) for everything else - run it locally with
+  `zizmor --config .github/zizmor.yml .github/workflows/`
+
+### Changed
+
+- All third-party `uses:` references in CI are hash-pinned (`shivammathur/setup-php`,
+  `ramsey/composer-install`, `github/codeql-action`, `zizmorcore/zizmor-action`);
+  every `actions/checkout` sets `persist-credentials: false`
+- Security-audit backlog item on CI tag-pinning closed: the policy is now enforced
+  in code, including `ref-version-mismatch` (stale `# vX` comments fail the gate)
+
 ## [1.13.0] - 2026-09-10
 
 ### Added

@@ -1,10 +1,10 @@
 # Testing
 
 The full suite of checks to run before opening a pull request: PHPUnit suites,
-the coverage floor, static analysis, OpenAPI example verification, Semgrep, and
-the adversarial auth pen test. Run everything through Sail so the PHP version
-matches CI; CI ([.github/workflows/ci.yml](../.github/workflows/ci.yml)) runs
-the same gates as parallel jobs behind one **All Quality Gates** check.
+the coverage floor, static analysis, OpenAPI example verification, Semgrep,
+Zizmor, and the adversarial auth pen test. Run everything through Sail so the
+PHP version matches CI; CI ([.github/workflows/ci.yml](../.github/workflows/ci.yml))
+runs the same gates as parallel jobs behind one **All Quality Gates** check.
 
 ## Prerequisites
 
@@ -32,8 +32,8 @@ Run in this order; stop at the first failure.
 | 6 | `bash scripts/semgrep.sh` | SAST with Laravel security rules (run on the host, not in Sail) | `Findings: 0` |
 | 7 | `bash scripts/pen-test-auth.sh` | Live adversarial probes (see below) | `Fail: 0` |
 
-`composer ci` chains lint, analyse, coverage, and `composer audit`; the OpenAPI
-and Semgrep checks run as separate CI jobs. Do not add baseline entries to
+`composer ci` chains lint, analyse, coverage, and `composer audit`; the OpenAPI,
+Semgrep, and Zizmor checks run as separate CI jobs. Do not add baseline entries to
 silence new static-analysis findings - the typed accessors and narrowed
 properties the codebase uses exist to keep level 9 green.
 

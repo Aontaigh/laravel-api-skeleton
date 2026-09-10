@@ -53,7 +53,7 @@ own hardening pass, coverage, and pen-test sections (47-48); the suite stands at
 | npm advisory GHSA-2v37-7h3g-55p8 (nanoid) | **Fixed.** `npm audit fix`, 0 advisories |
 | `/health` discloses the app version | **Accepted.** Standard practice for service health endpoints; the version is equally present in the OpenAPI spec served alongside it |
 | Docs Basic Auth brute-forceable when enabled | **Accepted.** The credential is operator-managed and rotated like any secret; a dedicated limiter is tracked as backlog |
-| CI third-party actions tag-pinned, not SHA-pinned | **Accepted.** Dependabot keeps the tags current; SHA conversion is mechanical churn tracked as backlog |
+| CI third-party actions tag-pinned, not SHA-pinned | **Fixed (policy + pins).** First-party `actions/*` steps stay on tags; every third-party `uses:` is now hash-pinned to a full commit SHA with the tag kept as a trailing comment for Dependabot. The rule lives in `.github/zizmor.yml` (`actions/*`: ref-pin, everything else: hash-pin) and a blocking Zizmor CI job enforces it - including `ref-version-mismatch`, which caught a stale `v2` comment the day the tag moved |
 | Synchronous fail-open HIBP breach check in reset/registration validation | **Fixed.** Fail-open is deliberate (an HIBP outage must not block account recovery); the verifier now runs with a 3-second timeout so a slow endpoint cannot stall workers |
 | Client token accumulation per exchange with no listing surface | **Accepted.** Tokens expire in 30 days; deactivation now revokes immediately (high finding above) |
 
