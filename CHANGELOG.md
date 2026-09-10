@@ -81,7 +81,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`GeoIpLocator`, `SystemHealthCheck`) gained `Public` regions; bash scripts standardised on
   `#!/bin/bash` with `set -euo pipefail` everywhere.
 - Documentation sync: README gains the Webhooks resource, subscribed-events list, controller
-  layout, and completed rate-limit row; `docs/permissions.md` adds `WebhookEndpointPolicy` to
+  layout, and completed rate-limit row; the Authentication endpoint table's comments are
+  re-aligned to one column and its rate-limit / demo-client / two-factor flow notes are
+  grouped under Title Case subheadings instead of one paragraph; `docs/permissions.md` adds `WebhookEndpointPolicy` to
   the policy list; `docs/security-audit.md` refreshed to the current suite state (1120 tests,
   93.07% coverage, pen-test sections 47-48); `docs/testing.md` / `docs/releasing.md` broken
   relative links repaired; `docs/api.md` org URL and verify-command alignment.

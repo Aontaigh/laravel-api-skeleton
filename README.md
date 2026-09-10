@@ -50,7 +50,7 @@ convention below is demonstrated in this repo, so nothing here depends on that a
 This repo is a **starter template**, not a finished product. It demonstrates conventions
 you can copy into greenfield APIs or port legacy endpoints toward over time.
 
-**What you get:**
+**What You Get:**
 
 - 🧭 Paginated, filterable **user** index with team row scoping and permission-gated fields
 - 👥 **Role** index and **team** management (create, rename, guarded delete) for management UIs
@@ -124,38 +124,51 @@ All routes below require `Authorization: Bearer {token}` unless noted.
 ### Authentication (Public)
 
 ```http
-POST /api/auth/login           # {"email": "...", "password": "...", "remember": optional, "device_name": optional}
-POST /api/auth/two-factor/send # {"channel": "email", "two_factor_token": optional}
-GET  /api/auth/two-factor/status # ?two_factor_token=optional - poll pending challenge expiry
-POST /api/auth/two-factor/verify # {"code": "123456", "device_name": optional, "two_factor_token": optional}
-POST /api/auth/login/remember  # Stateful SPA re-auth via remember-me cookie or session
-POST /api/auth/register        # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}
-POST /api/auth/forgot-password # {"email": "..."} - always a generic success; link only sent for existing accounts
-POST /api/auth/reset-password  # {"token": "...", "email": "...", "password": "..."} - rotates every credential
+POST /api/auth/login                    # {"email": "...", "password": "...", "remember": optional, "device_name": optional}
+POST /api/auth/two-factor/send          # {"channel": "email", "two_factor_token": optional}
+GET  /api/auth/two-factor/status        # ?two_factor_token=optional - poll pending challenge expiry
+POST /api/auth/two-factor/verify        # {"code": "123456", "device_name": optional, "two_factor_token": optional}
+POST /api/auth/login/remember           # Stateful SPA re-auth via remember-me cookie or session
+POST /api/auth/register                 # {"name": "...", "email": "...", "password": "...", "password_confirmation": "..."}
+POST /api/auth/forgot-password          # {"email": "..."} - always a generic success; link only sent for existing accounts
+POST /api/auth/reset-password           # {"token": "...", "email": "...", "password": "..."} - rotates every credential
 GET  /api/auth/email/verify/{id}/{hash} # Temporary signed link e-mailed on register and resend; redirects to the SPA result page
-POST /api/auth/email/resend    # Authenticated; queues a fresh link for an unverified account (generic response)
-POST /api/oauth/token     # {"grant_type":"client_credentials","client_id":"...","client_secret":"..."}
-POST /api/logout          # Bearer token required - revokes every token and server session
+POST /api/auth/email/resend             # Authenticated; queues a fresh link for an unverified account (generic response)
+POST /api/oauth/token                   # {"grant_type": "client_credentials", "client_id": "...", "client_secret": "..."}
+POST /api/logout                        # Bearer token required - revokes every token and server session
 ```
 
-No prior token required for login, register, and client-credentials exchange. Login and register are
-rate-limited per email+IP (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) backed by split per-IP
-ceilings - login `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` (default **20**), registration
-`API_AUTH_REGISTER_IP_CEILING_PER_MINUTE` (default **10**) - so account-creation spam cannot eat the
-login budget. Authenticated password change and session revokes carry their own User ID + IP buckets
-(`auth-password-change`, `auth-sessions-revoke`). Client-credentials exchange is rate-limited
-per `client_id`+IP (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling
-pattern. The per-IP ceiling is skipped in `local` so the dev suite never self-throttles. After seed,
-use demo client `demo-integration-client` / `DemoClientSecret12`. Admins manage clients via
-`GET|POST|PATCH|DELETE /api/clients`, `GET /api/clients/{client}`, and
-`POST /api/clients/{client}/rotate-secret` (new secret returned once; old secret rejected on
-the next exchange). Registration assigns the
-default `User` role with `team_id` null, auto-enrols email two-factor authentication, and returns
-`two_factor_required` plus an opaque `two_factor_token` - no bearer token until send/verify complete.
-Invalid login credentials return a generic `Invalid Credentials` message on the `email` field. Users
-with email MFA enrolled receive `two_factor_required: true` and `two_factor_token` after valid
-credentials - complete `POST /api/auth/two-factor/send` then `POST /api/auth/two-factor/verify` on
-the same session (or pass `two_factor_token` on stateless clients) before a bearer token is issued.
+No prior token required for login, register, and client-credentials exchange.
+
+**Rate Limits**
+
+- Login and register share a per-email+IP budget (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**),
+  backed by split per-IP ceilings so account-creation spam cannot eat the login budget:
+  login `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` (default **20**), registration
+  `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE` (default **10**).
+- Password change and session revokes carry their own User ID + IP buckets
+  (`auth-password-change`, `auth-sessions-revoke`).
+- Client-credentials exchange is rate-limited per `client_id`+IP
+  (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling pattern.
+- The per-IP ceiling is skipped in `local` so the dev suite never self-throttles.
+
+**Demo Client and Admin Management**
+
+- After seed, use demo client `demo-integration-client` / `DemoClientSecret12`.
+- Admins manage clients via `GET|POST|PATCH|DELETE /api/clients`, `GET /api/clients/{client}`,
+  and `POST /api/clients/{client}/rotate-secret` (new secret returned once; the old secret is
+  rejected on the next exchange).
+
+**Two-Factor Enrolment**
+
+- Registration assigns the default `User` role with `team_id` null, auto-enrols email two-factor
+  authentication, and returns `two_factor_required` plus an opaque `two_factor_token` - no bearer
+  token until send/verify complete.
+- Users with email MFA enrolled receive `two_factor_required: true` and `two_factor_token` after
+  valid credentials - complete `POST /api/auth/two-factor/send` then
+  `POST /api/auth/two-factor/verify` on the same session (or pass `two_factor_token` on stateless
+  clients) before a bearer token is issued.
+- Invalid login credentials return a generic `Invalid Credentials` message on the `email` field.
 
 **E-Mail Verification:** registration queues a temporary signed link (`AUTH_VERIFICATION_EXPIRE`,
 default **60** minutes) pointing at `API_EMAIL_VERIFICATION_URL`. An unverified account can still
