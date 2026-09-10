@@ -185,10 +185,20 @@ jobs:
     # ---------------------------------------------------------------------
     # OpenAPI Examples (live envelope shape vs docs/openapi.yaml)
     # ---------------------------------------------------------------------
+    # QUEUE_CONNECTION=redis is set at the job level (env vars override
+    # `.env` values; nothing here runs config:cache): the verifier replays
+    # examples against the production queue contract, where a webhook ping
+    # answers 202 with the pending delivery (null last_error /
+    # last_status_code). `.env.ci` keeps sync for the PHPUnit job, where
+    # queued listeners must run inline to be assertable - this served app is
+    # the only place the queue contract differs, and the verify script drains
+    # the queue itself before asserting the drained delivery listing.
     openapi-examples:
         name: OpenAPI Examples
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        env:
+            QUEUE_CONNECTION: redis
 
         services:
             mysql:
@@ -202,6 +212,15 @@ jobs:
                     - 3306:3306
                 options: >-
                     --health-cmd "mysqladmin ping -h 127.0.0.1 -u root -ppassword"
+                    --health-interval 5s
+                    --health-timeout 5s
+                    --health-retries 10
+            redis:
+                image: redis:alpine
+                ports:
+                    - 6379:6379
+                options: >-
+                    --health-cmd "redis-cli ping"
                     --health-interval 5s
                     --health-timeout 5s
                     --health-retries 10
