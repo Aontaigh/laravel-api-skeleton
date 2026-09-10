@@ -18,9 +18,16 @@ final class TwoFactorChallengeException extends RuntimeException
     */
 
     /**
-     * A single generic message for every failure mode so the response can't be
-     * used to distinguish "no challenge" from "wrong code" from "too many
-     * attempts" (enumeration hardening).
+     * A single generic message for every failure mode.
+     *
+     * The response cannot distinguish "no challenge" from "wrong code" from
+     * "too many attempts", so a probing caller learns nothing about which
+     * rejection it hit - enumeration hardening for the two-factor gate.
+    /**
+     * A single generic message for every failure mode.
+     * The response cannot distinguish "no challenge" from "wrong code" from
+     * "too many attempts", so a probing caller learns nothing about which
+     * rejection it hit - enumeration hardening for the two-factor gate.
      */
     private const string GENERIC_MESSAGE = 'Invalid or Expired Code';
 

@@ -45,6 +45,8 @@ final class RecordAuthAuditLogTest extends TestCase
 
     /**
      * Seed the roles the User factory assigns.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

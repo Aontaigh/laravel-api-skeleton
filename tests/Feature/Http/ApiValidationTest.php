@@ -38,6 +38,8 @@ final class ApiValidationTest extends TestCase
 
     /**
      * Seed permissions and create an Admin viewer.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

@@ -7,6 +7,8 @@ namespace App\Http\Controllers\Users;
 use App\Actions\Users\CreateUserAction;
 use App\DataTransferObjects\Users\CreateUserData;
 use App\Enums\RoleName;
+use App\Enums\WebhookEvent;
+use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Users\StoreUserRequest;
 use App\Http\Resources\UserResource;
 use App\Support\ApiResponse;
@@ -63,6 +65,18 @@ final class StoreUserController
         */
 
         $user = $action->execute($data);
+
+        event(
+            new WebhookEventDispatched(
+                event: WebhookEvent::UserCreated,
+                data: [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'team_id' => $user->team_id,
+                ],
+            ),
+        );
 
         /*
         |--------------------------------------------------------------------------

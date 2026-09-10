@@ -36,6 +36,14 @@ final class SystemStatusControllerTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
+    use RefreshDatabase;
+
+    /*
+    |--------------------------------------------------------------------------
     | Setup
     |--------------------------------------------------------------------------
     */
@@ -64,28 +72,15 @@ final class SystemStatusControllerTest extends TestCase
     private function componentPayload(TestResponse $response, string $component): array
     {
         $payload = collect($this->statusComponents($response))->firstWhere('component', $component);
-
         $this->assertNotNull($payload);
 
         return $payload;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Traits
-    |--------------------------------------------------------------------------
-    */
-
-    use RefreshDatabase;
-
-    /*
-    |--------------------------------------------------------------------------
-    | Setup
-    |--------------------------------------------------------------------------
-    */
-
     /**
      * Freeze time so the history windows and seeded `checked_at` rows line up.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -96,6 +91,8 @@ final class SystemStatusControllerTest extends TestCase
 
     /**
      * Release the frozen time after each test.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

@@ -22,16 +22,43 @@ final class IssueTwoFactorChallengeAction
 
     /**
      * Cache key prefix for the pending challenge.
+     *
+     * The challenge payload (hashed code, issued-at, expiry) lives under this
+     * prefix in the cache store, so a rate-limit flush or manual key sweep can
+     * target pendings without touching unrelated entries.
+    /**
+     * Cache key prefix for the pending challenge.
+     * The challenge payload (hashed code, issued-at, expiry) lives under this
+     * prefix in the cache store, so a rate-limit flush or manual key sweep can
+     * target pendings without touching unrelated entries.
      */
     public const string CACHE_PREFIX = 'two-factor:';
 
     /**
-     * Exclusive upper bound for the six-digit code (100000..999999 range).
+     * Exclusive upper bound for the six-digit code space.
+     *
+     * `random_int` draws below this value, keeping the draw uniform over
+     * 900000 candidates (100000-999999) - a large enough space that a
+     * per-challenge guess budget stays the binding limit, not the code.
+    /**
+     * Exclusive upper bound for the six-digit code space.
+     * `random_int` draws below this value, keeping the draw uniform over
+     * 900000 candidates (100000-999999) - a large enough space that a
+     * per-challenge guess budget stays the binding limit, not the code.
      */
     private const int CODE_UPPER_BOUND = 999999;
 
     /**
      * Inclusive lower bound so the code always renders as six digits.
+     *
+     * Drawing above this value means no leading-zero padding ever applies:
+     * every code serialises and is entered as exactly six characters, which
+     * the client copy and the verify rule both assume.
+    /**
+     * Inclusive lower bound so the code always renders as six digits.
+     * Drawing above this value means no leading-zero padding ever applies:
+     * every code serialises and is entered as exactly six characters, which
+     * the client copy and the verify rule both assume.
      */
     private const int CODE_LOWER_BOUND = 100000;
 

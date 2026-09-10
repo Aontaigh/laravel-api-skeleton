@@ -37,6 +37,11 @@ final class EnsureSessionVersionMatches
      * Written at the privilege boundary (login, remember-me restore) and read
      * here on every authenticated cookie request; shared with the fail-closed
      * restamp in InvalidateStoredSessionAction so both sides cannot drift.
+    /**
+     * Session-payload key holding the User's stamped `session_version`.
+     * Written at the privilege boundary (login, remember-me restore) and read
+     * here on every authenticated cookie request; shared with the fail-closed
+     * restamp in InvalidateStoredSessionAction so both sides cannot drift.
      */
     public const string SESSION_KEY = 'session_version';
 

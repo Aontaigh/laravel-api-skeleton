@@ -16,6 +16,8 @@ return new class extends Migration
 
     /**
      * Store the resolved city and country on the auth audit log row.
+     *
+     * @return void
      */
     public function up(): void
     {
@@ -27,6 +29,8 @@ return new class extends Migration
 
     /**
      * Remove the resolved city and country from the audit log.
+     *
+     * @return void
      */
     public function down(): void
     {

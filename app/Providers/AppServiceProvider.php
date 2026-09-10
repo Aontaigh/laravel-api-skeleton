@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Providers;
 
 use App\Contracts\GeoIp\GeoIpLocator;
+use App\Contracts\Webhooks\WebhookDnsResolver;
 use App\Enums\RoleName;
 use App\Models\ApiClient;
 use App\Models\AuthAuditLog;
@@ -19,10 +20,12 @@ use App\Policies\WebSessionPolicy;
 use App\Services\GeoIp\GeoIpDatabase;
 use App\Services\GeoIp\MaxMindGeoIpLocator;
 use App\Services\UserAgent\Contracts\UserAgentParser;
+use App\Services\Webhooks\SystemWebhookDnsResolver;
 use App\Support\Auth\PasswordMaxLength;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Request;
@@ -55,6 +58,11 @@ final class AppServiceProvider extends ServiceProvider
      * Kept short so a slow HIBP endpoint cannot stall registration or
      * password reset; the verifier treats an unreachable HIBP as
      * "not compromised" either way.
+    /**
+     * Seconds to wait for HaveIBeenPwned before the HTTP client gives up.
+     * Kept short so a slow HIBP endpoint cannot stall registration or
+     * password reset; the verifier treats an unreachable HIBP as
+     * "not compromised" either way.
      */
     private const int UNCOMPROMISED_TIMEOUT_SECONDS = 3;
 
@@ -83,6 +91,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->registerUserAgentParser();
         $this->registerGeoIp();
         $this->registerBreachVerifier();
+        $this->registerWebhookDnsResolver();
     }
 
     /**
@@ -143,6 +152,19 @@ final class AppServiceProvider extends ServiceProvider
     }
 
     /**
+     * Bind the webhook DNS resolver used by the SSRF screen.
+     *
+     * Bound (not singleton): lookups carry no state worth sharing, and a
+     * per-resolution instance keeps tests hermetic when they swap a fake.
+     *
+     * @return void
+     */
+    private function registerWebhookDnsResolver(): void
+    {
+        $this->app->bind(WebhookDnsResolver::class, SystemWebhookDnsResolver::class);
+    }
+
+    /**
      * Bootstrap any application services.
      *
      * `PersonalAccessToken` and Spatie's `Role` live outside `App\Models`, so
@@ -153,6 +175,13 @@ final class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        /*
+         * Fail loudly on lazy loads outside production so a missing eager
+         * load surfaces as an exception in development and tests, not as a
+         * slow N+1 query in production.
+         */
+        Model::preventLazyLoading(! $this->app->isProduction());
+
         $this->rejectReflectiveCors();
         Gate::policy(PersonalAccessToken::class, PersonalAccessTokenPolicy::class);
         Gate::policy(ApiClient::class, ApiClientPolicy::class);
@@ -205,6 +234,19 @@ final class AppServiceProvider extends ServiceProvider
             $user = $request->user();
 
             return Limit::perMinute(config()->integer('api.token_rate_limit_per_minute'))
+                ->by($user !== null ? (string) $user->id : $request->ip());
+        });
+
+        /*
+         * Outbound-emitting webhook routes (create, test ping, rotate secret).
+         * A dedicated bucket keeps one Admin's ping storm from becoming an
+         * amplification vector against an arbitrary public target while
+         * leaving management reads on the general API budget.
+         */
+        RateLimiter::for('api-webhooks', static function (Request $request) {
+            $user = $request->user();
+
+            return Limit::perMinute(config()->integer('api.webhook_rate_limit_per_minute'))
                 ->by($user !== null ? (string) $user->id : $request->ip());
         });
 

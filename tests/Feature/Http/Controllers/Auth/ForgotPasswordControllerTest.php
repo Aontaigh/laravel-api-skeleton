@@ -46,6 +46,8 @@ final class ForgotPasswordControllerTest extends TestCase
 
     /**
      * Intercept notifications so delivery is asserted, not performed.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

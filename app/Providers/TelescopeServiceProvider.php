@@ -13,8 +13,14 @@ use Laravel\Telescope\TelescopeApplicationServiceProvider;
 /**
  * Boots Laravel Telescope in local development with admin-only dashboard access.
  */
-class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
+final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Register any application services.
      *
@@ -37,6 +43,12 @@ class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
                    $entry->hasMonitoredTag();
         });
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Protected
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Prevent sensitive request details from being logged by Telescope.

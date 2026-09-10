@@ -15,6 +15,12 @@ use App\DataTransferObjects\GeoIp\GeoIpLocation;
  */
 interface GeoIpLocator
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Resolve city and country for the given IP, or null when unknown.
      *

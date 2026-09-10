@@ -26,7 +26,8 @@ final class LogCspReportAction
      * individually rather than as one combined line - each violation stays
      * independently greppable.
      *
-     * @param list<CspReportData> $reports the parsed, bounded reports to log
+     * @param  list<CspReportData> $reports the parsed, bounded reports to log
+     * @return void
      */
     public function execute(array $reports): void
     {

@@ -11,6 +11,7 @@ use App\Events\TwoFactorChallengeIssued;
 use App\Listeners\RecordAuthAuditLog;
 use App\Listeners\SendTwoFactorCodeNotification;
 use App\Models\User;
+use App\Notifications\Auth\TwoFactorCodeNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -103,6 +104,7 @@ final class ListenerRegistrationTest extends TestCase
         TwoFactorChallengeIssued::dispatch($user, '123456');
 
         // Assert
-        Notification::assertSentToTimes($user, \App\Notifications\Auth\TwoFactorCodeNotification::class, 1);
+
+        Notification::assertSentToTimes($user, TwoFactorCodeNotification::class, 1);
     }
 }

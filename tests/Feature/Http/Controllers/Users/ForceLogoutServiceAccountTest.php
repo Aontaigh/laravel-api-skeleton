@@ -38,6 +38,8 @@ final class ForceLogoutServiceAccountTest extends TestCase
 
     /**
      * Seed permissions for force-logout authorisation.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

@@ -11,9 +11,12 @@ material auth change.
 
 No critical findings. Four high-severity findings were fixed in this pass; the
 remaining high and medium findings were fixed or accepted as noted below. The
-suite is green after remediation: 993 tests, 93.3% line coverage, Larastan level
-9, Semgrep 0 findings, `composer audit` and `npm audit` clean, and the
-46-section adversarial pen test at 0 failures.
+suite was green after remediation: 93.0%+ line coverage, Larastan level 9,
+Semgrep 0 findings, `composer audit` and `npm audit` clean, and the adversarial
+pen test at 0 failures. Material auth changes after this audit (request
+correlation IDs, outbound webhooks, client secret rotation) shipped with their
+own hardening pass, coverage, and pen-test sections (47-48); the suite stands at
+1120 tests and 93.07% line coverage with all gates green.
 
 ## Findings and Dispositions
 
@@ -66,7 +69,6 @@ suite is green after remediation: 993 tests, 93.3% line coverage, Larastan level
 
 OAuth social login, TOTP/passkeys, and SMS delivery remain
 starter omissions by design (see the README's "What's Not Included" - email
-verification has since shipped). The
-pen-test suite ([scripts/pen-test-auth.sh](../scripts/pen-test-auth.sh)) is the
-continuous regression net for everything above: 46 adversarial sections, 0
-failures after remediation.
+verification has since shipped). The pen-test suite ([scripts/pen-test-auth.sh](../scripts/pen-test-auth.sh)) is the
+continuous regression net for everything above: 48 adversarial sections, 0
+failures on a clean run.

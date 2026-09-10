@@ -136,6 +136,26 @@ return [
     */
 
     'csp_report_ip_ceiling_per_minute' => (int) env('API_CSP_REPORT_IP_CEILING_PER_MINUTE', 60),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Outbound Webhook Delivery
+    |--------------------------------------------------------------------------
+    |
+    | Retry budget, per-attempt HTTP timeout, and the consecutive-failure
+    | streak that auto-disables a dead endpoint. Backoff between attempts is
+    | exponential from 60 seconds, capped at one hour.
+    |
+    */
+
+    'webhook_delivery_max_attempts' => (int) env('API_WEBHOOK_DELIVERY_MAX_ATTEMPTS', 8),
+
+    'webhook_delivery_timeout_seconds' => (int) env('API_WEBHOOK_DELIVERY_TIMEOUT_SECONDS', 10),
+
+    'webhook_auto_disable_after_failures' => (int) env('API_WEBHOOK_AUTO_DISABLE_AFTER_FAILURES', 10),
+
+    'webhook_rate_limit_per_minute' => (int) env('API_WEBHOOK_RATE_LIMIT_PER_MINUTE', 10),
+
     /*
     |--------------------------------------------------------------------------
     | Password Length Cap

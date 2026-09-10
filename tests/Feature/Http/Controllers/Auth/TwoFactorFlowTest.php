@@ -68,6 +68,8 @@ final class TwoFactorFlowTest extends TestCase
 
     /**
      * Seed roles and permissions.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

@@ -18,6 +18,90 @@ final class EnvExampleParityTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------
+    | Setup
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * @return list<string>
+     */
+    private function applicationConfigEnvKeys(): array
+    {
+        $keys = [
+            'TRUSTED_PROXIES',
+            'AUTH_VERIFICATION_EXPIRE',
+            'TELESCOPE_ENABLED',
+        ];
+
+        $configFiles = [
+            'config/api.php',
+            'config/cors.php',
+            'config/geoip.php',
+            'config/security.php',
+            'config/useragent.php',
+        ];
+
+        foreach ($configFiles as $relativePath) {
+            $content = file_get_contents(base_path($relativePath));
+            $this->assertIsString($content);
+
+            preg_match_all("/env\('([^']+)'/", $content, $matches);
+
+            foreach ($matches[1] as $key) {
+                $keys[] = $key;
+            }
+        }
+
+        $keys = array_values(array_unique($keys));
+        sort($keys);
+
+        return $keys;
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function keysInEnvFile(string $path): array
+    {
+        $content = file_get_contents($path);
+        $this->assertIsString($content);
+
+        $keys = [];
+
+        foreach (explode("\n", $content) as $line) {
+            if (preg_match('/^(?:#\s*)?([A-Z][A-Z0-9_]*)=/', $line, $matches) === 1) {
+                $keys[] = $matches[1];
+            }
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function sectionNames(string $path): array
+    {
+        $lines = explode("\n", (string) file_get_contents($path));
+        $divider = '/^# -{69}$/';
+        $sections = [];
+
+        foreach ($lines as $index => $line) {
+            if ($index === 0 || $index >= count($lines) - 1) {
+                continue;
+            }
+
+            if (preg_match($divider, $lines[$index - 1]) === 1
+                && preg_match($divider, $lines[$index + 1]) === 1) {
+                $sections[] = trim($line, '# ');
+            }
+        }
+
+        return $sections;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Tests
     |--------------------------------------------------------------------------
     */
@@ -104,89 +188,5 @@ final class EnvExampleParityTest extends UnitTestCase
 
         $this->assertSame([], $missingFromCi, 'Add missing keys to `.env.ci`: '.implode(', ', $missingFromCi));
         $this->assertSame([], $extraInCi, 'Remove extra keys from `.env.ci`: '.implode(', ', $extraInCi));
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Helpers
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * @return list<string>
-     */
-    private function applicationConfigEnvKeys(): array
-    {
-        $keys = [
-            'TRUSTED_PROXIES',
-            'AUTH_VERIFICATION_EXPIRE',
-            'TELESCOPE_ENABLED',
-        ];
-
-        $configFiles = [
-            'config/api.php',
-            'config/cors.php',
-            'config/geoip.php',
-            'config/security.php',
-            'config/useragent.php',
-        ];
-
-        foreach ($configFiles as $relativePath) {
-            $content = file_get_contents(base_path($relativePath));
-            $this->assertIsString($content);
-
-            preg_match_all("/env\('([^']+)'/", $content, $matches);
-
-            foreach ($matches[1] as $key) {
-                $keys[] = $key;
-            }
-        }
-
-        $keys = array_values(array_unique($keys));
-        sort($keys);
-
-        return $keys;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function keysInEnvFile(string $path): array
-    {
-        $content = file_get_contents($path);
-        $this->assertIsString($content);
-
-        $keys = [];
-
-        foreach (explode("\n", $content) as $line) {
-            if (preg_match('/^(?:#\s*)?([A-Z][A-Z0-9_]*)=/', $line, $matches) === 1) {
-                $keys[] = $matches[1];
-            }
-        }
-
-        return array_values(array_unique($keys));
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function sectionNames(string $path): array
-    {
-        $lines = explode("\n", (string) file_get_contents($path));
-        $divider = '/^# -{69}$/';
-        $sections = [];
-
-        foreach ($lines as $index => $line) {
-            if ($index === 0 || $index >= count($lines) - 1) {
-                continue;
-            }
-
-            if (preg_match($divider, $lines[$index - 1]) === 1
-                && preg_match($divider, $lines[$index + 1]) === 1) {
-                $sections[] = trim($line, '# ');
-            }
-        }
-
-        return $sections;
     }
 }

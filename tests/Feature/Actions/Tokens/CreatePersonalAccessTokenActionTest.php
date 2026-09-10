@@ -39,6 +39,8 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
 
     /**
      * Seed the permission catalog the Action validates against.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

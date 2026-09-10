@@ -37,7 +37,6 @@ final class RoleFilterQueryTest extends UnitTestCase
         /** @var Builder<Role> $query */
         $query = Role::query();
 
-        /** @var RoleFilters $filters */
         $filters = new RoleFilters(search: null);
 
         // Act
@@ -65,7 +64,6 @@ final class RoleFilterQueryTest extends UnitTestCase
         /** @var Builder<Role> $query */
         $query = Role::query();
 
-        /** @var RoleFilters $filters */
         $filters = new RoleFilters(search: $term);
 
         // Act

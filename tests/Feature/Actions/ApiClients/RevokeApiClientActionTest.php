@@ -34,6 +34,8 @@ final class RevokeApiClientActionTest extends TestCase
 
     /**
      * Seed roles so service-account factories can assign the Service role.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

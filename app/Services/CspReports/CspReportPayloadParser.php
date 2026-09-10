@@ -32,6 +32,12 @@ final class CspReportPayloadParser
      * generous headroom while still stopping an anonymous, unauthenticated
      * caller from using this endpoint to burn CPU on `json_decode` or fill
      * disk via the `csp-reports` log channel.
+    /**
+     * Reject the body before `json_decode` runs at all past this size.
+     * A CSP violation report is a handful of short fields; 16 KiB is
+     * generous headroom while still stopping an anonymous, unauthenticated
+     * caller from using this endpoint to burn CPU on `json_decode` or fill
+     * disk via the `csp-reports` log channel.
      */
     private const int MAX_BODY_BYTES = 16 * 1024;
 

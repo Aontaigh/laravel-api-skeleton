@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Teams;
 
 use App\Actions\Teams\DeleteTeamAction;
+use App\Enums\WebhookEvent;
+use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Teams\DestroyTeamRequest;
 use App\Models\Team;
 use App\Support\ApiResponse;
@@ -43,7 +45,20 @@ final class DestroyTeamController
         |--------------------------------------------------------------------------
         */
 
+        $teamId = $team->id;
+        $teamName = $team->name;
+
         $action->execute($team);
+
+        event(
+            new WebhookEventDispatched(
+                event: WebhookEvent::TeamDeleted,
+                data: [
+                    'id' => $teamId,
+                    'name' => $teamName,
+                ],
+            ),
+        );
 
         /*
         |--------------------------------------------------------------------------

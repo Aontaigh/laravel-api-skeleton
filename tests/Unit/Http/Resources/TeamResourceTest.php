@@ -25,6 +25,8 @@ final class TeamResourceTest extends UnitTestCase
 
     /**
      * Build a Team with all attributes set directly.
+     *
+     * @return Team the constructed Team
      */
     private function fullTeam(): Team
     {

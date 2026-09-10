@@ -16,6 +16,8 @@ return new class extends Migration
 
     /**
      * Store the resolved city and country on the web session registry.
+     *
+     * @return void
      */
     public function up(): void
     {
@@ -27,6 +29,8 @@ return new class extends Migration
 
     /**
      * Remove the resolved city and country from the registry.
+     *
+     * @return void
      */
     public function down(): void
     {

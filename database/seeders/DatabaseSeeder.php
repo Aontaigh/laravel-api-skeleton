@@ -21,6 +21,8 @@ final class DatabaseSeeder extends Seeder
 
     /**
      * Run the seeder.
+     *
+     * @return void
      */
     public function run(): void
     {

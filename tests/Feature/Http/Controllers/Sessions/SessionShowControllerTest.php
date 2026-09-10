@@ -51,6 +51,8 @@ final class SessionShowControllerTest extends TestCase
 
     /**
      * Seed permissions for the session gates.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

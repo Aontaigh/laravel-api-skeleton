@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Adversarial curl probes for auth endpoints - run against local Sail (http://localhost/api).
 #
 # Covers: enumeration, injection, rate limits, token abuse, remember-me + CSRF,
@@ -1812,10 +1812,10 @@ else
             -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{"name":"Ghost"}')
         expect_code "Update non-numeric team id" "404" "$code"
 
-        code=$(status_code -X PUT "$BASE/teams" \
-            -H "Accept: application/json" -H "Content-Type: application/json" \
-            -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{"name":"Put Team"}')
-        expect_code "PUT /teams rejected" "405" "$code"
+    code=$(status_code -X PUT "$BASE/teams" \
+        -H "Accept: application/json" -H "Content-Type: application/json" \
+        -H "Authorization: Bearer ${TEAM_ADMIN_TOKEN}" -d '{"name":"Put Team"}')
+    expect_code "PUT /teams rejected" "405" "$code"
 
         code=$(auth_delete "$BASE/teams/${TEAM_A_ID}" "$TEAM_MANAGER_TOKEN")
         expect_code "Manager cannot delete team" "403" "$code"
@@ -1866,19 +1866,19 @@ else
     code=$(status_code -X PATCH "$BASE/users/${ROLE_TARGET_ID}" \
         -H "Accept: application/json" -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${ROLE_MANAGER_TOKEN}" -d '{"role":"Admin"}')
-    expect_code "Manager cannot escalate role to Admin" "422" "$code"
+    expect_code "Manager cannot escalate role to Admin" "403" "$code"
 
     ADMIN_SELF_ID="$(artisan_tinker "echo App\\Models\\User::where('email','admin@example.com')->value('id');")"
     code=$(status_code -X PATCH "$BASE/users/${ADMIN_SELF_ID}" \
         -H "Accept: application/json" -H "Content-Type: application/json" \
         -H "Authorization: Bearer ${ROLE_ADMIN_TOKEN}" -d '{"role":"Manager"}')
-    expect_code "Admin cannot change own role" "422" "$code"
+    expect_code "Admin cannot change own role" "403" "$code"
 
     if [[ -n "$ROLE_SERVICE_ID" ]]; then
         code=$(status_code -X PATCH "$BASE/users/${ROLE_SERVICE_ID}" \
             -H "Accept: application/json" -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${ROLE_ADMIN_TOKEN}" -d '{"role":"Manager"}')
-        expect_code "Service account role is immutable" "422" "$code"
+        expect_code "Service account role is immutable" "403" "$code"
     fi
 
     code=$(status_code -X PATCH "$BASE/users/${ROLE_TARGET_ID}" \
@@ -1904,6 +1904,130 @@ else
 
     code=$(status_code "${HOST}/.well-known/security.txt")
     expect_code "security.txt served" "200" "$code"
+fi
+
+# --- 47. Outbound webhook management ---
+echo "--- 47. Outbound Webhook Management ---"
+reset_rate_limits
+HOOK_ADMIN_TOKEN="$(login_token admin@example.com password)"
+HOOK_MANAGER_TOKEN="$(login_token manager@example.com password)"
+
+if [[ -z "$HOOK_ADMIN_TOKEN" || -z "$HOOK_MANAGER_TOKEN" ]]; then
+    fail "Could Not Obtain Tokens for Webhook Probes"
+else
+    code=$(status_code -X POST "$BASE/webhook-endpoints" \
+        -H "Content-Type: application/json" -H "Accept: application/json" \
+        -H "Authorization: Bearer ${HOOK_ADMIN_TOKEN}" \
+        -d '{"name":"Pen Test Hook","url":"https://8.8.8.8/hooks","events":["user.created"]}')
+    expect_code "Admin can create webhook endpoint" "201" "$code"
+    HOOK_ID="$(json_path 'data.endpoint.id')"
+    HOOK_SECRET="$(json_path 'data.webhook_secret')"
+
+    if [[ -z "$HOOK_ID" ]]; then
+        fail "Could Not Capture Created Webhook Endpoint ID"
+    else
+        if [[ -n "$HOOK_SECRET" ]]; then
+            pass "Plaintext secret returned once on create"
+        else
+            fail "Plaintext Secret Missing From Create Response"
+        fi
+
+        curl -s -o "$BODY_FILE" -X GET "$BASE/webhook-endpoints/${HOOK_ID}" \
+            -H "Accept: application/json" -H "Authorization: Bearer ${HOOK_ADMIN_TOKEN}"
+        if python3 -c "import json,sys; d=json.load(open('$BODY_FILE')); sys.exit(0 if 'secret' not in d.get('data',{}) else 1)" 2>/dev/null; then
+            pass "Secret never exposed on show"
+        else
+            fail "Secret Leaked on Show Endpoint"
+        fi
+
+        code=$(auth_post "$BASE/webhook-endpoints" "$HOOK_ADMIN_TOKEN" \
+            -d '{"name":"SSRF Probe","url":"http://169.254.169.254/latest","events":["user.created"]}')
+        expect_code "Cloud metadata URL rejected" "422" "$code"
+
+        code=$(auth_post "$BASE/webhook-endpoints" "$HOOK_ADMIN_TOKEN" \
+            -d '{"name":"Bad Event","url":"https://8.8.8.8/hooks","events":["user.exploded"]}')
+        expect_code "Unknown event rejected" "422" "$code"
+
+        code=$(auth_post "$BASE/webhook-endpoints" "$HOOK_MANAGER_TOKEN" \
+            -d '{"name":"Manager Hook","url":"https://8.8.8.8/hooks","events":["user.created"]}')
+        expect_code "Manager cannot create webhook endpoint" "403" "$code"
+
+        code=$(status_code -X POST "$BASE/webhook-endpoints" \
+            -H "Content-Type: application/json" -H "Accept: application/json" \
+            -d '{"name":"Anon Hook","url":"https://8.8.8.8/hooks","events":["user.created"]}')
+        expect_code "Unauthenticated webhook create rejected" "401" "$code"
+
+        code=$(status_code -X PATCH "$BASE/webhook-endpoints/${HOOK_ID}" \
+            -H "Content-Type: application/json" -H "Accept: application/json" \
+            -H "Authorization: Bearer ${HOOK_ADMIN_TOKEN}" -d '{"events":[]}')
+        expect_code "Empty events rejected" "422" "$code"
+
+        code=$(auth_post "$BASE/webhook-endpoints/${HOOK_ID}/rotate-secret" "$HOOK_ADMIN_TOKEN")
+        expect_code "Secret rotation accepted" "200" "$code"
+        ROTATED_SECRET="$(json_path 'data.webhook_secret')"
+        if [[ -n "$ROTATED_SECRET" && "$ROTATED_SECRET" != "$HOOK_SECRET" ]]; then
+            pass "Rotated secret differs from the original"
+        else
+            fail "Secret Rotation Did Not Return a Fresh Secret"
+        fi
+
+        code=$(auth_post "$BASE/webhook-endpoints/${HOOK_ID}/test" "$HOOK_ADMIN_TOKEN")
+        expect_code "Test ping queued" "202" "$code"
+
+        code=$(auth_get "$BASE/webhook-endpoints/${HOOK_ID}/deliveries" "$HOOK_ADMIN_TOKEN")
+        expect_code "Delivery history listed" "200" "$code"
+
+        code=$(auth_get "$BASE/webhook-endpoints/${HOOK_ID}/deliveries" "$HOOK_MANAGER_TOKEN")
+        expect_code "Manager cannot list deliveries" "403" "$code"
+
+        code=$(status_code -X PUT "$BASE/webhook-endpoints" \
+            -H "Content-Type: application/json" -H "Accept: application/json" \
+            -H "Authorization: Bearer ${HOOK_ADMIN_TOKEN}" -d '{"name":"Put Hook"}')
+        expect_code "PUT /webhook-endpoints rejected" "405" "$code"
+    fi
+fi
+
+# --- 48. Client secret rotation ---
+echo "--- 48. Client Secret Rotation ---"
+reset_rate_limits
+ROT_ADMIN_TOKEN="$(login_token admin@example.com password)"
+
+if [[ -z "$ROT_ADMIN_TOKEN" ]]; then
+    fail "Could Not Obtain Admin Token for Rotation Probes"
+else
+    ROT_CLIENT_ID="$(artisan_tinker "\$c=App\\Models\\ApiClient::factory()->create(['client_secret'=>Illuminate\\Support\\Facades\\Hash::make('PenRotatingSecret1')]); echo \$c->client_id;")"
+
+    code=$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
+        -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"DemoClientSecret12"}')
+    expect_code "Pre-rotation exchange works" "200" "$code"
+
+    code=$(status_code -X POST "$BASE/clients/1/rotate-secret" \
+        -H "Accept: application/json" \
+        -H "Authorization: Bearer ${ROT_ADMIN_TOKEN}")
+    expect_code "Admin can rotate client secret" "200" "$code"
+    ROTATED="$(json_path 'data.client_secret')"
+
+    if [[ -n "$ROTATED" && "$ROTATED" != "DemoClientSecret12" ]]; then
+        pass "Rotation returned a fresh one-time secret"
+    else
+        fail "Rotation Did Not Return a Fresh Secret"
+    fi
+
+    code=$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
+        -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"DemoClientSecret12"}')
+    expect_code "Old secret rejected after rotation" "422" "$code"
+
+    code=$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"demo-integration-client\",\"client_secret\":\"${ROTATED}\"}")
+    expect_code "New secret exchanges successfully" "200" "$code"
+
+    code=$(status_code -X POST "$BASE/clients/1/rotate-secret" \
+        -H "Accept: application/json" \
+        -H "Authorization: Bearer ${HOOK_MANAGER_TOKEN}")
+    expect_code "Manager cannot rotate client secret" "403" "$code"
+
+    code=$(status_code -X POST "$BASE/clients/1/rotate-secret" -H "Accept: application/json")
+    expect_code "Unauthenticated rotation rejected" "401" "$code"
 fi
 
 echo ""

@@ -25,6 +25,12 @@ final class TouchWebSessionActivityAction
      * worker memory: a long-lived worker must not share per-session state,
      * and the indexed UPDATE is a no-op when the row is missing, revoked, or
      * recently touched.
+    /**
+     * Minimum minutes between last-activity writes for the same session.
+     * Throttle lives on `last_activity_at`, never a static map or Octane
+     * worker memory: a long-lived worker must not share per-session state,
+     * and the indexed UPDATE is a no-op when the row is missing, revoked, or
+     * recently touched.
      */
     public const int TOUCH_INTERVAL_MINUTES = 5;
 

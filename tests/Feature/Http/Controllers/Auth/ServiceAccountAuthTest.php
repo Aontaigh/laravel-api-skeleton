@@ -39,6 +39,8 @@ final class ServiceAccountAuthTest extends TestCase
 
     /**
      * Seed permissions for role assignment.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

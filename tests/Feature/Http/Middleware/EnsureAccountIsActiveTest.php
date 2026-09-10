@@ -39,6 +39,8 @@ final class EnsureAccountIsActiveTest extends TestCase
 
     /**
      * Seed the roles an authenticated caller needs to reach a gated route.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

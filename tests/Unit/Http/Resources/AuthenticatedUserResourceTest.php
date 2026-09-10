@@ -26,6 +26,8 @@ final class AuthenticatedUserResourceTest extends UnitTestCase
 
     /**
      * Build a User with scalar attributes set directly.
+     *
+     * @return User the constructed User
      */
     private function authenticatedUser(): User
     {

@@ -28,6 +28,8 @@ final class TrustedProxiesTest extends TestCase
 
     /**
      * Clear the environment variable so tests stay isolated.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

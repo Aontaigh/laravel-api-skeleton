@@ -7,6 +7,7 @@ namespace Tests\Feature\Http;
 use App\Enums\AuthAuditEvent;
 use App\Enums\RoleName;
 use App\Http\Controllers\Clients\DestroyClientController;
+use App\Http\Controllers\Clients\RotateClientSecretController;
 use App\Http\Controllers\Clients\StoreClientController;
 use App\Http\Controllers\Clients\UpdateClientController;
 use App\Http\Controllers\Sessions\DestroySessionController;
@@ -17,11 +18,17 @@ use App\Http\Controllers\Users\SuspendUserController;
 use App\Http\Controllers\Users\UnsuspendUserController;
 use App\Http\Controllers\Users\UpdateMePasswordController;
 use App\Http\Controllers\Users\UpdateUserController;
+use App\Http\Controllers\Webhooks\DestroyWebhookEndpointController;
+use App\Http\Controllers\Webhooks\RotateWebhookEndpointSecretController;
+use App\Http\Controllers\Webhooks\StoreWebhookEndpointController;
+use App\Http\Controllers\Webhooks\UpdateWebhookEndpointController;
 use App\Models\User;
+use App\Models\WebhookEndpoint;
 use App\Models\WebSession;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -48,6 +55,11 @@ use Tests\TestCase;
 #[CoversClass(StoreClientController::class)]
 #[CoversClass(UpdateClientController::class)]
 #[CoversClass(DestroyClientController::class)]
+#[CoversClass(RotateClientSecretController::class)]
+#[CoversClass(StoreWebhookEndpointController::class)]
+#[CoversClass(UpdateWebhookEndpointController::class)]
+#[CoversClass(DestroyWebhookEndpointController::class)]
+#[CoversClass(RotateWebhookEndpointSecretController::class)]
 #[CoversClass(AuthAuditEvent::class)]
 final class AuthAuditCoverageTest extends TestCase
 {
@@ -66,13 +78,18 @@ final class AuthAuditCoverageTest extends TestCase
     */
 
     /**
-     * Seed roles and create the Admin actor plus a team member target.
+     * Seed roles and permissions, and stub receivers: several tests here
+     * trigger webhook emissions, and with `QUEUE_CONNECTION=sync` those
+     * deliveries would otherwise POST to the factory URL in-request.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
         parent::setUp();
 
         $this->seed(RolesAndPermissionsSeeder::class);
+        Http::fake(['*' => Http::response('ok', 200)]);
     }
 
     /*
@@ -154,10 +171,10 @@ final class AuthAuditCoverageTest extends TestCase
     }
 
     /**
-     * Record rows for suspension and unsuspension.
+     * Record a row when an Admin suspends a User.
      */
     #[Test]
-    public function it_records_suspension_events(): void
+    public function it_records_user_suspended_events(): void
     {
         // Arrange
 
@@ -167,18 +184,38 @@ final class AuthAuditCoverageTest extends TestCase
         /** @var User $member */
         $member = User::factory()->user()->create();
 
-        // Act + Assert: suspend.
+        // Act
 
         $this->actingAs($admin)->postJson("/api/users/{$member->id}/suspend")->assertOk();
+
+        // Assert
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::UserSuspended->value,
             'user_id' => $member->id,
         ]);
+    }
 
-        // Act + Assert: unsuspend.
+    /**
+     * Record a row when an Admin lifts a suspension.
+     */
+    #[Test]
+    public function it_records_user_unsuspended_events(): void
+    {
+        // Arrange
 
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var User $member */
+        $member = User::factory()->user()->create();
+
+        // Act
+
+        $this->actingAs($admin)->postJson("/api/users/{$member->id}/suspend")->assertOk();
         $this->actingAs($admin)->postJson("/api/users/{$member->id}/unsuspend")->assertOk();
+
+        // Assert
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::UserUnsuspended->value,
@@ -226,10 +263,36 @@ final class AuthAuditCoverageTest extends TestCase
      */
 
     /**
-     * Record rows for token issuance, admin issuance, and revocation.
+     * Record a row when the caller issues their own token.
      */
     #[Test]
-    public function it_records_token_lifecycle_events(): void
+    public function it_records_token_created_events(): void
+    {
+        // Arrange
+
+        /** @var User $member */
+        $member = User::factory()->user()->create();
+
+        // Act
+
+        $this->actingAs($member)->postJson('/api/tokens', [
+            'name' => 'Audited Token',
+            'abilities' => ['tokens.list-own'],
+        ])->assertCreated();
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::TokenCreated->value,
+            'user_id' => $member->id,
+        ]);
+    }
+
+    /**
+     * Record the token owner - not the issuing Admin - on admin issuance.
+     */
+    #[Test]
+    public function it_records_admin_issued_token_events_against_the_owner(): void
     {
         // Arrange
 
@@ -239,41 +302,39 @@ final class AuthAuditCoverageTest extends TestCase
         /** @var User $member */
         $member = User::factory()->user()->create();
 
-        // Act: self-service issuance.
-
-        $this->actingAs($member)->postJson('/api/tokens', [
-            'name' => 'Audited Token',
-            'abilities' => ['tokens.list-own'],
-        ])->assertCreated();
-
-        // Assert: self-service issuance.
-
-        $this->assertDatabaseHas('auth_audit_logs', [
-            'event' => AuthAuditEvent::TokenCreated->value,
-            'user_id' => $member->id,
-        ]);
-
-        // Act: admin issuance for another user.
+        // Act
 
         $this->actingAs($admin)->postJson("/api/users/{$member->id}/tokens", [
             'name' => 'Admin Issued Token',
             'abilities' => ['tokens.list-own'],
         ])->assertCreated();
 
-        // Assert: admin issuance carries the token owner, not the actor.
+        // Assert
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::TokenCreated->value,
             'user_id' => $member->id,
         ]);
+    }
 
-        // Act: revocation of a directly created token (no issuance row).
+    /**
+     * Record a row when a token is revoked.
+     */
+    #[Test]
+    public function it_records_token_revoked_events(): void
+    {
+        // Arrange
+
+        /** @var User $member */
+        $member = User::factory()->user()->create();
 
         $token = $member->createToken('Revoke Me');
 
+        // Act
+
         $this->actingAs($member)->deleteJson("/api/tokens/{$token->accessToken->id}")->assertOk();
 
-        // Assert: revocation.
+        // Assert
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::TokenRevoked->value,
@@ -287,17 +348,105 @@ final class AuthAuditCoverageTest extends TestCase
      */
 
     /**
-     * Record rows for API client creation, update, and deletion.
+     * Record a row when an Admin creates an API client.
      */
     #[Test]
-    public function it_records_api_client_lifecycle_events(): void
+    public function it_records_api_client_created_events(): void
     {
         // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
 
-        // Act: create.
+        // Act
+
+        $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Audited Client',
+            'abilities' => ['users.list'],
+        ])->assertCreated();
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::ApiClientCreated->value,
+            'user_id' => $admin->id,
+        ]);
+    }
+
+    /**
+     * Record a row when an Admin updates an API client.
+     */
+    #[Test]
+    public function it_records_api_client_updated_events(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $created */
+        $created = $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Audited Client',
+            'abilities' => ['users.list'],
+        ]);
+
+        /** @var int $clientId */
+        $clientId = $created->json('data.client.id');
+
+        $this->actingAs($admin)->patchJson("/api/clients/{$clientId}", ['name' => 'Audited Client Renamed'])->assertOk();
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::ApiClientUpdated->value,
+            'user_id' => $admin->id,
+        ]);
+    }
+
+    /**
+     * Record a row when an Admin deletes an API client.
+     */
+    #[Test]
+    public function it_records_api_client_deleted_events(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var TestResponse<JsonResponse> $created */
+        $created = $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Audited Client',
+            'abilities' => ['users.list'],
+        ]);
+
+        /** @var int $clientId */
+        $clientId = $created->json('data.client.id');
+
+        // Act
+
+        $this->actingAs($admin)->deleteJson("/api/clients/{$clientId}")->assertOk();
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::ApiClientDeleted->value,
+            'user_id' => $admin->id,
+        ]);
+    }
+
+    /**
+     * Record a row when an Admin rotates an API client secret.
+     */
+    #[Test]
+    public function it_records_client_secret_rotated_events(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
 
         /** @var TestResponse<JsonResponse> $created */
         $created = $this->actingAs($admin)->postJson('/api/clients', [
@@ -310,26 +459,124 @@ final class AuthAuditCoverageTest extends TestCase
         /** @var int $clientId */
         $clientId = $created->json('data.client.id');
 
-        // Assert: create.
+        // Act
+
+        $this->actingAs($admin)->postJson("/api/clients/{$clientId}/rotate-secret")->assertOk();
+
+        // Assert
 
         $this->assertDatabaseHas('auth_audit_logs', [
-            'event' => AuthAuditEvent::ApiClientCreated->value,
+            'event' => AuthAuditEvent::ClientSecretRotated->value,
             'user_id' => $admin->id,
         ]);
+    }
 
-        // Act: update and delete.
+    /*
+     * Webhook Tests
+     * -------------
+     */
 
-        $this->actingAs($admin)->patchJson("/api/clients/{$clientId}", ['name' => 'Audited Client Renamed'])->assertOk();
-        $this->actingAs($admin)->deleteJson("/api/clients/{$clientId}")->assertOk();
+    /**
+     * Record a row when an Admin creates a webhook endpoint.
+     */
+    #[Test]
+    public function it_records_webhook_endpoint_created_events(): void
+    {
+        // Arrange
 
-        // Assert: update and delete.
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        $this->actingAs($admin)->postJson('/api/webhook-endpoints', [
+            'name' => 'Audited Hook',
+            'url' => 'https://8.8.8.8/hooks',
+            'events' => ['user.created'],
+        ])->assertCreated();
+
+        // Assert
 
         $this->assertDatabaseHas('auth_audit_logs', [
-            'event' => AuthAuditEvent::ApiClientUpdated->value,
+            'event' => AuthAuditEvent::WebhookEndpointCreated->value,
             'user_id' => $admin->id,
         ]);
+    }
+
+    /**
+     * Record a row when an Admin updates a webhook endpoint.
+     */
+    #[Test]
+    public function it_records_webhook_endpoint_updated_events(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        // Act
+
+        $this->actingAs($admin)->patchJson("/api/webhook-endpoints/{$endpoint->id}", ['name' => 'Audited Hook V2'])->assertOk();
+
+        // Assert
+
         $this->assertDatabaseHas('auth_audit_logs', [
-            'event' => AuthAuditEvent::ApiClientDeleted->value,
+            'event' => AuthAuditEvent::WebhookEndpointUpdated->value,
+            'user_id' => $admin->id,
+        ]);
+    }
+
+    /**
+     * Record a row when an Admin rotates a webhook signing secret.
+     */
+    #[Test]
+    public function it_records_webhook_secret_rotated_events(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        // Act
+
+        $this->actingAs($admin)->postJson("/api/webhook-endpoints/{$endpoint->id}/rotate-secret")->assertOk();
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::WebhookSecretRotated->value,
+            'user_id' => $admin->id,
+        ]);
+    }
+
+    /**
+     * Record a row when an Admin deletes a webhook endpoint.
+     */
+    #[Test]
+    public function it_records_webhook_endpoint_deleted_events(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        // Act
+
+        $this->actingAs($admin)->deleteJson("/api/webhook-endpoints/{$endpoint->id}")->assertOk();
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::WebhookEndpointDeleted->value,
             'user_id' => $admin->id,
         ]);
     }

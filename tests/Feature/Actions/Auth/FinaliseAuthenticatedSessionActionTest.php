@@ -36,6 +36,8 @@ final class FinaliseAuthenticatedSessionActionTest extends TestCase
 
     /**
      * Seed permissions for token issuance.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

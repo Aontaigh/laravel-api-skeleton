@@ -48,6 +48,8 @@ final class DestroyOtherSessionsControllerTest extends TestCase
 
     /**
      * Seed permissions for session revoke authorisation.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -119,8 +121,6 @@ final class DestroyOtherSessionsControllerTest extends TestCase
             ->withHeaders($this->statefulRequestHeaders($deleteXsrfToken))
             ->deleteJson('/api/sessions/others');
 
-        // Assert
-
         $response->assertOk();
         $response->assertJsonPath('message', 'Other Sessions Revoked Successfully');
 
@@ -134,13 +134,20 @@ final class DestroyOtherSessionsControllerTest extends TestCase
         $this->assertNotNull($currentSession);
         $this->assertNull($currentSession->revoked_at);
 
-        // Act + Assert: the surviving browser still authenticates.
+        /*
+         * The surviving browser must still authenticate: the revoke-others
+         * prune deliberately excluded the inbound session ID.
+         */
+
+        // Act
 
         /** @var TestResponse<JsonResponse> $meResponse */
         $meResponse = $this->withCredentials()
             ->withToken($plainTextToken)
             ->withHeaders($this->statefulRequestHeaders($deleteXsrfToken))
             ->getJson('/api/me');
+
+        // Assert
 
         $meResponse->assertOk();
     }

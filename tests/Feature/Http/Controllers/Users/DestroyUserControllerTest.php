@@ -63,6 +63,8 @@ final class DestroyUserControllerTest extends TestCase
 
     /**
      * Create the Team, manager, and team member shared by every test.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

@@ -20,6 +20,39 @@ trait NormalisesE164PhoneAttributes
 {
     /*
     |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
+    use ReadsRequestInput;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Abstract
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Determine whether the request input contains a given key.
+     *
+     * Signatures here must match Laravel's exactly, or PHP rejects the host
+     * class.
+     *
+     * @param  string|array<int, string> $key the input key, or a list of keys
+     * @return bool                      whether any given key is present
+     */
+    abstract public function has($key);
+
+    /**
+     * Merge new input into the request's current input array.
+     *
+     * @param  array<string, mixed> $input the values to merge into the input
+     * @return static               the request with the merged input
+     */
+    abstract public function merge(array $input);
+
+    /*
+    |--------------------------------------------------------------------------
     | Protected
     |--------------------------------------------------------------------------
     */

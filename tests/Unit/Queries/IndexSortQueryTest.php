@@ -40,7 +40,6 @@ final class IndexSortQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var IndexSort $sort */
         $sort = new IndexSort(column: 'name', direction: 'asc');
 
         // Act
@@ -74,7 +73,6 @@ final class IndexSortQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var IndexSort $sort */
         $sort = new IndexSort(column: 'created_at', direction: 'desc');
 
         // Act
@@ -108,7 +106,6 @@ final class IndexSortQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var IndexSort $sort */
         $sort = new IndexSort(column: 'id', direction: 'asc');
 
         // Act
@@ -139,7 +136,6 @@ final class IndexSortQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var IndexSort $sort */
         $sort = new IndexSort(column: 'password', direction: 'asc');
 
         // Act
@@ -167,7 +163,6 @@ final class IndexSortQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var IndexSort $sort */
         $sort = new IndexSort(column: 'name', direction: 'asc');
 
         // Act + Assert

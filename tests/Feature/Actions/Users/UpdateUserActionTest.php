@@ -38,6 +38,8 @@ final class UpdateUserActionTest extends TestCase
 
     /**
      * Seed roles so factory role states can assign them.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

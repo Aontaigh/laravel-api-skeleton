@@ -50,6 +50,8 @@ final class LogoutControllerTest extends TestCase
 
     /**
      * Seed permissions so follow-up token requests distinguish auth from authorisation.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

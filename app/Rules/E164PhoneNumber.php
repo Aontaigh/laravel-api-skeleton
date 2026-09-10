@@ -26,9 +26,10 @@ final class E164PhoneNumber implements ValidationRule
     /**
      * Validate that the input is a canonical E.164 phone number.
      *
-     * @param string  $attribute the validated field name
-     * @param mixed   $value     the validated input value
-     * @param Closure $fail      the validation failure callback
+     * @param  string  $attribute the validated field name
+     * @param  mixed   $value     the validated input value
+     * @param  Closure $fail      the validation failure callback
+     * @return void
      */
     public function validate(string $attribute, mixed $value, Closure $fail): void
     {

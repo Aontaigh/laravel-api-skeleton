@@ -35,6 +35,8 @@ final class TelescopeAccessTest extends TestCase
 
     /**
      * Seed the roles the gate authorises against.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

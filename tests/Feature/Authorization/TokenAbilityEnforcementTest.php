@@ -72,6 +72,8 @@ final class TokenAbilityEnforcementTest extends TestCase
 
     /**
      * Seed the roles and permissions every test authorises against.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

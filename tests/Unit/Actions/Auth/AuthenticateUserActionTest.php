@@ -43,6 +43,8 @@ final class AuthenticateUserActionTest extends UnitTestCase
 
     /**
      * Pin the timing-normalisation hash so Hash::check() expectations are stable.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -65,7 +67,6 @@ final class AuthenticateUserActionTest extends UnitTestCase
     {
         // Arrange
 
-        /** @var User $user */
         $user = new User([
             'email' => 'alice@example.com',
             'password' => 'hashed-secret',
@@ -137,7 +138,6 @@ final class AuthenticateUserActionTest extends UnitTestCase
     {
         // Arrange
 
-        /** @var User $user */
         $user = new User([
             'email' => 'alice@example.com',
             'password' => 'hashed-secret',
@@ -205,7 +205,6 @@ final class AuthenticateUserActionTest extends UnitTestCase
     {
         // Arrange
 
-        /** @var User $user */
         $user = new User([
             'email' => 'alice@example.com',
             'password' => 'hashed-secret',

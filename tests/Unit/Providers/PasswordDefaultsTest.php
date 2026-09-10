@@ -27,6 +27,34 @@ final class PasswordDefaultsTest extends UnitTestCase
 
     /*
     |--------------------------------------------------------------------------
+    | Setup
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Run the validator with the given rule against a candidate password.
+     *
+     * @param  Password $rule      the rule under test
+     * @param  string   $candidate the password candidate
+     * @return bool     true when the candidate passes
+     */
+    private function passes(Password $rule, string $candidate): bool
+    {
+        return validator(['password' => $candidate], ['password' => $rule])->passes();
+    }
+
+    /**
+     * Build a password that satisfies the policy without tripping the breach list.
+     *
+     * @return string a strong, unique password
+     */
+    private function uniqueStrongPassword(): string
+    {
+        return 'Str0ng-'.bin2hex(random_bytes(6));
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Tests
     |--------------------------------------------------------------------------
     */
@@ -86,33 +114,5 @@ final class PasswordDefaultsTest extends UnitTestCase
         // Assert
 
         $this->assertFalse($passes);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Setup
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Run the validator with the given rule against a candidate password.
-     *
-     * @param  Password $rule      the rule under test
-     * @param  string   $candidate the password candidate
-     * @return bool     true when the candidate passes
-     */
-    private function passes(Password $rule, string $candidate): bool
-    {
-        return validator(['password' => $candidate], ['password' => $rule])->passes();
-    }
-
-    /**
-     * Build a password that satisfies the policy without tripping the breach list.
-     *
-     * @return string a strong, unique password
-     */
-    private function uniqueStrongPassword(): string
-    {
-        return 'Str0ng-'.bin2hex(random_bytes(6));
     }
 }

@@ -42,6 +42,8 @@ final class PermissionPolicyTest extends TestCase
 
     /**
      * Seed permissions and construct the policy under test.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

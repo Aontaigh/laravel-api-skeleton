@@ -23,6 +23,9 @@ final class IndexSortParserTest extends UnitTestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Parse a `sort` value into its column and direction parts.
+     */
     #[Test]
     #[DataProvider('parseProvider')]
     public function it_parses_a_sort_value_into_column_and_direction(string $raw, IndexSort $expected): void

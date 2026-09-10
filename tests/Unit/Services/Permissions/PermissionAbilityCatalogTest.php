@@ -40,6 +40,8 @@ final class PermissionAbilityCatalogTest extends UnitTestCase
 
     /**
      * Build a catalog backed by a fixed in-memory permission list.
+     *
+     * @return PermissionAbilityCatalog the in-memory catalog
      */
     private function catalog(): PermissionAbilityCatalog
     {

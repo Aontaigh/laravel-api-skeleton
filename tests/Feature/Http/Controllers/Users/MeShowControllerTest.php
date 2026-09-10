@@ -56,6 +56,8 @@ final class MeShowControllerTest extends TestCase
 
     /**
      * Seed permissions and enable strict Eloquent modes.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -69,6 +71,8 @@ final class MeShowControllerTest extends TestCase
 
     /**
      * Restore the global strict-mode flags so they do not leak into other suites.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

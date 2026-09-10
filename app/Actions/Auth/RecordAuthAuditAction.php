@@ -14,12 +14,21 @@ final class RecordAuthAuditAction
 {
     /*
     |--------------------------------------------------------------------------
-    | Properties
+    | Constants
     |--------------------------------------------------------------------------
     */
 
     /**
-     * The maximum length of an attacker-controlled User-Agent stored in audit logs.
+     * Maximum length of an attacker-controlled User-Agent stored in audit logs.
+     *
+     * The header arrives verbatim from the client, so past the cap the value
+     * is truncated before persisting - one hostile or absurdly long header
+     * cannot widen the row (or the index payload) for every later reader.
+    /**
+     * Maximum length of an attacker-controlled User-Agent stored in audit logs.
+     * The header arrives verbatim from the client, so past the cap the value
+     * is truncated before persisting - one hostile or absurdly long header
+     * cannot widen the row (or the index payload) for every later reader.
      */
     private const MAX_USER_AGENT_LENGTH = 1024;
 

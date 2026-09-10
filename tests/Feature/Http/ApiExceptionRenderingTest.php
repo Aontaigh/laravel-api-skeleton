@@ -40,6 +40,8 @@ final class ApiExceptionRenderingTest extends TestCase
 
     /**
      * Seed permissions and register a throw route for server-error coverage.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

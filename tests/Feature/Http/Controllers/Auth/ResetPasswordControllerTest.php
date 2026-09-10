@@ -43,50 +43,6 @@ final class ResetPasswordControllerTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
-    | Setup
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Assert a generic rejection that leaves the User untouched.
-     *
-     * The 422 must not distinguish an unknown token from an expired one.
-     *
-     * @param TestResponse<JsonResponse> $response the reset response under test
-     */
-    private function assertResetRejected(TestResponse $response): void
-    {
-        $response->assertUnprocessable();
-        $response->assertJsonPath('status', 'error');
-        $response->assertJsonPath('message', 'The Reset Token Is Invalid Or Has Expired');
-
-        $fresh = $this->user->fresh();
-
-        $this->assertNotNull($fresh);
-        $this->assertTrue(Hash::check('OldPassword#1', $fresh->password));
-
-        Notification::assertNotSentTo($this->user, PasswordChangedNotification::class);
-    }
-
-    /**
-     * Issue a password-reset token for the given User.
-     *
-     * `Password::broker()` is typed as the contract; the concrete broker exposes
-     * `createToken()` for tests that need a known-good token without HTTP.
-     */
-    private function resetTokenFor(User $user): string
-    {
-        $broker = Password::broker();
-
-        if (! $broker instanceof PasswordBroker) {
-            throw new \RuntimeException('Password Broker Is Not the Expected Concrete Implementation');
-        }
-
-        return $broker->createToken($user);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Traits
     |--------------------------------------------------------------------------
     */
@@ -109,7 +65,46 @@ final class ResetPasswordControllerTest extends TestCase
     */
 
     /**
+     * Assert a generic rejection that leaves the User untouched.
+     *
+     * The 422 must not distinguish an unknown token from an expired one.
+     *
+     * @param  TestResponse<JsonResponse> $response the reset response under test
+     * @return void
+     */
+    private function assertResetRejected(TestResponse $response): void
+    {
+        $response->assertUnprocessable();
+        $response->assertJsonPath('status', 'error');
+        $response->assertJsonPath('message', 'The Reset Token Is Invalid Or Has Expired');
+        $fresh = $this->user->fresh();
+        $this->assertNotNull($fresh);
+        $this->assertTrue(Hash::check('OldPassword#1', $fresh->password));
+        Notification::assertNotSentTo($this->user, PasswordChangedNotification::class);
+    }
+
+    /**
+     * Issue a password-reset token for the given User.
+     *
+     * `Password::broker()` is typed as the contract; the concrete broker exposes
+     * `createToken()` for tests that need a known-good token without HTTP.
+     *
+     * @return string the issued reset token
+     */
+    private function resetTokenFor(User $user): string
+    {
+        $broker = Password::broker();
+        if (! $broker instanceof PasswordBroker) {
+            throw new \RuntimeException('Password Broker Is Not the Expected Concrete Implementation');
+        }
+
+        return $broker->createToken($user);
+    }
+
+    /**
      * Create the User, a Personal Access Token, and two registered sessions.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

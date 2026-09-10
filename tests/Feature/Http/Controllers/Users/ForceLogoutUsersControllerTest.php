@@ -68,6 +68,8 @@ final class ForceLogoutUsersControllerTest extends TestCase
 
     /**
      * Seed permissions and create the shared admin viewer.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

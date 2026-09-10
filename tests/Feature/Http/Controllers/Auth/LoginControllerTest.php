@@ -67,6 +67,8 @@ final class LoginControllerTest extends TestCase
 
     /**
      * Seed permissions for token issuance.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -600,6 +602,8 @@ final class LoginControllerTest extends TestCase
 
     /**
      * Resolve the web session guard for remember-me cookie assertions.
+     *
+     * @return SessionGuard the resolved web session guard
      */
     private function webGuard(): SessionGuard
     {

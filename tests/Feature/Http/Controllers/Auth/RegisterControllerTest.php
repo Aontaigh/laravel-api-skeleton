@@ -60,6 +60,8 @@ final class RegisterControllerTest extends TestCase
 
     /**
      * Seed roles before registration assigns the User role.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

@@ -41,6 +41,8 @@ final class SessionFilterQueryTest extends UnitTestCase
 
     /**
      * Build an unsaved viewer for row-scoping assertions.
+     *
+     * @return User the unsaved viewer
      */
     private function viewer(): User
     {

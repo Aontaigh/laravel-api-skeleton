@@ -16,6 +16,8 @@ return new class extends Migration
 
     /**
      * Add the service-account flag to Users.
+     *
+     * @return void
      */
     public function up(): void
     {
@@ -26,6 +28,8 @@ return new class extends Migration
 
     /**
      * Remove the service-account flag from Users.
+     *
+     * @return void
      */
     public function down(): void
     {

@@ -39,6 +39,8 @@ final class ApiTokenRateLimitingTest extends TestCase
 
     /**
      * Seed permissions and tighten the token-creation limit for the test run.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

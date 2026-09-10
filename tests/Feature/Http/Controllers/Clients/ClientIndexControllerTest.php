@@ -66,6 +66,8 @@ final class ClientIndexControllerTest extends TestCase
 
     /**
      * Seed permissions for API client management.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

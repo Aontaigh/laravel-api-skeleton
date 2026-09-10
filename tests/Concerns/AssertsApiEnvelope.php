@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Concerns;
 
+use Illuminate\Http\JsonResponse;
 use Illuminate\Testing\TestResponse;
 
 /**
@@ -20,8 +21,9 @@ trait AssertsApiEnvelope
     /**
      * Assert the response is a 422 validation error in the ApiResponse envelope.
      *
-     * @param TestResponse<\Illuminate\Http\JsonResponse> $response          the HTTP response
-     * @param list<string>                                $expectedErrorKeys the dotted validation keys that must be present
+     * @param  TestResponse<JsonResponse> $response          the HTTP response
+     * @param  list<string>               $expectedErrorKeys the dotted validation keys that must be present
+     * @return void
      */
     protected function assertApiValidationErrors(TestResponse $response, array $expectedErrorKeys): void
     {
@@ -45,9 +47,10 @@ trait AssertsApiEnvelope
     /**
      * Assert the response is an error in the standard ApiResponse envelope.
      *
-     * @param TestResponse<\Illuminate\Http\JsonResponse> $response   the HTTP response
-     * @param int                                         $statusCode the expected HTTP status code
-     * @param string                                      $message    the expected Title Case message
+     * @param  TestResponse<JsonResponse> $response   the HTTP response
+     * @param  int                        $statusCode the expected HTTP status code
+     * @param  string                     $message    the expected Title Case message
+     * @return void
      */
     protected function assertApiErrorEnvelope(
         TestResponse $response,
@@ -65,8 +68,8 @@ trait AssertsApiEnvelope
     /**
      * Return the decoded `meta.allowed` hints from a validation error response.
      *
-     * @param  TestResponse<\Illuminate\Http\JsonResponse> $response the HTTP response
-     * @return array<string, list<string>>                 the supported values keyed by validation field
+     * @param  TestResponse<JsonResponse>  $response the HTTP response
+     * @return array<string, list<string>> the supported values keyed by validation field
      */
     protected function apiMetaAllowed(TestResponse $response): array
     {
@@ -102,8 +105,8 @@ trait AssertsApiEnvelope
     /**
      * Return the decoded `meta.errors` bag from a validation error response.
      *
-     * @param  TestResponse<\Illuminate\Http\JsonResponse> $response the HTTP response
-     * @return array<string, list<string>>                 the validation messages keyed by field
+     * @param  TestResponse<JsonResponse>  $response the HTTP response
+     * @return array<string, list<string>> the validation messages keyed by field
      */
     protected function apiMetaErrors(TestResponse $response): array
     {
@@ -139,8 +142,8 @@ trait AssertsApiEnvelope
     /**
      * Return the decoded `data` array from a paginated list response.
      *
-     * @param  TestResponse<\Illuminate\Http\JsonResponse> $response the HTTP response
-     * @return list<array<string, mixed>>                  the resource items in `data`
+     * @param  TestResponse<JsonResponse> $response the HTTP response
+     * @return list<array<string, mixed>> the resource items in `data`
      */
     protected function apiDataItems(TestResponse $response): array
     {

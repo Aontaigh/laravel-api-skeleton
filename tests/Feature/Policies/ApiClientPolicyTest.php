@@ -43,6 +43,8 @@ final class ApiClientPolicyTest extends TestCase
 
     /**
      * Seed permissions and construct the policy under test.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

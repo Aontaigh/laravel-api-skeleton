@@ -32,6 +32,8 @@ final class EnsureEmailIsVerifiedTest extends TestCase
 
     /**
      * Seed roles so the Admin factory state can assign its role.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

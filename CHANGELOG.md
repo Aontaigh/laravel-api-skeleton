@@ -7,6 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-09-10
+
+### Added
+
+- Outbound webhooks: Admin-only `GET|POST /api/webhook-endpoints`, show, `PATCH`, `DELETE`,
+  per-endpoint delivery history (`GET .../deliveries` with `filter[event]` / `filter[status]`),
+  synthetic test pings (`POST .../test`, `202`), and one-time secret rotation (`POST .../rotate-secret`).
+  Domain writes fan out through a queued listener into pending delivery rows, each sent by
+  `DeliverWebhookJob` with exponential backoff (8 attempts, 1-hour cap), Svix-style HMAC signatures
+  (`Webhook-Id`, `Webhook-Timestamp`, `Webhook-Signature: v1,…`), per-endpoint auto-disable after
+  10 consecutive failures, and SSRF-screened target URLs (HTTPS-only, no private ranges, DNS-checked).
+  Secrets are returned once and stored encrypted; receiving is at-least-once (`Webhook-Id` is the
+  idempotency key). Subscribed events: `user.created`, `user.deleted`, `user.suspended`,
+  `user.unsuspended`, `team.created`, `team.updated`, `team.deleted`. Covered by new unit,
+  feature, job, and listener tests, pen-test section 47, and live OpenAPI example
+  verification for every new endpoint
+- `POST /api/clients/{client}/rotate-secret` - Admin-only client secret rotation
+  (`api-clients.update`); the new plaintext secret is returned once, the old secret is rejected
+  on the next `POST /api/oauth/token`, and live bearer tokens stay valid until natural expiry
+  (deactivate the client to kill them immediately). The active flag is left alone so rotation
+  never silently resumes a deactivated client. Audited as `Client Secret Rotated`, covered by
+  pen-test section 48 and a live OpenAPI example verification
+- Four new permissions in the seeder and Admin role (`webhooks.list`, `webhooks.create`,
+  `webhooks.update`, `webhooks.delete`), wired into the new `WebhookEndpointPolicy` and
+  documented in the permissions matrix
+- Webhook delivery knobs are env-configurable: retry budget
+  (`API_WEBHOOK_DELIVERY_MAX_ATTEMPTS`, default 8), per-attempt HTTP timeout
+  (`API_WEBHOOK_DELIVERY_TIMEOUT_SECONDS`, default 10), auto-disable streak
+  (`API_WEBHOOK_AUTO_DISABLE_AFTER_FAILURES`, default 10), and the outbound-write throttle -
+  all documented in the new Webhooks sections of `.env.example` / `.env.ci` and the
+  `config/api.php` delivery block, with the `WebhookDnsResolver` contract bound to the system
+  resolver in `AppServiceProvider` for swap-in tests
+- `verify:openapi` now resets `last_used_at` on client 1 before replaying examples, so the
+  `ClientShowSuccess` shape no longer depends on which gates ran before it
+- Webhook hardening from adversarial review: deliveries never follow redirects (a hostile
+  receiver answering `302` to a private address would have turned the signed delivery into an
+  internal-network probe); `failure_streak` uses an atomic increment so parallel delivery jobs
+  cannot lose each other's failures; outbound-emitting routes (create, test ping, rotate secret)
+  carry a dedicated per-Admin `api-webhooks` throttle (`API_WEBHOOK_RATE_LIMIT_PER_MINUTE`,
+  default 10); endpoint create, update, delete, and secret rotation are audited
+  (`Webhook Endpoint Created/Updated/Deleted`, `Webhook Secret Rotated`)
+
+### Changed
+
+- Team reassignment and role-change denials now answer `403 Forbidden` instead of `422`: a caller
+  without `users.reassign-team` or `users.assign-role` attempting the field is refused at the
+  authorisation gate (`UpdateUserRequest::authorize()` delegating to the `reassignTeam` /
+  `assignRole` Policy abilities) rather than as a field-level validation error - permission
+  problems now carry the status clients' retry logic expects. Self-role changes and role changes
+  on service accounts answer `403` on the same grounds.
+- Lazy loading now fails loudly outside production (`Model::preventLazyLoading()` in
+  `AppServiceProvider::boot()`): a missing eager load surfaces as an exception in local
+  development and the test suite instead of a slow N+1 query discovered in production. All
+  endpoints and Resources were audited against the gate - no uncaught lazy loads remain.
+- Request-concern traits that read FormRequest input now declare their host dependencies as
+  abstract methods (composed through `ReadsRequestInput`), so pulling a concern into a class
+  that cannot satisfy it fails at compile time instead of on the first request
+  (`ResolvesTwoFactorPending`, `NormalisesAuthEmail`, `NormalisesE164PhoneAttributes`,
+  `SanitisesPlainTextAttributes`).
+- Every `*QueryConstraints` allow-list constant and every bounded class constant now carries a
+  docblock in the conventions shape - what the list or bound gates, and what breaks or is
+  rejected when it changes - so allow-lists read as documented API surface rather than bare
+  literals (`@var`-only docblocks removed).
+- Test classes restructured to the single-`Setup` region order (`Traits` → `Setup` → `Tests`):
+  shared helpers moved out of stray regions into the one `Setup` block, `Traits` declared
+  first, and duplicated divider blocks removed (`SecurityHeaders`, four session/auth/System
+  Health test classes, `InvalidateStoredSessionActionTest`, `TouchWebSessionActivityTest`).
+- Documentation and docblock compliance sweep across app and tests: full `@return` docblocks on
+  every production method, test hook, helper, migration, and seeder; redundant `@var` tags on
+  constructor-typed assignments removed; inline `TestResponse` generics replaced with imported
+  short names; `TelescopeServiceProvider` finalised with section dividers; contracts
+  (`GeoIpLocator`, `SystemHealthCheck`) gained `Public` regions; bash scripts standardised on
+  `#!/bin/bash` with `set -euo pipefail` everywhere.
+- Documentation sync: README gains the Webhooks resource, subscribed-events list, controller
+  layout, and completed rate-limit row; `docs/permissions.md` adds `WebhookEndpointPolicy` to
+  the policy list; `docs/security-audit.md` refreshed to the current suite state (1120 tests,
+  93.07% coverage, pen-test sections 47-48); `docs/testing.md` / `docs/releasing.md` broken
+  relative links repaired; `docs/api.md` org URL and verify-command alignment.
+
+### Fixed
+
+- Duplicate adjacent `| Public` divider blocks in `SecurityHeaders` middleware removed.
+
 ## [1.12.0] - 2026-09-08
 
 ### Added
@@ -379,7 +462,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.9.0...v1.10.0

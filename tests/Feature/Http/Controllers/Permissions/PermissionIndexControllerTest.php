@@ -65,6 +65,8 @@ final class PermissionIndexControllerTest extends TestCase
 
     /**
      * Seed permissions and enable strict model checks.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -78,6 +80,8 @@ final class PermissionIndexControllerTest extends TestCase
 
     /**
      * Restore the global strict-mode flags so they do not leak into other suites.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

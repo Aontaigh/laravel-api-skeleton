@@ -69,6 +69,8 @@ final class UpdateUserControllerTest extends TestCase
 
     /**
      * Create the Team, manager, and team member shared by every test.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -264,7 +266,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
+        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
         $this->assertDatabaseHas('users', [
             'id' => $this->teamMember->id,
             'team_id' => $this->team->id,
@@ -499,8 +501,9 @@ final class UpdateUserControllerTest extends TestCase
     }
 
     /**
-     * Reject a role change from a Manager: `role` is prohibited without
-     * `users.assign-role`, and nothing else in the payload applies either.
+     * Reject a role change from a Manager with `403 Forbidden`: `role`
+     * requires `users.assign-role`, which Managers do not hold. Nothing else
+     * in the payload applies either - the whole update is refused.
      */
     #[Test]
     public function it_rejects_a_role_change_from_a_manager(): void
@@ -515,8 +518,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, ['role']);
+        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
         $this->assertDatabaseHas('users', [
             'id' => $this->teamMember->id,
             'name' => 'Team Member',
@@ -525,7 +527,9 @@ final class UpdateUserControllerTest extends TestCase
     }
 
     /**
-     * Reject an Admin changing their own role.
+     * Reject an Admin changing their own role with `403 Forbidden`: the
+     * `assignRole` Policy ability refuses self-demotion, so no caller can
+     * strip its own administrative access through the update endpoint.
      */
     #[Test]
     public function it_rejects_an_admin_changing_their_own_role(): void
@@ -545,8 +549,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, ['role']);
+        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
         $this->assertTrue($admin->refresh()->hasRole(RoleName::Admin));
     }
 
@@ -576,11 +579,14 @@ final class UpdateUserControllerTest extends TestCase
     }
 
     /**
-     * Reject a role change on a service account.
+     * Reject a role change on a service account with `403 Forbidden`: the
+     * `assignRole` Policy ability refuses role writes on service identities,
+     * whose role is fixed by their API Client registration.
      */
     #[Test]
     public function it_rejects_a_role_change_on_a_service_account(): void
-    {        // Arrange
+    {
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->for($this->team)->admin()->create();
@@ -598,8 +604,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, ['role']);
+        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
         $this->assertTrue($serviceUser->refresh()->hasRole(RoleName::Service));
     }
 

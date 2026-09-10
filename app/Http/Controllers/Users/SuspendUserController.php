@@ -7,7 +7,9 @@ namespace App\Http\Controllers\Users;
 use App\Actions\Users\SuspendUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\Enums\AuthAuditEvent;
+use App\Enums\WebhookEvent;
 use App\Events\AuthEventOccurred;
+use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Users\SuspendUserRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
@@ -48,6 +50,16 @@ final class SuspendUserController
         */
 
         $action->execute($user);
+
+        event(
+            new WebhookEventDispatched(
+                event: WebhookEvent::UserSuspended,
+                data: [
+                    'id' => $user->id,
+                    'email' => $user->email,
+                ],
+            ),
+        );
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::UserSuspended,

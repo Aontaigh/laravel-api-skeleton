@@ -39,6 +39,8 @@ final class ApiRateLimitingTest extends TestCase
 
     /**
      * Seed permissions and tighten the API limit for the test run.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

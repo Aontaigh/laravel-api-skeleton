@@ -16,6 +16,8 @@ return new class extends Migration
 
     /**
      * Create the API client credentials table.
+     *
+     * @return void
      */
     public function up(): void
     {
@@ -37,6 +39,8 @@ return new class extends Migration
 
     /**
      * Drop the API client credentials table.
+     *
+     * @return void
      */
     public function down(): void
     {

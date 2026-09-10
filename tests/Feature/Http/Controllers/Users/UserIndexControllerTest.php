@@ -91,6 +91,8 @@ final class UserIndexControllerTest extends TestCase
 
     /**
      * Create the Team and authenticated viewer shared by every test.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -119,6 +121,8 @@ final class UserIndexControllerTest extends TestCase
 
     /**
      * Restore the global strict-mode flags so they do not leak into other suites.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

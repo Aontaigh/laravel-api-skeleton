@@ -22,39 +22,25 @@ final class PendingTwoFactor
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Session key holding the pending challenge's User ID.
-     */
+    /** Session key holding the pending challenge's User ID. */
     public const string USER_ID_KEY = 'auth.two_factor.user_id';
 
-    /**
-     * Session key holding whether remember-me was requested at login.
-     */
+    /** Session key holding whether remember-me was requested at login. */
     public const string REMEMBER_KEY = 'auth.two_factor.remember';
 
-    /**
-     * Session key holding the opaque token returned to stateless clients.
-     */
+    /** Session key holding the opaque token returned to stateless clients. */
     public const string TOKEN_KEY = 'auth.two_factor.token';
 
-    /**
-     * Session key holding the device label submitted at login/register.
-     */
+    /** Session key holding the device label submitted at login/register. */
     public const string DEVICE_NAME_KEY = 'auth.two_factor.device_name';
 
-    /**
-     * Session key holding when the pending challenge expires.
-     */
+    /** Session key holding when the pending challenge expires. */
     public const string EXPIRES_AT_KEY = 'auth.two_factor.expires_at';
 
-    /**
-     * Cache key prefix for pending challenge payloads keyed by opaque token.
-     */
+    /** Cache key prefix for pending challenge payloads keyed by opaque token. */
     public const string PENDING_CACHE_PREFIX = 'two-factor-pending:';
 
-    /**
-     * Cache key prefix mapping a User ID to their current opaque pending token.
-     */
+    /** Cache key prefix mapping a User ID to their current opaque pending token. */
     public const string PENDING_USER_PREFIX = 'two-factor-pending-user:';
 
     /*

@@ -38,6 +38,8 @@ final class ApiSanctumAuthenticationTest extends TestCase
 
     /**
      * Seed permissions for token ability checks.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

@@ -32,6 +32,13 @@ final class DatabaseHealthCheck implements SystemHealthCheck
      * (connection pool exhaustion, replica lag) that a binary Up/Down status
      * would hide from the public status page until the database actually
      * failed outright.
+    /**
+     * A successful query slower than this is reported Degraded, not Up.
+     * `select 1` should return in single-digit milliseconds on a healthy
+     * connection; a slow-but-succeeding query is an early warning sign
+     * (connection pool exhaustion, replica lag) that a binary Up/Down status
+     * would hide from the public status page until the database actually
+     * failed outright.
      */
     private const int DEGRADED_THRESHOLD_MS = 500;
 

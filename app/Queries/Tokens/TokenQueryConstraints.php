@@ -19,16 +19,41 @@ final class TokenQueryConstraints
     |--------------------------------------------------------------------------
     */
 
-    /** The Sanctum Personal Access Token table name. */
+    /** The `personal_access_tokens` table name, used to qualify columns so joins stay unambiguous. */
     public const TABLE = 'personal_access_tokens';
 
-    /** @var list<string> columns callers may sort on via `?sort=` */
+    /**
+     * Columns callers may sort on via `?sort=`.
+     *
+     * Anything outside this list is rejected with `422` rather than reaching `orderBy`, so raw input can never name a column. Extending the list is the only way a column becomes sortable - add the column and the OpenAPI allow-list in the same change.
+    /**
+     * Columns callers may sort on via `?sort=`.
+     * Anything outside this list is rejected with `422` rather than reaching `orderBy`, so raw
+     * input can never name a column. Extending the list is the only way a column becomes
+     * sortable - add the column and the OpenAPI allow-list in the same change.
+     */
     public const ALLOWED_SORTS = ['id', 'name', 'created_at', 'last_used_at', 'expires_at'];
 
-    /** @var list<string> relations callers may request via `?include=` */
+    /**
+     * Relations callers may request via `?include=`.
+     *
+     * Unknown keys answer `422`, so the endpoint can never be pushed into eager-loading an unlisted relation.
+    /**
+     * Relations callers may request via `?include=`.
+     * Unknown keys answer `422`, so the endpoint can never be pushed into eager-loading an
+     * unlisted relation.
+     */
     public const ALLOWED_INCLUDES = [];
 
-    /** @var list<string> columns callers may request via `fields[tokens]=` */
+    /**
+     * Sparse fieldset columns every viewer may request via `fields[personal_access_tokens]=`.
+     *
+     * Values are trimmed and intersected against this list before `select()`, so a hand-crafted key can neither inject a column nor widen the payload beyond what the Resource serialises.
+    /**
+     * Sparse fieldset columns every viewer may request via `fields[personal_access_tokens]=`.
+     * Values are trimmed and intersected against this list before `select()`, so a hand-crafted
+     * key can neither inject a column nor widen the payload beyond what the Resource serialises.
+     */
     public const ALLOWED_FIELDS = [
         'id',
         'name',
@@ -38,19 +63,35 @@ final class TokenQueryConstraints
         'created_at',
     ];
 
-    /** @var list<string> `fields[…]` keys accepted on the Token Index */
+    /**
+     * `fields[…]` keys the index accepts.
+     *
+     * Nested keys let a caller constrain eager-loaded relations (`fields[users]=id,name`) while the primary key constrains the root table.
+    /**
+     * `fields[…]` keys the index accepts.
+     * Nested keys let a caller constrain eager-loaded relations (`fields[users]=id,name`) while
+     * the primary key constrains the root table.
+     */
     public const ALLOWED_FIELDS_KEYS = ['tokens'];
 
-    /** Default sort column when `sort` is omitted. */
+    /** Sort column applied when `sort` is omitted. */
     public const DEFAULT_SORT_COLUMN = 'id';
 
-    /** Default sort direction when `sort` is omitted. */
+    /** Sort direction applied when `sort` is omitted. */
     public const DEFAULT_SORT_DIRECTION = 'asc';
 
-    /** Default page size when `per_page` is omitted. */
+    /** Page size applied when `per_page` is omitted. */
     public const DEFAULT_PER_PAGE = 25;
 
-    /** Hard maximum for `per_page` to prevent abuse. */
+    /**
+     * Hard maximum for `per_page`, regardless of what the caller sends.
+     *
+     * The cap bounds the worst-case page a single request can pull, so one caller cannot turn an index into a table dump - larger values answer `422` instead of a huge page.
+    /**
+     * Hard maximum for `per_page`, regardless of what the caller sends.
+     * The cap bounds the worst-case page a single request can pull, so one caller cannot turn an
+     * index into a table dump - larger values answer `422` instead of a huge page.
+     */
     public const MAX_PER_PAGE = 100;
 
     /*

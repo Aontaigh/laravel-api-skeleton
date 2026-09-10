@@ -16,6 +16,12 @@ use App\DataTransferObjects\SystemHealth\SystemHealthCheckResult;
  */
 interface SystemHealthCheck
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * The stable component slug persisted to `system_health_checks.component`.
      *

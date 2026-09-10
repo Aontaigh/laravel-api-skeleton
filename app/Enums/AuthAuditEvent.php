@@ -36,4 +36,9 @@ enum AuthAuditEvent: string
     case ApiClientCreated = 'API Client Created';
     case ApiClientUpdated = 'API Client Updated';
     case ApiClientDeleted = 'API Client Deleted';
+    case ClientSecretRotated = 'Client Secret Rotated';
+    case WebhookEndpointCreated = 'Webhook Endpoint Created';
+    case WebhookEndpointUpdated = 'Webhook Endpoint Updated';
+    case WebhookEndpointDeleted = 'Webhook Endpoint Deleted';
+    case WebhookSecretRotated = 'Webhook Secret Rotated';
 }

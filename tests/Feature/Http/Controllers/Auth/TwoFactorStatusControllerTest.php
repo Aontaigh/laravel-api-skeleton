@@ -46,6 +46,8 @@ final class TwoFactorStatusControllerTest extends TestCase
 
     /**
      * Seed roles and permissions.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -56,6 +58,8 @@ final class TwoFactorStatusControllerTest extends TestCase
 
     /**
      * Tear down frozen time after each test.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

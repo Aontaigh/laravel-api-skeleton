@@ -54,6 +54,10 @@ final class RolesAndPermissionsSeeder extends Seeder
         'api-clients.create',      // POST /api/clients
         'api-clients.delete',      // DELETE /api/clients/{client}
         'api-clients.update',      // PATCH /api/clients/{client}
+        'webhooks.list',           // GET /api/webhook-endpoints
+        'webhooks.create',         // POST /api/webhook-endpoints
+        'webhooks.update',         // PATCH /api/webhook-endpoints/{endpoint}
+        'webhooks.delete',         // DELETE /api/webhook-endpoints/{endpoint}
         'audit-logs.list',         // GET /api/audit-logs
         'teams.list',              // GET /api/teams and GET /api/teams/{team}
         'teams.create',            // POST /api/teams
@@ -94,6 +98,10 @@ final class RolesAndPermissionsSeeder extends Seeder
             'api-clients.create',
             'api-clients.delete',
             'api-clients.update',
+            'webhooks.list',
+            'webhooks.create',
+            'webhooks.update',
+            'webhooks.delete',
             'audit-logs.list',
             'teams.list',
             'teams.create',
@@ -147,6 +155,8 @@ final class RolesAndPermissionsSeeder extends Seeder
      * seeder in the same process (e.g. `RefreshDatabase` in tests) never
      * assigns a role a permission ID from a row that migration already
      * dropped.
+     *
+     * @return void
      */
     public function run(): void
     {

@@ -33,6 +33,8 @@ final class ApiCorsTest extends TestCase
 
     /**
      * Seed permissions and pin CORS to a single dev origin for assertions.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

@@ -13,6 +13,8 @@ return new class extends Migration
      *
      * Adds the enrolled multi-factor channel (`mfa_method`) to the users table.
      * Null means two-factor is disabled; only `email` is currently supported.
+     *
+     * @return void
      */
     public function up(): void
     {
@@ -23,6 +25,8 @@ return new class extends Migration
 
     /**
      * Reverse the migrations.
+     *
+     * @return void
      */
     public function down(): void
     {

@@ -124,14 +124,14 @@ bearer-token auth; cookie mode is documented for teams that adopt Sanctum's SPA 
 
 When you add or change an endpoint:
 
-1. Update [openapi.yaml](openapi.yaml) (paths, schemas, allow-lists) - use Title Case for `##` headings, operation `summary` values, response `description` labels, and `**Bold Labels:**` in prose (see [write-readme](https://github.com/kaxmedia/ai-rules/blob/main/skills/write-readme/SKILL.md))
+1. Update [openapi.yaml](openapi.yaml) (paths, schemas, allow-lists) - use Title Case for `##` headings, operation `summary` values, response `description` labels, and `**Bold Labels:**` in prose (see the [write-readme skill](https://github.com/Aontaigh/ai-rules/blob/main/skills/write-readme/SKILL.md))
 2. Update the matching `*QueryConstraints` class under [app/Queries/](../app/Queries/)
 3. Open [http://localhost/api/docs](http://localhost/api/docs) and spot-check the changed operation
 4. Update the README `## API` section if behaviour is user-facing
 5. Update [permissions.md](permissions.md) when a new permission is introduced
 6. Run [ApiDocsTest](../tests/Feature/Http/ApiDocsTest.php) and the full test suite
 7. Re-verify response examples against a running app:
-   `./vendor/bin/sail bash scripts/verify-openapi-examples.sh` (requires Sail + seeded DB)
+   `./vendor/bin/sail composer verify:openapi` (requires Sail + seeded DB)
 8. Optional: lint the spec in CI with [Spectral](https://stoplight.io/open-source/spectral)
 
 The spec deliberately documents the shared index query contract (`sort`,

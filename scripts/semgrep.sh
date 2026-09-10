@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Static application security testing for PHP and CI YAML.
 # Host (Docker) or a local Semgrep CLI. Not installed inside Sail.
 set -euo pipefail

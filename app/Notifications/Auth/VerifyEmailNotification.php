@@ -89,6 +89,8 @@ final class VerifyEmailNotification extends Notification implements ShouldQueue
 
     /**
      * Get the verification link validity window in minutes.
+     *
+     * @return int the validity window in minutes
      */
     private static function expiresMinutes(): int
     {

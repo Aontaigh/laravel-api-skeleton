@@ -31,7 +31,6 @@ final class RestoreUserFromRememberActionTest extends UnitTestCase
     {
         // Arrange
 
-        /** @var User $user */
         $user = new User([
             'id' => 1,
             'team_id' => null,

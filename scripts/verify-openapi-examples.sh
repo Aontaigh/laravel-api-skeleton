@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # Verify OpenAPI component examples match live API response shape and envelope fields.
 # Local: Sail + seeded DB (default), or `php artisan serve` with OPENAPI_VERIFY_BASE.
 # CI: sets ARTISAN_CMD=php artisan and OPENAPI_VERIFY_BASE=http://127.0.0.1:8000/api.
@@ -36,6 +36,17 @@ artisan() {
 
 ADMIN_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
 TEST_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'test@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
+
+# The ClientShowSuccess example documents a never-used client. Anything that
+# ran earlier (pen test, manual exchanges) stamps `last_used_at`, so reset it
+# here: this gate verifies example shape, and must not depend on which gates
+# ran before it.
+artisan tinker --execute="App\\Models\\ApiClient::query()->update(['last_used_at' => null]);" >/dev/null 2>&1
+
+# Rate-limit budgets (token creation, registration) are per-minute buckets
+# that earlier runs may have exhausted. A clean cache makes this gate
+# order-independent for the same reason as the `last_used_at` reset above.
+artisan cache:clear >/dev/null 2>&1
 
 api() {
     local method="$1" path="$2" token="${3:-$ADMIN_TOKEN}" body="${4:-}"
@@ -132,6 +143,25 @@ check TeamUpdateSuccess "$(openapi_example TeamUpdateSuccess)" \
 check TeamDeleteSuccess "$(openapi_example TeamDeleteSuccess)" \
   "$(api DELETE "/teams/${TEAM_ID}" "$ADMIN_TOKEN")"
 
+HOOK_CREATE="$(api POST '/webhook-endpoints' "$ADMIN_TOKEN" '{"name":"openapi-hook","url":"https://8.8.8.8/hooks","events":["user.created"]}')"
+check WebhookEndpointCreateSuccess "$(openapi_example WebhookEndpointCreateSuccess)" "$HOOK_CREATE"
+HOOK_ID="$(echo "$HOOK_CREATE" | "$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["endpoint"]["id"];')"
+check WebhookEndpointsIndexSuccess "$(openapi_example WebhookEndpointsIndexSuccess)" \
+  "$(api GET '/webhook-endpoints?per_page=2')"
+check WebhookEndpointShowSuccess "$(openapi_example WebhookEndpointShowSuccess)" \
+  "$(api GET "/webhook-endpoints/${HOOK_ID}?fields%5Bwebhook_endpoints%5D=id,name,url,events,is_active,failure_streak,disabled_at,created_at")"
+check WebhookEndpointUpdateSuccess "$(openapi_example WebhookEndpointUpdateSuccess)" \
+  "$(api PATCH "/webhook-endpoints/${HOOK_ID}" "$ADMIN_TOKEN" '{"name":"openapi-hook-renamed","events":["user.created","user.suspended"]}')"
+check WebhookSecretRotateSuccess "$(openapi_example WebhookSecretRotateSuccess)" \
+  "$(api POST "/webhook-endpoints/${HOOK_ID}/rotate-secret" "$ADMIN_TOKEN")"
+check WebhookTestPingSuccess "$(openapi_example WebhookTestPingSuccess)" \
+  "$(api POST "/webhook-endpoints/${HOOK_ID}/test" "$ADMIN_TOKEN")"
+artisan queue:work --stop-when-empty --max-time=60 -n -q > /dev/null 2>&1 || true
+check WebhookDeliveriesIndexSuccess "$(openapi_example WebhookDeliveriesIndexSuccess)" \
+  "$(api GET "/webhook-endpoints/${HOOK_ID}/deliveries?per_page=2&fields%5Bwebhook_deliveries%5D=id,uuid,event,status,attempts,last_error,delivered_at,created_at")"
+check WebhookEndpointDeleteSuccess "$(openapi_example WebhookEndpointDeleteSuccess)" \
+  "$(api DELETE "/webhook-endpoints/${HOOK_ID}" "$ADMIN_TOKEN")"
+
 SESSION_ID="$(artisan tinker --execute="\$u=App\Models\User::where('email','admin@example.com')->first(); echo App\Models\WebSession::factory()->for(\$u)->create()->id;" 2>/dev/null | tail -1)"
 check SessionShowSuccess "$(openapi_example SessionShowSuccess)" \
   "$(api GET "/sessions/${SESSION_ID}?fields%5Bsessions%5D=id,device_name,remember_me,last_activity_at,created_at")"
@@ -147,6 +177,12 @@ check PermissionsIndexSuccess "$(openapi_example PermissionsIndexSuccess)" \
 
 check ClientShowSuccess "$(openapi_example ClientShowSuccess)" \
   "$(api GET '/clients/1')"
+
+CLIENT_ROTATE="$(api POST '/clients/1/rotate-secret' "$ADMIN_TOKEN")"
+check ClientSecretRotateSuccess "$(openapi_example ClientSecretRotateSuccess)" "$CLIENT_ROTATE"
+ROTATED_SECRET="$(echo "$CLIENT_ROTATE" | "$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["client_secret"];')"
+OAUTH_AFTER_ROTATE="$(curl -s -X POST "${BASE}/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"'"${ROTATED_SECRET}"'"}')"
+check ClientTokenExchangeSuccess "$(openapi_example ClientTokenExchangeSuccess)" "$OAUTH_AFTER_ROTATE"
 
 api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-index-1","abilities":["tokens.list-own"]}' > /dev/null
 api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-index-2","abilities":["tokens.list-own"]}' > /dev/null

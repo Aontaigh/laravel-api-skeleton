@@ -22,6 +22,9 @@ final class SearchTermParserTest extends UnitTestCase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Normalise a raw search term into its stored form.
+     */
     #[Test]
     #[DataProvider('normalizeProvider')]
     public function it_normalises_a_search_term(string $raw, ?string $expected): void

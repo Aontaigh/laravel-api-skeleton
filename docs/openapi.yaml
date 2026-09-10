@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.12.0
+  version: 1.13.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -129,6 +129,8 @@ tags:
     description: Role Index and Show (Read-Only)
   - name: Teams
     description: Team Index, Show, Creation, Update, and Deletion
+  - name: Webhooks
+    description: Admin-Managed Outbound Webhook Subscriptions - Signed Deliveries With Retries
   - name: Permissions
     description: Permission Catalog for Token and API Client Ability Pickers
   - name: API Clients
@@ -1250,8 +1252,9 @@ paths:
         - `email` and `password` are **prohibited**
         - `team_id` requires `users.reassign-team` (Admin only)
         - `role` requires `users.assign-role` (Admin only); one of `Admin`,
-          `Manager`, or `User`. Callers cannot change their own role or the
-          role of a service account, and demoting the last Admin answers `422`
+          `Manager`, or `User`. Attempting to change your own role or the role
+          of a service account answers `403`; an unknown role value and
+          demoting the last Admin answer `422`
         - Plain-text markup in `name` is stripped before validation
 
         Managers may update users on their own team (including themselves).
@@ -1439,6 +1442,317 @@ paths:
                 invalidAbilities:
                   $ref: '#/components/examples/InvalidAbilitiesError'
         '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /webhook-endpoints:
+    get:
+      tags: [Webhooks]
+      summary: List Webhook Endpoints
+      description: |
+        Paginated, filterable endpoint list. Requires `webhooks.list` (Admin
+        only).
+
+        **Sort Whitelist:** `id`, `name`, `created_at` (default `id` ascending).
+
+        **Filter:** `filter[search]` partial name or URL match.
+
+        **Fields Keys:** `fields[webhook_endpoints]` (never includes the secret).
+      operationId: listWebhookEndpoints
+      parameters:
+        - $ref: '#/components/parameters/QuerySortWebhooks'
+        - $ref: '#/components/parameters/QueryFieldsWebhooks'
+        - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Webhook Endpoint Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Webhook Endpoints Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/WebhookEndpoint'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookEndpointsIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+    post:
+      tags: [Webhooks]
+      summary: Create Webhook Endpoint
+      description: |
+        Subscribe a target URL to domain events. Requires `webhooks.create`
+        (Admin only).
+
+        The target URL must be public `https` (plain `http` only in `local` and
+        `testing`) with no embedded credentials; literal IPs and every resolved
+        address must be outside private, reserved, and loopback ranges.
+
+        The plaintext signing secret is returned **once** in
+        `data.webhook_secret` and is never stored or returned again.
+      operationId: createWebhookEndpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateWebhookEndpointRequest'
+      responses:
+        '201':
+          description: Webhook Endpoint Created
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      status_code:
+                        example: 201
+                      message:
+                        example: Webhook Endpoint Created Successfully
+                      data:
+                        $ref: '#/components/schemas/WebhookEndpointCreatedData'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookEndpointCreateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /webhook-endpoints/{webhook_endpoint}:
+    parameters:
+      - $ref: '#/components/parameters/WebhookEndpointId'
+
+    get:
+      tags: [Webhooks]
+      summary: Show Webhook Endpoint
+      description: |
+        Single endpoint. Requires `webhooks.list`. The secret is never
+        returned; rotate it to replace a compromised one.
+
+        Supports `fields[webhook_endpoints]`. No `sort`, `filter`, or pagination.
+      operationId: showWebhookEndpoint
+      parameters:
+        - $ref: '#/components/parameters/QueryFieldsWebhooks'
+      responses:
+        '200':
+          description: Webhook Endpoint Resource
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Webhook Endpoint Retrieved Successfully
+                      data:
+                        $ref: '#/components/schemas/WebhookEndpoint'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookEndpointShowSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    patch:
+      tags: [Webhooks]
+      summary: Update Webhook Endpoint
+      description: |
+        Rename, retarget, resubscribe, or pause an endpoint. Requires
+        `webhooks.update` (Admin only). Changed URLs are re-screened.
+        Re-enabling clears the failure streak.
+      operationId: updateWebhookEndpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateWebhookEndpointRequest'
+      responses:
+        '200':
+          description: Webhook Endpoint Updated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Webhook Endpoint Updated Successfully
+                      data:
+                        $ref: '#/components/schemas/WebhookEndpoint'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookEndpointUpdateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+    delete:
+      tags: [Webhooks]
+      summary: Delete Webhook Endpoint
+      description: |
+        Delete an endpoint and its delivery history. Requires
+        `webhooks.delete` (Admin only).
+      operationId: deleteWebhookEndpoint
+      responses:
+        '200':
+          description: Webhook Endpoint Deleted
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Webhook Endpoint Deleted Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookEndpointDeleteSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /webhook-endpoints/{webhook_endpoint}/deliveries:
+    parameters:
+      - $ref: '#/components/parameters/WebhookEndpointId'
+
+    get:
+      tags: [Webhooks]
+      summary: List Webhook Deliveries
+      description: |
+        Paginated delivery history for one endpoint. Requires `webhooks.list`.
+
+        **Sort Whitelist:** `id`, `event`, `status`, `created_at` (default `id`
+        descending).
+
+        **Filter:** `filter[event]` exact event identifier, `filter[status]`
+        (`pending`, `delivered`, `failed`, `exhausted`).
+
+        **Fields Keys:** `fields[webhook_deliveries]`.
+      operationId: listWebhookDeliveries
+      parameters:
+        - $ref: '#/components/parameters/QuerySortWebhookDeliveries'
+        - $ref: '#/components/parameters/QueryFieldsWebhookDeliveries'
+        - $ref: '#/components/parameters/QueryFilterWebhookEvent'
+        - $ref: '#/components/parameters/QueryFilterWebhookStatus'
+        - $ref: '#/components/parameters/QueryPage'
+        - $ref: '#/components/parameters/QueryPerPage'
+      responses:
+        '200':
+          description: Paginated Webhook Delivery Collection
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Webhook Deliveries Retrieved Successfully
+                      data:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/WebhookDelivery'
+                      meta:
+                        $ref: '#/components/schemas/PaginationMetaWrapper'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookDeliveriesIndexSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+
+  /webhook-endpoints/{webhook_endpoint}/test:
+    parameters:
+      - $ref: '#/components/parameters/WebhookEndpointId'
+
+    post:
+      tags: [Webhooks]
+      summary: Send Webhook Test Ping
+      description: |
+        Queue a synthetic `webhook.ping` delivery through the production path
+        (signed job, retries, history). Requires `webhooks.update` (Admin
+        only). Answers `202` with the pending delivery row.
+      operationId: testWebhookEndpoint
+      responses:
+        '202':
+          description: Test Ping Queued
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      status_code:
+                        example: 202
+                      message:
+                        example: Webhook Test Ping Queued Successfully
+                      data:
+                        $ref: '#/components/schemas/WebhookDelivery'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookTestPingSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /webhook-endpoints/{webhook_endpoint}/rotate-secret:
+    parameters:
+      - $ref: '#/components/parameters/WebhookEndpointId'
+
+    post:
+      tags: [Webhooks]
+      summary: Rotate Webhook Secret
+      description: |
+        Replace the endpoint signing secret. Requires `webhooks.update`
+        (Admin only). The plaintext secret is returned **once** in
+        `data.webhook_secret`. The failure streak resets; the active flag is
+        left alone, so a paused endpoint stays paused until re-enabled.
+      operationId: rotateWebhookSecret
+      responses:
+        '200':
+          description: Webhook Secret Rotated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Webhook Secret Rotated Successfully
+                      data:
+                        $ref: '#/components/schemas/WebhookSecretRotatedData'
+              examples:
+                default:
+                  $ref: '#/components/examples/WebhookSecretRotateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
 
   /tokens:
     get:
@@ -1895,6 +2209,47 @@ paths:
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
+        '422': { $ref: '#/components/responses/ValidationError' }
+
+  /clients/{client}/rotate-secret:
+    parameters:
+      - $ref: '#/components/parameters/ClientId'
+
+    post:
+      tags: [API Clients]
+      summary: Rotate API Client Secret
+      description: |
+        Replace the client secret. Requires `api-clients.update` (Admin only).
+
+        The plaintext secret is returned **once** in `data.client_secret` and
+        is never stored or returned again. The old secret is rejected on the
+        next `POST /api/oauth/token`; live bearer tokens issued under the old
+        secret stay valid until natural expiry (OAuth2 client-credentials
+        semantics) - deactivate the client to kill them immediately. The
+        active flag is left alone: rotation never silently resumes a
+        deactivated client.
+      operationId: rotateClientSecret
+      responses:
+        '200':
+          description: Client Secret Rotated
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: Client Secret Rotated Successfully
+                      data:
+                        $ref: '#/components/schemas/ClientSecretRotatedData'
+              examples:
+                default:
+                  $ref: '#/components/examples/ClientSecretRotateSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
 
   /audit-logs:
     get:
@@ -2588,7 +2943,6 @@ components:
               - users.list
               - users.list-all
               - roles.list
-            last_used_at: null
             expires_at: '2026-11-03T23:15:04+00:00'
             created_at: '2026-08-05T23:16:26+00:00'
           plain_text_token: '12|example-plaintext-token-value'
@@ -2712,6 +3066,26 @@ components:
             last_used_at: null
             created_at: '2026-08-05T23:16:26+00:00'
           client_secret: DemoClientSecret12
+        meta: {}
+
+    ClientSecretRotateSuccess:
+      summary: API Client Secret Rotated
+      value:
+        status: success
+        status_code: 200
+        message: Client Secret Rotated Successfully
+        data:
+          client:
+            id: 2
+            name: Billing Sync
+            client_id: 550e8400-e29b-41d4-a716-446655440000
+            abilities:
+              - users.list
+              - users.list-all
+            is_active: true
+            last_used_at: null
+            created_at: '2026-08-05T23:16:26+00:00'
+          client_secret: RotatedClientSecret98
         meta: {}
 
     ClientUpdateSuccess:
@@ -2928,6 +3302,149 @@ components:
         data: null
         meta: {}
 
+    WebhookEndpointsIndexSuccess:
+      summary: Paginated Webhook Endpoint Collection
+      value:
+        status: success
+        status_code: 200
+        message: Webhook Endpoints Retrieved Successfully
+        data:
+          - id: 1
+            name: Billing Sync
+            url: https://billing.example.com/hooks
+            events: [user.created]
+            is_active: true
+            failure_streak: 0
+            disabled_at: null
+            created_at: '2026-09-09T00:00:00+00:00'
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 25
+            total: 1
+            last_page: 1
+
+    WebhookEndpointShowSuccess:
+      summary: Webhook Endpoint Resource
+      value:
+        status: success
+        status_code: 200
+        message: Webhook Endpoint Retrieved Successfully
+        data:
+          id: 1
+          name: Billing Sync
+          url: https://billing.example.com/hooks
+          events: [user.created]
+          is_active: true
+          failure_streak: 0
+          disabled_at: null
+          created_at: '2026-09-09T00:00:00+00:00'
+        meta: {}
+
+    WebhookEndpointCreateSuccess:
+      summary: Webhook Endpoint Created
+      value:
+        status: success
+        status_code: 201
+        message: Webhook Endpoint Created Successfully
+        data:
+          endpoint:
+            id: 1
+            name: Billing Sync
+            url: https://billing.example.com/hooks
+            events: [user.created]
+            is_active: true
+            failure_streak: 0
+            disabled_at: null
+            created_at: '2026-09-09T00:00:00+00:00'
+          webhook_secret: whsec_0123456789abcdef0123456789abcdef01234567
+        meta: {}
+
+    WebhookEndpointUpdateSuccess:
+      summary: Webhook Endpoint Updated
+      value:
+        status: success
+        status_code: 200
+        message: Webhook Endpoint Updated Successfully
+        data:
+          id: 1
+          name: Billing V2
+          url: https://billing.example.com/hooks
+          events: [user.created, user.suspended]
+          is_active: true
+          failure_streak: 0
+          disabled_at: null
+          created_at: '2026-09-09T00:00:00+00:00'
+        meta: {}
+
+    WebhookEndpointDeleteSuccess:
+      summary: Webhook Endpoint Deleted
+      value:
+        status: success
+        status_code: 200
+        message: Webhook Endpoint Deleted Successfully
+        data: null
+        meta: {}
+
+    WebhookDeliveriesIndexSuccess:
+      summary: Paginated Webhook Delivery Collection
+      value:
+        status: success
+        status_code: 200
+        message: Webhook Deliveries Retrieved Successfully
+        data:
+          - id: 1
+            uuid: 123e4567-e89b-12d3-a456-426614174000
+            event: user.created
+            status: failed
+            attempts: 1
+            last_error: Receiver Answered 404
+            delivered_at: null
+            created_at: '2026-09-09T00:00:00+00:00'
+        meta:
+          pagination:
+            current_page: 1
+            per_page: 25
+            total: 1
+            last_page: 1
+
+    WebhookTestPingSuccess:
+      summary: Webhook Test Ping Queued
+      value:
+        status: success
+        status_code: 202
+        message: Webhook Test Ping Queued Successfully
+        data:
+          id: 1
+          uuid: 123e4567-e89b-12d3-a456-426614174000
+          event: webhook.ping
+          status: pending
+          attempts: 0
+          last_status_code: null
+          last_error: null
+          delivered_at: null
+          created_at: '2026-09-09T00:00:00+00:00'
+        meta: {}
+
+    WebhookSecretRotateSuccess:
+      summary: Webhook Secret Rotated
+      value:
+        status: success
+        status_code: 200
+        message: Webhook Secret Rotated Successfully
+        data:
+          endpoint:
+            id: 1
+            name: Billing Sync
+            url: https://billing.example.com/hooks
+            events: [user.created]
+            is_active: true
+            failure_streak: 0
+            disabled_at: null
+            created_at: '2026-09-09T00:00:00+00:00'
+          webhook_secret: whsec_abcdef0123456789abcdef0123456789abcdef01
+        meta: {}
+
     SessionShowSuccess:
       summary: Web Session Resource
       value:
@@ -2960,7 +3477,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.12.0
+          version: 1.13.0
         meta: {}
 
     HealthUnavailable:
@@ -3120,6 +3637,15 @@ components:
         format: int64
       description: Team Primary Key
 
+    WebhookEndpointId:
+      name: webhook_endpoint
+      in: path
+      required: true
+      schema:
+        type: integer
+        format: int64
+      description: Webhook Endpoint Primary Key
+
     QueryPage:
       name: page
       in: query
@@ -3259,6 +3785,52 @@ components:
           - -expires_at
         default: id
 
+    QuerySortWebhooks:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - name
+          - -name
+          - created_at
+          - -created_at
+        default: id
+
+    QuerySortWebhookDeliveries:
+      name: sort
+      in: query
+      schema:
+        type: string
+        enum:
+          - id
+          - -id
+          - event
+          - -event
+          - status
+          - -status
+          - created_at
+          - -created_at
+        default: -id
+
+    QueryFilterWebhookEvent:
+      name: filter[event]
+      in: query
+      schema:
+        type: string
+        enum: [user.created, user.suspended, user.unsuspended, user.deleted, team.created, team.updated, team.deleted, webhook.ping]
+      description: Exact Event Identifier Match (`webhook.ping` Covers Synthetic Test Pings)
+
+    QueryFilterWebhookStatus:
+      name: filter[status]
+      in: query
+      schema:
+        type: string
+        enum: [pending, delivered, failed, exhausted]
+      description: Exact Delivery Status Match
+
     QuerySortSessions:
       name: sort
       in: query
@@ -3374,6 +3946,22 @@ components:
         type: string
         example: id,name
       description: Sparse Fieldset for Nested Team When `include=team`. Allowed Columns `id`, `name`.
+
+    QueryFieldsWebhooks:
+      name: fields[webhook_endpoints]
+      in: query
+      schema:
+        type: string
+        example: id,name,url
+      description: "Sparse Fieldset for Webhook Endpoint Columns. Allowed: `id`, `name`, `url`, `events`, `is_active`, `failure_streak`, `disabled_at`, `created_at` (never the secret)."
+
+    QueryFieldsWebhookDeliveries:
+      name: fields[webhook_deliveries]
+      in: query
+      schema:
+        type: string
+        example: id,event,status
+      description: "Sparse Fieldset for Webhook Delivery Columns. Allowed: `id`, `uuid`, `event`, `status`, `attempts`, `last_status_code`, `last_error`, `delivered_at`, `created_at`."
 
     QueryFieldsRoles:
       name: fields[roles]
@@ -3570,7 +4158,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.12.0
+          example: 1.13.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -3716,6 +4304,60 @@ components:
           type: integer
         name:
           type: string
+
+    WebhookEndpoint:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        url:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+          description: Subscribed Event Identifiers
+        is_active:
+          type: boolean
+        failure_streak:
+          type: integer
+          description: Consecutive Failed Deliveries; Resets on Success, Rotation, or Re-Enable
+        disabled_at:
+          oneOf:
+            - $ref: '#/components/schemas/ApiDateTime'
+            - type: 'null'
+          description: When the Endpoint Was Auto-Disabled After Repeated Failures
+
+    WebhookDelivery:
+      type: object
+      properties:
+        id:
+          type: integer
+        uuid:
+          type: string
+          format: uuid
+          description: Delivery Identifier; Sent as `Webhook-Id` and Doubles as the Receiver Idempotency Key
+        event:
+          type: string
+        status:
+          type: string
+          enum: [pending, delivered, failed, exhausted]
+        attempts:
+          type: integer
+        last_status_code:
+          oneOf:
+            - type: integer
+            - type: 'null'
+        last_error:
+          oneOf:
+            - type: string
+            - type: 'null'
+        delivered_at:
+          oneOf:
+            - $ref: '#/components/schemas/ApiDateTime'
+            - type: 'null'
 
     Permission:
       type: object
@@ -3945,6 +4587,67 @@ components:
           maxLength: 255
           description: HTML Markup Is Stripped
 
+    CreateWebhookEndpointRequest:
+      type: object
+      required: [name, url, events]
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: HTML Markup Is Stripped
+        url:
+          type: string
+          maxLength: 2048
+          description: Public HTTPS Target (Plain HTTP Only in Local and Testing); Private Ranges Refused
+        events:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: string
+            enum: [user.created, user.suspended, user.unsuspended, team.created, team.deleted]
+
+    UpdateWebhookEndpointRequest:
+      type: object
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          maxLength: 255
+          description: HTML Markup Is Stripped
+        url:
+          type: string
+          maxLength: 2048
+          description: Re-Screened Against the Same SSRF Rules as Create
+        events:
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            type: string
+            enum: [user.created, user.suspended, user.unsuspended, team.created, team.deleted]
+        is_active:
+          type: boolean
+          description: Re-Enabling Clears the Failure Streak
+
+    WebhookEndpointCreatedData:
+      type: object
+      properties:
+        endpoint:
+          $ref: '#/components/schemas/WebhookEndpoint'
+        webhook_secret:
+          type: string
+          description: Plaintext Signing Secret - Returned Once, Never Stored or Returned Again
+
+    WebhookSecretRotatedData:
+      type: object
+      properties:
+        endpoint:
+          $ref: '#/components/schemas/WebhookEndpoint'
+        webhook_secret:
+          type: string
+          description: Plaintext Signing Secret - Returned Once, Never Stored or Returned Again
+
     CreateUserRequest:
       type: object
       required: [name, email, password, password_confirmation]
@@ -4074,6 +4777,16 @@ components:
         client_secret:
           type: string
           description: Plaintext Client Secret; Returned Once at Creation Only
+
+    ClientSecretRotatedData:
+      type: object
+      required: [client, client_secret]
+      properties:
+        client:
+          $ref: '#/components/schemas/ApiClient'
+        client_secret:
+          type: string
+          description: Plaintext Client Secret; Returned Once at Rotation Only
 
     ClientTokenExchangeSuccess:
       allOf:

@@ -33,59 +33,6 @@ final class FailClosedRevocationTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
-    | Setup
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Force every session-store destroy to report failure.
-     *
-     * Partial-proxies the real SessionManager so unrelated facade calls
-     * (`driver()`, `isStarted()`) still pass through to the live instance.
-     */
-    private function failTheSessionStore(): void
-    {
-        $manager = Mockery::mock($this->app->make('session'))->makePartial();
-
-        $manager->shouldReceive('getHandler')->andReturn(
-            Mockery::mock()->shouldReceive('destroy')->andReturn(false)->getMock(),
-        );
-
-        Session::swap($manager);
-    }
-
-    /**
-     * Force every session-store destroy to report success.
-     *
-     * Same partial proxy shape as {@see failTheSessionStore()}.
-     */
-    private function succeedTheSessionStore(): void
-    {
-        $manager = Mockery::mock($this->app->make('session'))->makePartial();
-
-        $manager->shouldReceive('getHandler')->andReturn(
-            Mockery::mock()->shouldReceive('destroy')->andReturn(true)->getMock(),
-        );
-
-        Session::swap($manager);
-    }
-
-    /**
-     * Assert the persisted session_version against an expected value.
-     *
-     * @param User $user     the User whose version is under test
-     * @param int  $expected the expected stamped version
-     */
-    private function assertSessionVersion(User $user, int $expected): void
-    {
-        $fresh = $user->fresh();
-
-        $this->assertNotNull($fresh);
-        $this->assertSame($expected, $fresh->session_version);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Traits
     |--------------------------------------------------------------------------
     */
@@ -99,7 +46,56 @@ final class FailClosedRevocationTest extends TestCase
     */
 
     /**
+     * Force every session-store destroy to report failure.
+     *
+     * Partial-proxies the real SessionManager so unrelated facade calls
+     * (`driver()`, `isStarted()`) still pass through to the live instance.
+     *
+     * @return void
+     */
+    private function failTheSessionStore(): void
+    {
+        $manager = Mockery::mock($this->app->make('session'))->makePartial();
+        $manager->shouldReceive('getHandler')->andReturn(
+            Mockery::mock()->shouldReceive('destroy')->andReturn(false)->getMock(),
+        );
+        Session::swap($manager);
+    }
+
+    /**
+     * Force every session-store destroy to report success.
+     *
+     * Same partial proxy shape as {@see failTheSessionStore()}.
+     *
+     * @return void
+     */
+    private function succeedTheSessionStore(): void
+    {
+        $manager = Mockery::mock($this->app->make('session'))->makePartial();
+        $manager->shouldReceive('getHandler')->andReturn(
+            Mockery::mock()->shouldReceive('destroy')->andReturn(true)->getMock(),
+        );
+        Session::swap($manager);
+    }
+
+    /**
+     * Assert the persisted session_version against an expected value.
+     *
+     * @param  User $user     the User whose version is under test
+     * @param  int  $expected the expected stamped version
+     * @return void
+     */
+    private function assertSessionVersion(User $user, int $expected): void
+    {
+        $fresh = $user->fresh();
+        $this->assertNotNull($fresh);
+        $this->assertSame($expected, $fresh->session_version);
+    }
+
+    /**
      * Seed the roles the User factory assigns.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

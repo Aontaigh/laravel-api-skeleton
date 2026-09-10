@@ -28,6 +28,8 @@ final class SecurityHeadersTest extends TestCase
 
     /**
      * Tear down Vite facade mocks between tests.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

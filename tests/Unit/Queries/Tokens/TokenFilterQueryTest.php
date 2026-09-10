@@ -69,7 +69,6 @@ final class TokenFilterQueryTest extends UnitTestCase
         /** @var Builder<PersonalAccessToken> $query */
         $query = PersonalAccessToken::query();
 
-        /** @var TokenFilters $filters */
         $filters = new TokenFilters(viewer: $this->viewer());
 
         // Act
@@ -100,7 +99,6 @@ final class TokenFilterQueryTest extends UnitTestCase
         /** @var Builder<PersonalAccessToken> $query */
         $query = PersonalAccessToken::query();
 
-        /** @var TokenFilters $filters */
         $filters = new TokenFilters(viewer: $this->viewer());
 
         // Act
@@ -134,7 +132,6 @@ final class TokenFilterQueryTest extends UnitTestCase
         /** @var Builder<PersonalAccessToken> $query */
         $query = PersonalAccessToken::query();
 
-        /** @var TokenFilters $filters */
         $filters = new TokenFilters(
             viewer: $this->viewer(),
             search: $term,

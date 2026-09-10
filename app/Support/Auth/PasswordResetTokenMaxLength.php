@@ -15,14 +15,29 @@ final class PasswordResetTokenMaxLength
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Constants
     |--------------------------------------------------------------------------
     */
 
     /**
      * Title Case validation copy for `max` rule failures.
+     *
+     * Wording keeps the exact request field name (`php-validation-responses`
+     * forbids pretty labels) and pairs with the MAX_LENGTH bound above, so the
+     * limit and the copy the client sees cannot drift apart.
+    /**
+     * Title Case validation copy for `max` rule failures.
+     * Wording keeps the exact request field name (`php-validation-responses`
+     * forbids pretty labels) and pairs with the MAX_LENGTH bound above, so the
+     * limit and the copy the client sees cannot drift apart.
      */
     public const MESSAGE = 'Reset Token Is Too Long';
+
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Read the configured maximum reset-token length.

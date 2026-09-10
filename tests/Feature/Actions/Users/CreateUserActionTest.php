@@ -36,6 +36,8 @@ final class CreateUserActionTest extends TestCase
 
     /**
      * Seed roles before assigning them on create.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

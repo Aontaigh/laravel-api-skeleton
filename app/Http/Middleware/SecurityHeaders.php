@@ -33,14 +33,14 @@ final class SecurityHeaders
      * 10,886,400 seconds (18 weeks) matches Chrome's own historical NEL /
      * Report-To default - long enough that a browser does not need to
      * re-fetch the endpoint configuration on every visit.
+    /**
+     * `max_age` advertised on the legacy `Report-To` header, in seconds.
+     * 10,886,400 seconds (18 weeks) matches Chrome's own historical NEL /
+     * Report-To default - long enough that a browser does not need to
+     * re-fetch the endpoint configuration on every visit.
      */
     private const int REPORT_TO_MAX_AGE_SECONDS = 10_886_400;
 
-    /*
-    |--------------------------------------------------------------------------
-    | Public
-    |--------------------------------------------------------------------------
-    */
     /*
     |--------------------------------------------------------------------------
     | Public

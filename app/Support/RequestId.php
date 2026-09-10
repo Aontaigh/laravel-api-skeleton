@@ -40,6 +40,10 @@ final class RequestId
      *
      * Correlation IDs are short opaque tokens; anything longer is either a
      * mistake or log-bloat abuse.
+    /**
+     * Longest inbound ID honoured before a fresh one is generated.
+     * Correlation IDs are short opaque tokens; anything longer is either a
+     * mistake or log-bloat abuse.
      */
     private const int MAX_LENGTH = 128;
 

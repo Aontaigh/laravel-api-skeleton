@@ -44,6 +44,8 @@ final class UnsuspendUserControllerTest extends TestCase
 
     /**
      * Seed permissions for the Spatie role gate.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

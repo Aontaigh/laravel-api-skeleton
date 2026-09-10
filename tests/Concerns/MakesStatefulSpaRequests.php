@@ -67,7 +67,8 @@ trait MakesStatefulSpaRequests
     /**
      * Persist decrypted response cookies for subsequent stateful requests.
      *
-     * @param TestResponse<JsonResponse> $response the HTTP test response
+     * @param  TestResponse<JsonResponse> $response the HTTP test response
+     * @return void
      */
     protected function storeResponseCookies(TestResponse $response): void
     {

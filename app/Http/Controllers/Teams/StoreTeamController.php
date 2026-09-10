@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Teams;
 
 use App\Actions\Teams\CreateTeamAction;
 use App\DataTransferObjects\Teams\CreateTeamData;
+use App\Enums\WebhookEvent;
+use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Teams\StoreTeamRequest;
 use App\Http\Resources\TeamResource;
 use App\Support\ApiResponse;
@@ -55,6 +57,16 @@ final class StoreTeamController
         */
 
         $team = $action->execute($data);
+
+        event(
+            new WebhookEventDispatched(
+                event: WebhookEvent::TeamCreated,
+                data: [
+                    'id' => $team->id,
+                    'name' => $team->name,
+                ],
+            ),
+        );
 
         /*
         |--------------------------------------------------------------------------

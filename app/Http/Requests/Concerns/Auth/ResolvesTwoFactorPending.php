@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns\Auth;
 
+use App\Http\Requests\Concerns\ReadsRequestInput;
+
 /**
  * Reads the optional opaque two-factor token for stateless clients.
  *
@@ -11,6 +13,14 @@ namespace App\Http\Requests\Concerns\Auth;
  */
 trait ResolvesTwoFactorPending
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
+    use ReadsRequestInput;
+
     /*
     |--------------------------------------------------------------------------
     | Query Accessors

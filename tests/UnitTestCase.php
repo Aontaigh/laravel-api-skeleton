@@ -20,6 +20,8 @@ abstract class UnitTestCase extends TestCase
 
     /**
      * Fail the test when any database query runs during a unit test.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

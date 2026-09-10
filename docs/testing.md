@@ -25,8 +25,8 @@ Run in this order; stop at the first failure.
 | Step | Command | Checks | Pass condition |
 | --- | --- | --- | --- |
 | 1 | `./vendor/bin/sail composer lint` | Pint style check (`lint:fix` to auto-fix) | Exit 0 |
-| 2 | `./vendor/bin/sail composer analyse` | Larastan at level 9 with strict, deprecation, and PHPUnit rules ([phpstan.neon](phpstan.neon)) | `No errors` |
-| 3 | `./vendor/bin/sail composer test` | Full PHPUnit suite (unit + feature, ~990 tests) | All pass |
+| 2 | `./vendor/bin/sail composer analyse` | Larastan at level 9 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors` |
+| 3 | `./vendor/bin/sail composer test` | Full PHPUnit suite (unit + feature, ~1100 tests) | All pass |
 | 4 | `./vendor/bin/sail composer test:coverage:check` | Step 3 plus the 90% line-coverage gate over `app/` | `Coverage Gate Passed` |
 | 5 | `./vendor/bin/sail composer verify:openapi` | Replays every example in [openapi.yaml](openapi.yaml) against the live app | `All OpenAPI Examples Verified` |
 | 6 | `bash scripts/semgrep.sh` | SAST with Laravel security rules (run on the host, not in Sail) | `Findings: 0` |
@@ -42,6 +42,17 @@ properties the codebase uses exist to keep level 9 green.
 > queues an audit write - with `QUEUE_CONNECTION=redis`, drain the queue once
 > before verifying:
 > `./vendor/bin/sail artisan queue:work --stop-when-empty`
+>
+> The client secret rotation check mutates client 1 (rotate + exchange), so
+> re-running without `migrate:fresh --seed` will fail `ClientShowSuccess` -
+> re-seed between runs. Step 7 also exercises the seeded demo client, so
+> re-seed after step 5 and before step 7.
+>
+> On hosts where composer lacks `Composer\Config::disableProcessTimeout`
+> (anything not invoked through the repo's `composer dev` wrapper), step 4
+> dies at composer's 300-second process timeout. Run the two halves directly:
+> `./vendor/bin/sail artisan test --coverage-clover=storage/coverage/clover.xml`
+> then `./vendor/bin/sail php scripts/check-coverage-threshold.php 90`.
 
 ## Test Suites
 
@@ -57,7 +68,7 @@ always do.**
 
 | Area | Where | What is exercised |
 | --- | --- | --- |
-| HTTP endpoints | `tests/Feature/Http/Controllers/` | Every route in [routes/api.php](../routes/api.php): auth, two-factor, password reset, email verification, sessions, users, tokens, API clients, audit logs, roles, permissions, teams, CSP reports, app-info, system status |
+| HTTP endpoints | `tests/Feature/Http/Controllers/` | Every route in [routes/api.php](../routes/api.php): auth, two-factor, password reset, email verification, sessions, users, tokens, API clients, audit logs, roles, permissions, teams, webhooks, CSP reports, app-info, system status |
 | Actions | `tests/Feature/Actions/` | Registration, credential finalisation, token creation, session revocation, password change, user and team admin - against the real database |
 | Middleware | `tests/Feature/Http/Middleware/` | Session-version gate, account-active gate, session-activity touch, security headers |
 | Console commands | `tests/Feature/Console/Commands/` | `health:record` persistence |
@@ -109,9 +120,9 @@ limits, bearer and reset-token abuse, replay, remember-me and CSRF boundaries,
 suspension and soft-delete handling, web-session IDOR, credential rotation on
 password reset, session-activity tracking, email verification, team management
 boundaries, role and phone hardening, session show/revoke-others, CSP report
-abuse, security.txt, and retired flat auth paths. 46 sections print `PASS` /
+abuse, security.txt, webhook management, client secret rotation, and retired
+flat auth paths. 48 sections print `PASS` /
 `FAIL` / `WARN` lines and the script exits non-zero on any failure.
-
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed
 bash scripts/pen-test-auth.sh

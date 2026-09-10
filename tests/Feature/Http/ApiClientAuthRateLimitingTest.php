@@ -39,6 +39,8 @@ final class ApiClientAuthRateLimitingTest extends TestCase
 
     /**
      * Tighten the client-auth limit for the test run.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

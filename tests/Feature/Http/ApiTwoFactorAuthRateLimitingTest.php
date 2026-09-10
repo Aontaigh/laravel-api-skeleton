@@ -31,33 +31,6 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
-    | Setup
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Start a pending challenge and return its opaque token without a session cookie.
-     */
-    private function beginStatelessTwoFactorChallenge(User $user): string
-    {
-        /** @var TestResponse<JsonResponse> $login */
-        $login = $this->postJson('/api/auth/login', [
-            'email' => $user->email,
-            'password' => 'Xq7#mK2$vL9pTzW4',
-        ]);
-
-        $login->assertOk();
-
-        $twoFactorToken = $login->json('data.two_factor_token');
-        $this->assertIsString($twoFactorToken);
-
-        $this->flushSession();
-
-        return $twoFactorToken;
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Traits
     |--------------------------------------------------------------------------
     */
@@ -71,7 +44,29 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
     */
 
     /**
+     * Start a pending challenge and return its opaque token without a session cookie.
+     *
+     * @return string the opaque pending challenge token
+     */
+    private function beginStatelessTwoFactorChallenge(User $user): string
+    {
+        /** @var TestResponse<JsonResponse> $login */
+        $login = $this->postJson('/api/auth/login', [
+            'email' => $user->email,
+            'password' => 'Xq7#mK2$vL9pTzW4',
+        ]);
+        $login->assertOk();
+        $twoFactorToken = $login->json('data.two_factor_token');
+        $this->assertIsString($twoFactorToken);
+        $this->flushSession();
+
+        return $twoFactorToken;
+    }
+
+    /**
      * Seed permissions and tighten the two-factor limiters for the test run.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

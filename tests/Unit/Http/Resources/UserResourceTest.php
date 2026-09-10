@@ -28,6 +28,8 @@ final class UserResourceTest extends UnitTestCase
 
     /**
      * Build a User with all attributes set directly.
+     *
+     * @return User the constructed User
      */
     private function fullUser(): User
     {

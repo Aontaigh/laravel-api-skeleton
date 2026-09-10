@@ -37,6 +37,8 @@ final class RevokeAllWebSessionsForUserActionTest extends TestCase
 
     /**
      * Seed permissions before factory roles are assigned.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

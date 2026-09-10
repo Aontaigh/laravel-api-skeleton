@@ -60,6 +60,8 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
     /**
      * Seed permissions for token issuance on service accounts.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

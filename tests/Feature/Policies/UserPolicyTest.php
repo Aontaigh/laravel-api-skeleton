@@ -44,6 +44,8 @@ final class UserPolicyTest extends TestCase
 
     /**
      * Seed permissions and instantiate the policy.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

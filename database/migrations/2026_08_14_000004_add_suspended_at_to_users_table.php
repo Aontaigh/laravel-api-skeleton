@@ -20,6 +20,8 @@ return new class extends Migration
      * A non-null `suspended_at` means the account is suspended and must be
      * turned away at the gate regardless of how it authenticated (Bearer
      * token or cookie session).
+     *
+     * @return void
      */
     public function up(): void
     {
@@ -30,6 +32,8 @@ return new class extends Migration
 
     /**
      * Drop the suspension marker.
+     *
+     * @return void
      */
     public function down(): void
     {

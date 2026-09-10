@@ -18,7 +18,7 @@ query-driven resource pattern you can copy for every endpoint.**
 </p>
 
 Ships with fully wired resources - **Users**, **Roles**, **Teams**, **API Tokens**, **API
-Clients**, **Web Sessions**, and **Audit Logs** - each implementing the same index contract
+Clients**, **Web Sessions**, **Audit Logs**, and **Webhooks** - each implementing the same index contract
 (`sort`, `fields`, `include`, `filter`, pagination) where it applies.
 Clone, run Sail, issue a token, open **[http://localhost/api/docs](http://localhost/api/docs)**
 (Scalar try-it UI), or import [docs/openapi.yaml](docs/openapi.yaml) into Postman.
@@ -57,6 +57,7 @@ you can copy into greenfield APIs or port legacy endpoints toward over time.
 - 🔑 Self-service **profile** update, password change, and admin-issued **API Tokens** via Sanctum
 - 🔐 Email **two-factor authentication** with stateless pending challenges and broker-based **password recovery** that rotates every credential
 - 🖥️ Device **session registry** with per-device revocation, fail-closed store handling, and an append-only **Auth Audit Log**
+- 📡 Outbound **webhooks** with signed deliveries (HMAC, retry with backoff, auto-disable) and SSRF-screened targets
 - 🛡️ Admin **account suspension** (suspend / unsuspend), a public `/health` probe, and a public `/api/status` uptime page
 - 📖 Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with hosted [Scalar](https://scalar.com) docs at `/api/docs` (local and production)
 - 🐳 Dockerised local dev via [Laravel Sail](https://laravel.com/docs/sail)
@@ -146,7 +147,9 @@ login budget. Authenticated password change and session revokes carry their own 
 per `client_id`+IP (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling
 pattern. The per-IP ceiling is skipped in `local` so the dev suite never self-throttles. After seed,
 use demo client `demo-integration-client` / `DemoClientSecret12`. Admins manage clients via
-`GET|POST|PATCH|DELETE /api/clients` and `GET /api/clients/{client}`. Registration assigns the
+`GET|POST|PATCH|DELETE /api/clients`, `GET /api/clients/{client}`, and
+`POST /api/clients/{client}/rotate-secret` (new secret returned once; old secret rejected on
+the next exchange). Registration assigns the
 default `User` role with `team_id` null, auto-enrols email two-factor authentication, and returns
 `two_factor_required` plus an opaque `two_factor_token` - no bearer token until send/verify complete.
 Invalid login credentials return a generic `Invalid Credentials` message on the `email` field. Users
@@ -367,6 +370,7 @@ POST   /api/clients                       # {"name": "...", "abilities": ["users
 GET    /api/clients/{client}
 PATCH  /api/clients/{client}              # update name, abilities, and/or is_active
 DELETE /api/clients/{client}
+POST   /api/clients/{client}/rotate-secret # new secret returned once; old secret rejected on next exchange
 ```
 
 Requires `api-clients.list`, `api-clients.create`, `api-clients.update`, and
@@ -376,6 +380,34 @@ client-credentials exchange; existing bearer tokens are not revoked.
 
 **Source of Truth:** [ApiClientQueryConstraints](app/Queries/ApiClients/ApiClientQueryConstraints.php),
 [ApiClientPolicy](app/Policies/ApiClientPolicy.php).
+
+### Webhooks
+
+```http
+GET    /api/webhook-endpoints
+POST   /api/webhook-endpoints            # {"name": "...", "url": "https://...", "events": ["user.created"]}
+GET    /api/webhook-endpoints/{webhook_endpoint}
+PATCH  /api/webhook-endpoints/{webhook_endpoint}
+DELETE /api/webhook-endpoints/{webhook_endpoint}
+GET    /api/webhook-endpoints/{webhook_endpoint}/deliveries
+POST   /api/webhook-endpoints/{webhook_endpoint}/test          # queue a signed webhook.ping
+POST   /api/webhook-endpoints/{webhook_endpoint}/rotate-secret # returns the new secret once
+```
+
+Admin-only outbound delivery (`webhooks.list`, `webhooks.create`,
+`webhooks.update`, `webhooks.delete`). Domain writes fan out through a queued
+listener - one pending delivery row per subscribed endpoint - and each row is
+sent by a job with exponential backoff (8 attempts), HMAC signatures
+(`Webhook-Signature: v1,…` over `{id}.{timestamp}.{body}`), and per-endpoint
+auto-disable after 10 consecutive failures. Target URLs are SSRF-screened
+(HTTPS-only, no private ranges). The secret is returned once and stored
+encrypted; receiving is at-least-once, so treat `Webhook-Id` as an idempotency
+key. Subscribed events: `user.created`, `user.deleted`, `user.suspended`, `user.unsuspended`,
+`team.created`, `team.updated`, `team.deleted`.
+
+**Source of Truth:** [WebhookEndpointQueryConstraints](app/Queries/Webhooks/WebhookEndpointQueryConstraints.php),
+[WebhookEndpointPolicy](app/Policies/WebhookEndpointPolicy.php),
+[DeliverWebhookJob](app/Jobs/Webhooks/DeliverWebhookJob.php).
 
 ### Tokens
 
@@ -506,7 +538,7 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
 | --- | --- | --- |
 | Authentication | Sanctum bearer tokens (90-day default expiry) | [routes/api.php](routes/api.php) (`auth:sanctum`), `config/api.php` |
 | Authorisation | Spatie permissions + Policies | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/) |
-| Rate limiting | 500 req/min API; 5 req/min auth (email+IP; split per-IP ceilings - 20 login, 10 register); dedicated User+IP buckets for password change and session revokes; 10 req/min token creation; 30 req/min public status page (per IP) | `config/api.php`, `bootstrap/app.php` |
+| Rate limiting | 500 req/min API; 5 req/min auth (email+IP; split per-IP ceilings - 20 login, 10 register); 5 req/min two-factor send/verify (IP ceiling 20) and 60 req/min two-factor status polling; 3 req/min verification resend; dedicated User+IP buckets for password change and session revokes; 10 req/min token creation; 10 req/min webhook writes (per Admin); 30 req/min public status page and 60 req/min health (per IP) | `config/api.php`, `bootstrap/app.php` |
 | Account recovery | Broker-based reset link with enumeration-neutral responses; reset rotates every credential | [ForgotPasswordController](app/Http/Controllers/Auth/ForgotPasswordController.php), [ResetUserPasswordAction](app/Actions/Auth/ResetUserPasswordAction.php) |
 | Two-factor authentication | Email OTP with pending challenges, stateless `two_factor_token` support, and per-route throttles | [SendTwoFactorController](app/Http/Controllers/Auth/SendTwoFactorController.php), [VerifyTwoFactorCodeAction](app/Actions/Auth/VerifyTwoFactorCodeAction.php) |
 | Session registry | Cookie-bound device sessions: list, show, per-device revoke, revoke-others, fail-closed store handling, activity tracking, and IP location enrichment (`location_city`/`location_country`, fail-open) | [SessionIndexController](app/Http/Controllers/Sessions/SessionIndexController.php), [DestroyOtherSessionsController](app/Http/Controllers/Sessions/DestroyOtherSessionsController.php), [RegisterWebSessionAction](app/Actions/Sessions/RegisterWebSessionAction.php) |
@@ -569,7 +601,9 @@ app/
 │   ├── Controllers/
 │   │   ├── Api/          # ShowApiDocsController, ShowOpenApiSpecController, ShowHealthController, ShowAppInfoController
 │   │   ├── Auth/         # Login, two-factor, registration, password reset, logout
+│   │   ├── Clients/      # API client admin and secret rotation
 │   │   ├── CspReports/   # Browser CSP violation receiver
+│   │   ├── Webhooks/     # Webhook endpoint admin and delivery history
 │   │   ├── WellKnown/    # RFC 9116 security.txt
 │   │   ├── Sessions/     # Web-session registry endpoints
 │   │   ├── SystemHealth/ # Public status page
@@ -674,7 +708,7 @@ pins exactly-once audit and OTP dispatch. [ApiDocsTest](tests/Feature/Http/ApiDo
 feature or resource tests on production FormRequests and Resources, not `tests/Support/`
 stubs.
 
-The full run order, coverage-floor mechanics, and the 46-section adversarial pen test are
+The full run order, coverage-floor mechanics, and the 48-section adversarial pen test are
 documented in [docs/testing.md](docs/testing.md).
 
 ## 🚫 What's Not Included

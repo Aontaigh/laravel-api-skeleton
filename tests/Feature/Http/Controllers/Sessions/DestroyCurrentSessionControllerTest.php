@@ -45,6 +45,8 @@ final class DestroyCurrentSessionControllerTest extends TestCase
 
     /**
      * Seed permissions for session revoke authorisation.
+     *
+     * @return void
      */
     protected function setUp(): void
     {

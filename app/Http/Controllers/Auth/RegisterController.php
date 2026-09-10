@@ -8,7 +8,9 @@ use App\Actions\Auth\RegisterUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Auth\RegisterUserData;
 use App\Enums\AuthAuditEvent;
+use App\Enums\WebhookEvent;
 use App\Events\AuthEventOccurred;
+use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Support\ApiResponse;
 use App\Support\Auth\PendingTwoFactor;
@@ -73,6 +75,15 @@ final class RegisterController
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
             requestId: RequestId::current($request),
+        ));
+
+        event(new WebhookEventDispatched(
+            event: WebhookEvent::UserCreated,
+            data: [
+                'id' => $user->id,
+                'email' => $user->email,
+                'name' => $user->name,
+            ],
         ));
 
         /*

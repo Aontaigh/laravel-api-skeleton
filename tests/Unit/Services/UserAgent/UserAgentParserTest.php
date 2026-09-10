@@ -114,8 +114,12 @@ final class UserAgentParserTest extends TestCase
 
         $parsed = $parser->parse(str_repeat('Chrome/126.0 ', 400));
 
-        // Assert: a 5000-char agent is parsed without throwing
+        // Assert
 
+        /*
+         * A 5000-char agent parses without throwing; the parser caps the
+         * attacker-controlled input before any storage.
+         */
         $this->assertSame('Chrome', $parsed->browser);
     }
 
@@ -153,8 +157,11 @@ final class UserAgentParserTest extends TestCase
 
         $parsed = app(UserAgentParser::class)->parse('Mozilla/5.0 (X11; Linux x86_64) Firefox/130.0');
 
-        // Assert - a contract-typed resolution parses a real agent
+        // Assert
 
+        /*
+         * Resolution through the contract binding returns a parsed real agent.
+         */
         $this->assertSame('Firefox', $parsed->browser);
     }
 }

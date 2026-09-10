@@ -74,7 +74,6 @@ final class UserFilterQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var UserFilters $filters */
         $filters = new UserFilters(viewer: $this->teamScopedViewer());
 
         // Act
@@ -104,7 +103,6 @@ final class UserFilterQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var UserFilters $filters */
         $filters = new UserFilters(viewer: $this->teamlessViewer());
 
         // Act
@@ -133,7 +131,6 @@ final class UserFilterQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var UserFilters $filters */
         $filters = new UserFilters(viewer: $this->teamScopedViewer(), listsAllTeams: true);
 
         // Act
@@ -166,7 +163,6 @@ final class UserFilterQueryTest extends UnitTestCase
         /** @var Builder<User> $query */
         $query = User::query();
 
-        /** @var UserFilters $filters */
         $filters = new UserFilters(
             viewer: $this->teamScopedViewer(),
             listsAllTeams: true,

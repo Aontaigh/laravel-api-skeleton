@@ -28,6 +28,9 @@ final class InvalidateStoredSessionAction
      * Length of the truncated SHA-256 fingerprint used in place of the raw ID.
      *
      * The Laravel session ID is a secret (the cookie value); logs never carry it.
+    /**
+     * Length of the truncated SHA-256 fingerprint used in place of the raw ID.
+     * The Laravel session ID is a secret (the cookie value); logs never carry it.
      */
     private const int FINGERPRINT_LENGTH = 12;
 

@@ -115,9 +115,12 @@ final class AuthenticateClientCredentialsAction
     }
 
     /**
-     * Return the bcrypt hash used to normalise timing for unknown client IDs.
+     * Return the hash used to normalise timing for unknown client IDs.
      *
-     * @return string the configured bcrypt hash compared against when no API Client matches
+     * Generated at boot with the configured hash driver (argon2id in this
+     * application), so the `Hash::check` cost matches a real verification.
+     *
+     * @return string the configured hash compared against when no API Client matches
      */
     private function timingNormalisationHash(): string
     {

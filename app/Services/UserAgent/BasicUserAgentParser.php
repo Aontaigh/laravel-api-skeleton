@@ -24,9 +24,7 @@ final class BasicUserAgentParser implements UserAgentParser
     |--------------------------------------------------------------------------
     */
 
-    /**
-     * Cap the attacker-controlled user-agent before parsing or storing.
-     */
+    /** Cap the attacker-controlled user-agent before parsing or storing. */
     private const int MAX_LENGTH = 1024;
 
     /*

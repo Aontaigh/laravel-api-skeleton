@@ -33,6 +33,8 @@ final class PermissionAbilityCatalogTest extends TestCase
 
     /**
      * Seed the permission catalog every test reads from.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -62,7 +64,7 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertContains('users.list', $names);
         $this->assertContains('tokens.list-own', $names);
         $this->assertContains('users.delete', $names);
-        $this->assertCount(29, $names);
+        $this->assertCount(33, $names);
     }
 
     /**

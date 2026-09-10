@@ -16,6 +16,8 @@ return new class extends Migration
 
     /**
      * Link auth audit rows to API clients for client-credentials exchanges.
+     *
+     * @return void
      */
     public function up(): void
     {
@@ -32,6 +34,8 @@ return new class extends Migration
 
     /**
      * Remove the API client link from auth audit rows.
+     *
+     * @return void
      */
     public function down(): void
     {

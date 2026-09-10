@@ -48,6 +48,8 @@ final class ApiSecurityProbeTest extends TestCase
 
     /**
      * Seed permissions and create a shared Admin viewer.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -101,10 +103,12 @@ final class ApiSecurityProbeTest extends TestCase
      */
 
     /**
-     * Ignore privilege escalation fields on User update.
+     * Reject a privilege escalation attempt on User update with `403`:
+     * the Manager attempts a `role` change without `users.assign-role`,
+     * so the authorisation gate refuses the whole update.
      */
     #[Test]
-    public function it_ignores_privilege_escalation_fields_on_user_update(): void
+    public function it_rejects_privilege_escalation_fields_on_user_update(): void
     {
         // Arrange
 
@@ -133,8 +137,7 @@ final class ApiSecurityProbeTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, ['email', 'password']);
+        $response->assertForbidden();
         $this->assertDatabaseHas('users', [
             'id' => $member->id,
             'name' => 'Member',

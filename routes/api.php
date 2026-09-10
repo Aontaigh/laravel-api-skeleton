@@ -327,6 +327,10 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
     Route::get('/clients/{client}', \App\Http\Controllers\Clients\ClientShowController::class)
         ->name('clients.show');
 
+    Route::post('/clients/{client}/rotate-secret', \App\Http\Controllers\Clients\RotateClientSecretController::class)
+        ->middleware('throttle:api-tokens')
+        ->name('clients.rotate-secret');
+
     Route::patch('/clients/{client}', \App\Http\Controllers\Clients\UpdateClientController::class)
         ->name('clients.update');
 
@@ -376,6 +380,43 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
 
     Route::get('/permissions', \App\Http\Controllers\Permissions\PermissionIndexController::class)
         ->name('permissions.index');
+
+    /*
+    |--------------------------------------------------------------------------
+    | Webhooks
+    |--------------------------------------------------------------------------
+    |
+    | Admin-Managed Outbound Webhook Subscriptions: signed deliveries with
+    | retries, per-endpoint history, secret rotation, and test pings.
+    |
+    */
+
+    Route::get('/webhook-endpoints', \App\Http\Controllers\Webhooks\WebhookEndpointIndexController::class)
+        ->name('webhook-endpoints.index');
+
+    Route::post('/webhook-endpoints', \App\Http\Controllers\Webhooks\StoreWebhookEndpointController::class)
+        ->middleware('throttle:api-webhooks')
+        ->name('webhook-endpoints.store');
+
+    Route::get('/webhook-endpoints/{webhook_endpoint}', \App\Http\Controllers\Webhooks\WebhookEndpointShowController::class)
+        ->name('webhook-endpoints.show');
+
+    Route::patch('/webhook-endpoints/{webhook_endpoint}', \App\Http\Controllers\Webhooks\UpdateWebhookEndpointController::class)
+        ->name('webhook-endpoints.update');
+
+    Route::delete('/webhook-endpoints/{webhook_endpoint}', \App\Http\Controllers\Webhooks\DestroyWebhookEndpointController::class)
+        ->name('webhook-endpoints.destroy');
+
+    Route::get('/webhook-endpoints/{webhook_endpoint}/deliveries', \App\Http\Controllers\Webhooks\WebhookDeliveryIndexController::class)
+        ->name('webhook-endpoints.deliveries.index');
+
+    Route::post('/webhook-endpoints/{webhook_endpoint}/test', \App\Http\Controllers\Webhooks\TestWebhookEndpointController::class)
+        ->middleware('throttle:api-webhooks')
+        ->name('webhook-endpoints.test');
+
+    Route::post('/webhook-endpoints/{webhook_endpoint}/rotate-secret', \App\Http\Controllers\Webhooks\RotateWebhookEndpointSecretController::class)
+        ->middleware('throttle:api-webhooks')
+        ->name('webhook-endpoints.rotate-secret');
 
     /*
     |--------------------------------------------------------------------------

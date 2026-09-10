@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\SoftDeleteUserAction;
+use App\Enums\WebhookEvent;
+use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Users\DestroyUserRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
@@ -27,6 +29,9 @@ final class DestroyUserController
     /**
      * Soft-delete the given User.
      *
+     * The soft-deleted identity is announced as `user.deleted` so subscribed
+     * integrators can purge or anonymise their local copies of the account.
+     *
      * @param  DestroyUserRequest   $request the validated delete request
      * @param  User                 $user    the User being deleted (route-bound)
      * @param  SoftDeleteUserAction $action  the soft-delete Action
@@ -44,6 +49,14 @@ final class DestroyUserController
         */
 
         $action->execute($user);
+
+        event(new WebhookEventDispatched(
+            event: WebhookEvent::UserDeleted,
+            data: [
+                'id' => $user->id,
+                'email' => $user->email,
+            ],
+        ));
 
         /*
         |--------------------------------------------------------------------------

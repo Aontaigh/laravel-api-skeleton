@@ -71,6 +71,8 @@ final class AuthAuditLogIndexControllerTest extends TestCase
 
     /**
      * Seed permissions and enable strict Eloquent checks for index queries.
+     *
+     * @return void
      */
     protected function setUp(): void
     {
@@ -84,6 +86,8 @@ final class AuthAuditLogIndexControllerTest extends TestCase
 
     /**
      * Restore the global strict-mode flags so they do not leak into other suites.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

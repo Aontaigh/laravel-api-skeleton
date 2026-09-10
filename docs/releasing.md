@@ -76,7 +76,7 @@ headings are for the GitHub release only.
 
 > [!IMPORTANT]
 > Discover commands from this repo - do not assume another project's gates. Primary
-> sources: [`.github/workflows/ci.yml`](.github/workflows/ci.yml) and `composer.json`
+> sources: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and `composer.json`
 > scripts.
 
 Local (Sail when host PHP is not 8.5):
@@ -96,12 +96,28 @@ Sail port notes when Docker ports on your machine are already in use.
 
 ## 3. Commit and Push, Then Wait for CI
 
+Stage everything the release ships. When the feature work is already committed,
+the release bump touches only these paths:
+
 ```bash
 git add CHANGELOG.md composer.json docs/ .env.example .env.ci
+```
+
+When the release carries uncommitted feature work, stage the working tree too -
+the tag must point at a commit that contains both the feature and the version
+bump, and a release-files-only commit would let CI green-light a `main` that
+still lacks the feature:
+
+```bash
+git add -A
 git commit -m "chore(release): prepare vX.Y.Z"
 git push origin main
 gh run watch --exit-status
 ```
+
+Push and tag with the account that holds write access to the repository - the
+publisher token needs push on `main` and release creation, so verify
+`gh auth status` before step 3 rather than at the release step.
 
 CI must be green on the commit you are about to tag. The **All Quality Gates** summary
 job must pass - Pint, app version sync, Larastan, PHPUnit + coverage, Security Audit,
@@ -131,6 +147,14 @@ Draft notes from the `## [X.Y.Z]` changelog section. Transform headings:
 | `### Changed` | `### 🔄 Changed` |
 | `### Fixed` | `### 🐛 Fixed` |
 | `### Removed` | `### ❌ Removed` |
+
+**Unwrap the bullets before publishing.** GitHub release notes preserve single newlines as
+line breaks (they render like issue comments, not like READMEs), so pasting `CHANGELOG.md`'s
+hard-wrapped lines verbatim re-wraps every bullet at the changelog's ~95-character column -
+a ragged right edge that never extends to the container's full width. Join each bullet's
+continuation lines into one flowing line per bullet (headings, blank lines, and the
+`**Full Changelog**` footer stay on their own lines); GitHub then reflows each bullet to the
+full container width.
 
 End with:
 

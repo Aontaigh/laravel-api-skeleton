@@ -36,15 +36,40 @@ final class UpdateUserRequest extends ApiFormRequest
     /**
      * Determine whether the User is authorised to make this request.
      *
+     * Two gates, both answered with `403 Forbidden` when they fail:
+     *
+     * - `update` on the route-bound User (the base write authorisation).
+     * - A payload attempting a role change additionally requires the
+     *   `assignRole` ability on that User. Managers hold `update` without
+     *   `assign-role`, Admins are refused on themselves, and service
+     *   accounts are immutable.
+     * - A payload attempting a team reassignment requires the
+     *   `reassignTeam` ability.
++     *
++     *   Both surface as authorisation (403) rather than a field-level
++     *   validation error (422): identity and permission problems belong in
++     *   the status the caller's retry logic expects.
+     *
      * @return bool true when the User may update the route-bound User
      */
     public function authorize(): bool
     {
-        /** @var User|null $user */
-        $user = $this->route('user');
+        /** @var User|null $target */
+        $target = $this->route('user');
 
-        return $user instanceof User
-            && $this->user()?->can('update', $user) === true;
+        if (! $target instanceof User) {
+            return false;
+        }
+
+        if ($this->has('role') && $this->user()?->can('assignRole', $target) !== true) {
+            return false;
+        }
+
+        if ($this->has('team_id') && $this->user()?->can('reassignTeam', User::class) !== true) {
+            return false;
+        }
+
+        return $this->user()?->can('update', $target) === true;
     }
 
     /*
@@ -64,13 +89,7 @@ final class UpdateUserRequest extends ApiFormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'email' => ['prohibited'],
             'password' => ['prohibited'],
-            'team_id' => [
-                Rule::prohibitedIf(fn (): bool => $this->user()?->can('reassignTeam', User::class) !== true),
-                'sometimes',
-                'required',
-                'integer',
-                Rule::exists('teams', 'id'),
-            ],
+            'team_id' => ['sometimes', 'required', 'integer', Rule::exists('teams', 'id')],
             'role' => [
                 Rule::prohibitedIf(fn (): bool => $this->user()?->can('assignRole', $this->route('user')) !== true),
                 'sometimes',

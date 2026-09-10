@@ -16,7 +16,8 @@ Policy or request concern.
 [AuthAuditLogPolicy](../app/Policies/AuthAuditLogPolicy.php),
 [PermissionPolicy](../app/Policies/PermissionPolicy.php),
 [TeamPolicy](../app/Policies/TeamPolicy.php),
-[WebSessionPolicy](../app/Policies/WebSessionPolicy.php).
+[WebSessionPolicy](../app/Policies/WebSessionPolicy.php),
+[WebhookEndpointPolicy](../app/Policies/WebhookEndpointPolicy.php).
 
 ## Permissions
 
@@ -43,7 +44,11 @@ Policy or request concern.
 | `sessions.revoke-any` | Revoke any User's web session via `DELETE /api/sessions/{web_session}` | `WebSessionPolicy::delete()` |
 | `api-clients.list` | Access to `GET /api/clients` and `GET /api/clients/{client}` | `ApiClientPolicy::viewAny()` and `ApiClientPolicy::view()` |
 | `api-clients.create` | Access to `POST /api/clients` | `ApiClientPolicy::create()` |
-| `api-clients.update` | Access to `PATCH /api/clients/{client}` | `ApiClientPolicy::update()` |
+| `api-clients.update` | Access to `PATCH /api/clients/{client}` and `POST /api/clients/{client}/rotate-secret` | `ApiClientPolicy::update()` |
+| `webhooks.list` | Access to `GET /api/webhook-endpoints`, `GET /api/webhook-endpoints/{webhook_endpoint}`, and `GET /api/webhook-endpoints/{webhook_endpoint}/deliveries` | `WebhookEndpointPolicy::viewAny()` and `WebhookEndpointPolicy::view()` |
+| `webhooks.create` | Access to `POST /api/webhook-endpoints` | `WebhookEndpointPolicy::create()` |
+| `webhooks.update` | Access to `PATCH /api/webhook-endpoints/{webhook_endpoint}`, test pings, and secret rotation | `WebhookEndpointPolicy::update()` |
+| `webhooks.delete` | Access to `DELETE /api/webhook-endpoints/{webhook_endpoint}` | `WebhookEndpointPolicy::delete()` |
 | `api-clients.delete` | Access to `DELETE /api/clients/{client}` | `ApiClientPolicy::delete()` |
 | `audit-logs.list` | Access to `GET /api/audit-logs` and `GET /api/audit-logs/{auth_audit_log}` (Admin role only for now) | `AuthAuditLogPolicy::viewAny()` and `AuthAuditLogPolicy::view()` |
 | `teams.list` | Access to `GET /api/teams` and `GET /api/teams/{team}` | `TeamPolicy::viewAny()` and `TeamPolicy::view()` |
@@ -132,6 +137,18 @@ creation, update, and deletion are Admin-only (`teams.create`, `teams.update`,
 has assigned Users - the guard lives in `DeleteTeamAction`, so members are never
 silently un-scoped to `team_id` null. Reassign or remove the members first.
 
+#### Webhooks
+
+Outbound delivery is Admin-only (`webhooks.list`, `webhooks.create`,
+`webhooks.update`, `webhooks.delete`), mirroring API client management:
+integrations are configured by administrators, not self-service. The deliveries
+index, test pings, and rotation need no extra permission beyond the endpoint's
+own. The signing secret is never serialised - it leaves the API once on create
+and rotate, and lives encrypted at rest (`encrypted` cast: the delivery job must
+recover the plaintext to compute the HMAC, unlike a client secret that is only
+ever compared). Receiving is at-least-once, so integrators must treat
+`Webhook-Id` as an idempotency key.
+
 #### Token Permissions Are Self-Scoped
 
 `tokens.list-own` always returns only the caller's tokens. There is no
@@ -146,8 +163,11 @@ role. Managers, Users, and Service identities cannot list or show audit rows.
 
 The log covers authentication (login, logout, registration, 2FA, recovery,
 email verification) and access-control changes: password changes, role changes,
-suspensions, session revokes, token issuance and revocation, and API client
-lifecycle. Plain resource administration (user create/rename/delete, team CRUD)
+suspensions, session revokes, token issuance and revocation, API client
+lifecycle, and webhook endpoint lifecycle (create, update, delete, secret
+rotation - the target URL is an attacker-controlled exfiltration channel, so
+every configuration change is audited). Plain resource administration (user
+create/rename/delete, team CRUD)
 stays out by design, so incident response is never buried under admin noise.
 User-targeted rows carry the affected account; token and client rows carry the
 acting Admin alongside the issued credential ID where one exists.

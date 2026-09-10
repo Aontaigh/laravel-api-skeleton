@@ -6,6 +6,8 @@ namespace App\Http\Controllers\Teams;
 
 use App\Actions\Teams\UpdateTeamAction;
 use App\DataTransferObjects\Teams\UpdateTeamData;
+use App\Enums\WebhookEvent;
+use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Teams\UpdateTeamRequest;
 use App\Http\Resources\TeamResource;
 use App\Models\Team;
@@ -59,6 +61,14 @@ final class UpdateTeamController
         */
 
         $updatedTeam = $action->execute($data);
+
+        event(new WebhookEventDispatched(
+            event: WebhookEvent::TeamUpdated,
+            data: [
+                'id' => $updatedTeam->id,
+                'name' => $updatedTeam->name,
+            ],
+        ));
 
         /*
         |--------------------------------------------------------------------------

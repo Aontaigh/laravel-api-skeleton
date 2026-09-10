@@ -36,6 +36,8 @@ final class GetTwoFactorStatusActionTest extends TestCase
 
     /**
      * Tear down frozen time after each test.
+     *
+     * @return void
      */
     protected function tearDown(): void
     {

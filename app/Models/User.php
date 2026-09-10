@@ -244,7 +244,8 @@ final class User extends Authenticatable implements MustVerifyEmail
      * which only serves JSON. The app notification carries a config-driven
      * SPA destination (`api.password_reset_url`) instead.
      *
-     * @param string $token the password reset token issued by the broker
+     * @param  string $token the password reset token issued by the broker
+     * @return void
      */
     public function sendPasswordResetNotification($token): void
     {
@@ -257,6 +258,8 @@ final class User extends Authenticatable implements MustVerifyEmail
      * The framework default would emit its own mail pointing at the API host,
      * which only serves JSON. The app notification carries a temporary signed
      * URL for the configured SPA destination (`api.email_verification_url`).
+     *
+     * @return void
      */
     public function sendEmailVerificationNotification(): void
     {
