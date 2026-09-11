@@ -1,0 +1,18 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["github-actions"],
+  "packageRules": [
+    {
+      "description": "Wait 7 days before proposing updates to newly published versions",
+      "minimumReleaseAge": "7 days"
+    },
+    {
+      "description": "Dependabot owns repo-syntax actions and Composer; Renovate tracks only Docker image pins and service images in workflows, which Dependabot cannot see.",
+      "matchManagers": ["github-actions"],
+      "matchDepTypes": ["action", "workflow", "container", "github-runner", "uses-with"],
+      "enabled": false,
+      "minimumReleaseAge": false
+    }
+  ]
+}

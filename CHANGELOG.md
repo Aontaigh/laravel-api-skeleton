@@ -7,21 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-09-11
+
 ### Added
 
-- Zizmor supply-chain gate for GitHub Actions: a blocking CI job audits the
-  workflow against `.github/zizmor.yml`, which accepts ref-pins for first-party
+- Zizmor supply-chain audit for GitHub Actions: CI job audits workflows against
+  [`.github/zizmor.yml`](.github/zizmor.yml), which accepts ref-pins for first-party
   `actions/*` and requires full-commit SHA pins (tag kept as a trailing comment
-  for Dependabot) for everything else - run it locally with
+  for Dependabot) for everything else - run locally with
   `zizmor --config .github/zizmor.yml .github/workflows/`
+- Workflow lint CI job (`actionlint`) for `.github/workflows/`
+- [`.github/renovate.json`](.github/renovate.json) - scopes Renovate to Docker image
+  pins in workflows (Dependabot continues to own `uses:` actions and Composer)
 
 ### Changed
 
 - All third-party `uses:` references in CI are hash-pinned (`shivammathur/setup-php`,
   `ramsey/composer-install`, `github/codeql-action`, `zizmorcore/zizmor-action`);
   every `actions/checkout` sets `persist-credentials: false`
-- Security-audit backlog item on CI tag-pinning closed: the policy is now enforced
-  in code, including `ref-version-mismatch` (stale `# vX` comments fail the gate)
+- CI workflow section headers use Title Case; Semgrep and Zizmor job comments clarify
+  merge-gate behaviour
+
+### Removed
+
+- `docs/security-audit.md` - historical audit record removed; ongoing regression
+  coverage lives in the pen-test suite and quality gates
 
 ## [1.13.0] - 2026-09-10
 
@@ -480,7 +490,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.11.0...v1.12.0
 [1.11.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.10.0...v1.11.0

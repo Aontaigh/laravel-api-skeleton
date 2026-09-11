@@ -246,7 +246,6 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | [docs/performance.md](docs/performance.md) | ⚡ Pagination and search trade-offs at scale |
 | [docs/releasing.md](docs/releasing.md) | 🏷️ Cutting a release - changelog, gates, tag, GitHub publish |
 | [docs/testing.md](docs/testing.md) | 🧪 Quality gates, test suites, coverage floor, pen test |
-| [docs/security-audit.md](docs/security-audit.md) | 🏦 Adversarial security audit: findings and dispositions |
 
 ## 🧱 Stack
 

@@ -74,7 +74,6 @@ Schedule::command('health:record')
 | component per day, and `auth_audit_logs` grows with authentication
 | traffic - retention is a deliberate product and compliance decision,
 | not a scheduler default. When a retention window is agreed, add a
-| bounded prune command here and document the window in
-| `docs/security-audit.md` and the CHANGELOG.
+| bounded prune command here and document the window in the CHANGELOG.
 |
 */
