@@ -9,7 +9,7 @@
       "matchManagers": ["github-actions"],
       "matchDepTypes": ["action", "workflow", "container", "github-runner", "uses-with"],
       "enabled": false,
-      "minimumReleaseAge": false
+      "minimumReleaseAge": "7 days"
     }
   ]
 }
