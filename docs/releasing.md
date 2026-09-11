@@ -20,7 +20,8 @@ This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 - [ ] 3. Quality gates green locally (see below)
 - [ ] 4. Release commit pushed to `main`, CI green **on that commit**
 - [ ] 5. Tag `vX.Y.Z` on the CI-green commit and push
-- [ ] 6. GitHub release published (transform changelog headings to emoji - do not paste
+- [ ] 6. GitHub release published per [GitHub release format](#github-release-format) (emoji
+  section headings, unwrapped bullets, **Full Changelog** footer - do not paste
   `CHANGELOG.md` verbatim)
 
 ## Release Flow
@@ -139,14 +140,23 @@ git rev-parse vX.Y.Z          # must equal the SHA above
 
 ## 5. Publish the GitHub Release
 
-Draft notes from the `## [X.Y.Z]` changelog section. Transform headings:
+Draft notes from the `## [X.Y.Z]` changelog section. GitHub release notes are **not** a
+copy of `CHANGELOG.md` - they follow a separate layout so they render cleanly on the
+[Releases](https://github.com/Aontaigh/laravel-api-skeleton/releases) page.
 
-| `CHANGELOG.md` | GitHub release |
-| --- | --- |
-| `### Added` | `### ✅ Added` |
-| `### Changed` | `### 🔄 Changed` |
-| `### Fixed` | `### 🐛 Fixed` |
-| `### Removed` | `### ❌ Removed` |
+### GitHub release format
+
+| Rule | `CHANGELOG.md` | GitHub release |
+| --- | --- | --- |
+| Version heading | `## [1.14.0] - 2026-09-11` | **Omit** - the tag title (`v1.14.0`) is the heading |
+| Section headings | `### Added` (plain) | `### ✅ Added` (emoji + Title Case) |
+| Section headings | `### Changed` | `### 🔄 Changed` |
+| Section headings | `### Fixed` | `### 🐛 Fixed` |
+| Section headings | `### Removed` | `### ❌ Removed` |
+| Footer | Compare link in file footer | `**Full Changelog**` block at the end of the notes (see below) |
+
+Use **only** the emoji section headings above. Do not publish plain `## Added` /
+`## Changed` headings or paste the Keep a Changelog version line into the release body.
 
 **Unwrap the bullets before publishing.** GitHub release notes preserve single newlines as
 line breaks (they render like issue comments, not like READMEs), so pasting `CHANGELOG.md`'s
@@ -156,7 +166,9 @@ continuation lines into one flowing line per bullet (headings, blank lines, and 
 `**Full Changelog**` footer stay on their own lines); GitHub then reflows each bullet to the
 full container width.
 
-End with:
+Omit empty sections. Keep section order: Added, Changed, Fixed, Removed.
+
+End every release **after `v1.0.0`** with a horizontal rule and compare link:
 
 ```markdown
 ---
@@ -164,12 +176,40 @@ End with:
 **Full Changelog**: [vPREV...vX.Y.Z](https://github.com/Aontaigh/laravel-api-skeleton/compare/vPREV...vX.Y.Z)
 ```
 
+The initial `v1.0.0` release has no prior tag, so it ends after the last bullet with no
+footer.
+
+### Example (patch release)
+
+```markdown
+### 🔄 Changed
+
+- `.github/renovate.json` - `minimumReleaseAge` at root scope (Semgrep-compliant without per-rule exceptions)
+- CI workflow-lint job validates Renovate config with `renovate-config-validator`
+
+---
+
+**Full Changelog**: [v1.14.0...v1.14.1](https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...v1.14.1)
+```
+
+Reference: [v1.13.0](https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.13.0)
+(minor with Added / Changed / Fixed) and
+[v1.14.1](https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.14.1) (patch).
+
+### Publish
+
 ```bash
 gh release create vX.Y.Z \
   --repo Aontaigh/laravel-api-skeleton \
   --title "vX.Y.Z" \
   --notes-file /tmp/release-notes.md
 gh release view vX.Y.Z --web
+```
+
+To fix an already-published release that used the wrong format:
+
+```bash
+gh release edit vX.Y.Z --notes-file /tmp/release-notes.md
 ```
 
 For ticketless repos, bullet lines with commit or PR links match prior skeleton

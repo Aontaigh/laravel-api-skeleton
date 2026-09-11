@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.2] - 2026-09-11
+
+### Changed
+
+- Bump `laravel/telescope` from 5.22.1 to 5.23.0 (dev dependency) ([#10](https://github.com/Aontaigh/laravel-api-skeleton/pull/10))
+- [`docs/releasing.md`](docs/releasing.md) - document GitHub release note format (emoji section
+  headings, unwrapped bullets, **Full Changelog** footer)
+
 ## [1.14.1] - 2026-09-11
 
 ### Changed
@@ -498,7 +506,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.2...HEAD
+[1.14.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.1...v1.14.2
 [1.14.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.12.0...v1.13.0

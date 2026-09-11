@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.14.1
+  version: 1.14.2
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -3477,7 +3477,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.14.1
+          version: 1.14.2
         meta: {}
 
     HealthUnavailable:
@@ -4158,7 +4158,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.14.1
+          example: 1.14.2
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
