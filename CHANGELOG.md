@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.1] - 2026-09-11
+
+### Changed
+
+- [`.github/renovate.json`](.github/renovate.json) - `minimumReleaseAge` at root scope
+  (Semgrep-compliant without per-rule exceptions)
+- CI workflow-lint job validates Renovate config with `renovate-config-validator`
+
 ## [1.14.0] - 2026-09-11
 
 ### Added
@@ -490,7 +498,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.1...HEAD
+[1.14.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.11.0...v1.12.0

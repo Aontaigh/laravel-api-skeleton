@@ -366,8 +366,16 @@ jobs:
               with:
                   persist-credentials: false
 
+            - name: Setup Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version: 22
+
             - name: Lint Workflows
               uses: docker://rhysd/actionlint:1.7.12
+
+            - name: Validate Renovate Config
+              run: npx --yes -p renovate renovate-config-validator
 
     # ---------------------------------------------------------------------
     # Summary Gate
