@@ -14,7 +14,7 @@ final class ClientTokenExchangeRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

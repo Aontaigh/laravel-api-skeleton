@@ -41,25 +41,6 @@ final class Team extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Get the attribute casts for the model.
-     *
-     * @return array<string, string> a map of attribute name to cast type
-     */
-    protected function casts(): array
-    {
-        return [
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Relationships
     |--------------------------------------------------------------------------
     */

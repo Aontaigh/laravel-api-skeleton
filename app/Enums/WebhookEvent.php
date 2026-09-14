@@ -12,6 +12,12 @@ namespace App\Enums;
  */
 enum WebhookEvent: string
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Cases
+    |--------------------------------------------------------------------------
+    */
+
     case UserCreated = 'user.created';
     case UserSuspended = 'user.suspended';
     case UserUnsuspended = 'user.unsuspended';

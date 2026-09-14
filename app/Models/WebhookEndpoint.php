@@ -62,7 +62,7 @@ final class WebhookEndpoint extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
+    | Casts
     |--------------------------------------------------------------------------
     */
 
@@ -83,8 +83,6 @@ final class WebhookEndpoint extends Model
             'is_active' => 'boolean',
             'failure_streak' => 'integer',
             'disabled_at' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
         ];
     }
 
@@ -101,7 +99,7 @@ final class WebhookEndpoint extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withDefault();
     }
 
     /**

@@ -14,7 +14,7 @@ final class DestroyUserRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

@@ -16,7 +16,7 @@ final class UpdateMePasswordRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

@@ -24,7 +24,7 @@ final class ClientIndexRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

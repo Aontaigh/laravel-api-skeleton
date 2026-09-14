@@ -25,7 +25,7 @@ final class StoreWebhookEndpointRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

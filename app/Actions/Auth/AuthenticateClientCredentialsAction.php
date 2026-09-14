@@ -71,7 +71,12 @@ final class AuthenticateClientCredentialsAction
 
         $user = $client->getRelationValue('user');
 
-        if (! $user instanceof User || $user->trashed() || $user->isSuspended()) {
+        if (
+            ! $user instanceof User
+            || $user->getKey() === null
+            || $user->trashed()
+            || $user->isSuspended()
+        ) {
             throw ValidationException::withMessages([
                 'client_id' => ['Invalid Credentials'],
             ]);

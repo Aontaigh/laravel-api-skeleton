@@ -24,7 +24,7 @@ final class StoreUserTokenRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

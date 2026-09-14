@@ -58,7 +58,7 @@ final class WebSession extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
+    | Casts
     |--------------------------------------------------------------------------
     */
 
@@ -73,8 +73,6 @@ final class WebSession extends Model
             'remember_me' => 'boolean',
             'last_activity_at' => 'datetime',
             'revoked_at' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
         ];
     }
 
@@ -91,7 +89,7 @@ final class WebSession extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withDefault();
     }
 
     /*

@@ -14,7 +14,7 @@ final class DestroyCurrentSessionRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

@@ -65,7 +65,7 @@ final class WebhookDelivery extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
+    | Casts
     |--------------------------------------------------------------------------
     */
 
@@ -83,8 +83,6 @@ final class WebhookDelivery extends Model
             'next_retry_at' => 'datetime',
             'last_status_code' => 'integer',
             'delivered_at' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
         ];
     }
 
@@ -101,6 +99,6 @@ final class WebhookDelivery extends Model
      */
     public function endpoint(): BelongsTo
     {
-        return $this->belongsTo(WebhookEndpoint::class, 'webhook_endpoint_id');
+        return $this->belongsTo(WebhookEndpoint::class, 'webhook_endpoint_id')->withDefault();
     }
 }

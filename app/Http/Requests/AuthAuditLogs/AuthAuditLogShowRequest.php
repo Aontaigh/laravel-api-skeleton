@@ -24,7 +24,7 @@ final class AuthAuditLogShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Authorization
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

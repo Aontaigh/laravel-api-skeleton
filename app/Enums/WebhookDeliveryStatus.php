@@ -9,6 +9,12 @@ namespace App\Enums;
  */
 enum WebhookDeliveryStatus: string
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Cases
+    |--------------------------------------------------------------------------
+    */
+
     case Pending = 'pending';
     case Delivered = 'delivered';
     case Failed = 'failed';

@@ -50,7 +50,7 @@ final class SystemHealthCheck extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
+    | Casts
     |--------------------------------------------------------------------------
     */
 
@@ -65,8 +65,6 @@ final class SystemHealthCheck extends Model
             'status' => SystemHealthStatus::class,
             'response_time_ms' => 'integer',
             'checked_at' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
         ];
     }
 

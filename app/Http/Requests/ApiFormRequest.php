@@ -53,6 +53,12 @@ abstract class ApiFormRequest extends FormRequest
     |--------------------------------------------------------------------------
     */
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Response
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Record supported values for an allow-list validation error.
      *

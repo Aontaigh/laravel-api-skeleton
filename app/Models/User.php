@@ -81,7 +81,7 @@ final class User extends Authenticatable implements MustVerifyEmail
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
+    | Casts
     |--------------------------------------------------------------------------
     */
 
@@ -99,8 +99,6 @@ final class User extends Authenticatable implements MustVerifyEmail
             'suspended_at' => 'datetime',
             'mfa_method' => MfaMethod::class,
             'session_version' => 'integer',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
             'deleted_at' => 'datetime',
         ];
     }

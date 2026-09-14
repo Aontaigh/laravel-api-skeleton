@@ -59,7 +59,7 @@ final class ApiClient extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
+    | Casts
     |--------------------------------------------------------------------------
     */
 
@@ -74,8 +74,6 @@ final class ApiClient extends Model
             'abilities' => 'array',
             'is_active' => 'boolean',
             'last_used_at' => 'datetime',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
         ];
     }
 
@@ -92,6 +90,6 @@ final class ApiClient extends Model
      */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class)->withDefault();
     }
 }

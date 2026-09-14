@@ -13,6 +13,12 @@ namespace App\Enums;
 enum PasswordChangeSource
 {
     /** A change the User made themselves while authenticated. */
+    /*
+    |--------------------------------------------------------------------------
+    | Cases
+    |--------------------------------------------------------------------------
+    */
+
     case SelfService;
 
     /** A recovery made through the unauthenticated password reset flow. */

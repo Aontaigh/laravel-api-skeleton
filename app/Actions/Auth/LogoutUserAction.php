@@ -53,11 +53,13 @@ final class LogoutUserAction
      */
     public function execute(User $user, ?Request $request = null): void
     {
-        $user->tokens()->delete();
+        DB::transaction(function () use ($user): void {
+            $user->tokens()->delete();
 
-        $user->forceFill(['remember_token' => null])->save();
+            $user->forceFill(['remember_token' => null])->save();
 
-        $user->rotateSessions();
+            $user->rotateSessions();
+        });
 
         $this->revokeAllWebSessions->execute($user);
 

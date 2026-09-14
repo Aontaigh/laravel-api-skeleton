@@ -9,6 +9,12 @@ namespace App\Enums;
  */
 enum AuthAuditEvent: string
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Cases
+    |--------------------------------------------------------------------------
+    */
+
     case Login = 'Login';
     case LoginFailed = 'Login Failed';
     case Logout = 'Logout';

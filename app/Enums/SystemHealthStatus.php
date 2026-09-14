@@ -9,6 +9,12 @@ namespace App\Enums;
  */
 enum SystemHealthStatus: string
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Cases
+    |--------------------------------------------------------------------------
+    */
+
     case Up = 'up';
     case Degraded = 'degraded';
     case Down = 'down';
@@ -24,6 +30,12 @@ enum SystemHealthStatus: string
      *
      * @return string the display label
      */
+    /*
+    |--------------------------------------------------------------------------
+    | Public
+    |--------------------------------------------------------------------------
+    */
+
     public function label(): string
     {
         return match ($this) {

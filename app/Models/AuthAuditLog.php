@@ -62,7 +62,7 @@ final class AuthAuditLog extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | `casts()`
+    | Casts
     |--------------------------------------------------------------------------
     */
 
@@ -76,8 +76,6 @@ final class AuthAuditLog extends Model
         return [
             'event' => AuthAuditEvent::class,
             'remember_me' => 'boolean',
-            'created_at' => 'datetime',
-            'updated_at' => 'datetime',
         ];
     }
 

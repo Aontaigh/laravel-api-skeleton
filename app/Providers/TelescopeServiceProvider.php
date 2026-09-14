@@ -71,11 +71,11 @@ final class TelescopeServiceProvider extends TelescopeApplicationServiceProvider
     }
 
     /**
-     * Configure the Telescope authorization services.
+     * Configure the Telescope authorisation services.
      *
      * @return void
      */
-    protected function authorization(): void
+    protected function authorisation(): void
     {
         Telescope::auth(function ($request) {
             $user = $request->user();

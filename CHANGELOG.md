@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.14.3] - 2026-09-14
+
+### Changed
+
+- Eloquent models: standardise `Casts` pipe sections, drop redundant `created_at` / `updated_at`
+  casts (Laravel already treats timestamps as datetimes), and remove the empty `Team::casts()`
+  method
+- BelongsTo relations on `ApiClient`, `User`, `WebSession`, `WebhookEndpoint`, and
+  `WebhookDelivery` use `withDefault()` so missing parents resolve to placeholders instead of
+  null
+- FormRequest section headers use **Authorisation** (British spelling) across the API request
+  layer; `ApiFormRequest` gains a **Validation Response** region
+- Domain enums: add **Cases** pipe sections (`AuthAuditEvent`, `MfaMethod`, `RoleName`,
+  `WebhookEvent`, and related enums)
+- `RevokeApiClientAction` and `LogoutUserAction` wrap token and credential mutations in
+  database transactions
+- `scripts/pen-test-auth.sh` aligns with bash scripting standards (`set -euo pipefail`,
+  repo-root resolution, Setup/Helpers/Work/Summary dividers, ShellCheck-clean); fixes the
+  section 35 headline that executed `session_version` via backticks
+
+### Fixed
+
+- `AuthenticateClientCredentialsAction` rejects client-credentials exchange when the linked
+  service User is missing (including soft-deleted accounts behind `withDefault()` placeholders)
+  with the generic invalid-credentials response instead of attempting token issuance
+
+### Added
+
+- Unit coverage for missing, soft-deleted, and suspended service Users in
+  `AuthenticateClientCredentialsActionTest`; pen-test section 26 probes soft-deleted
+  service accounts on `POST /api/oauth/token`
+
 ## [1.14.2] - 2026-09-11
 
 ### Changed
@@ -506,7 +538,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.2...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.3...HEAD
+[1.14.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.2...v1.14.3
 [1.14.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.1...v1.14.2
 [1.14.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...v1.14.1
 [1.14.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.13.0...v1.14.0

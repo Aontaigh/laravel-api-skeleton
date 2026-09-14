@@ -31,6 +31,12 @@ final class ShowHealthRequest extends ApiFormRequest
         return true;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Rules
+    |--------------------------------------------------------------------------
+    */
+
     /**
      * Get the validation rules that apply to the request.
      *

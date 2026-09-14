@@ -29,17 +29,19 @@
 # headlines, no trailing full stop; detail after a colon when needed. API message
 # assertions use the canonical ApiResponse / ApiExceptionRenderer strings from
 # php-validation-responses.
-set -uo pipefail
-set -o errtrace
+set -euo pipefail
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+cd "$REPO_ROOT"
+
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
 
 # Canonical API envelope messages (ApiExceptionRenderer / ApiResponse).
-MSG_UNAUTHENTICATED='Unauthenticated'
-MSG_FORBIDDEN='Forbidden'
-MSG_NOT_FOUND='Resource Not Found'
-MSG_VALIDATION_FAILED='Validation Failed'
 MSG_TOO_MANY_REQUESTS='Too Many Requests'
 MSG_SERVER_ERROR='Server Error'
-MSG_BAD_REQUEST='Bad Request'
 MSG_INVALID_CREDENTIALS='Invalid Credentials'
 MSG_ACCOUNT_SUSPENDED='Account Suspended'
 
@@ -56,6 +58,10 @@ STRONG_PASS='Xq7#mK2vL9pTzW4Q'
 PASS_COUNT=0
 FAIL_COUNT=0
 WARN_COUNT=0
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
 
 cleanup() {
     rm -f "$COOKIE_JAR" "$BODY_FILE"
@@ -458,6 +464,10 @@ stateful_login() {
 
     json_path 'data.plain_text_token'
 }
+
+# ---------------------------------------------------------------------------
+# Work
+# ---------------------------------------------------------------------------
 
 echo "=== Auth Pen Test (adversarial) ==="
 echo "Base: $BASE"
@@ -1017,6 +1027,38 @@ else
     warn "Suspended OAuth Client" "Could Not Create Suspended Client"
 fi
 
+SOFT_DELETED_OAUTH_SECRET="SoftDeletedOAuth12"
+SOFT_DELETED_CLIENT_ID="$(artisan_tinker "
+\$plain='${SOFT_DELETED_OAUTH_SECRET}';
+\$client=App\\Models\\ApiClient::factory()->create(['client_secret'=>Illuminate\\Support\\Facades\\Hash::make(\$plain)]);
+\$client->user->delete();
+echo \$client->client_id;
+")"
+if [[ -n "$SOFT_DELETED_CLIENT_ID" ]]; then
+    reset_rate_limits
+    post_json "$BASE/oauth/token" -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${SOFT_DELETED_CLIENT_ID}\",\"client_secret\":\"${SOFT_DELETED_OAUTH_SECRET}\"}"
+    if [[ "$(json_status)" == "422" ]]; then
+        SOFT_OAUTH_MSG="$(python3 -c "
+import json
+try:
+    d=json.load(open('$BODY_FILE'))
+    errs=d.get('meta',{}).get('errors',{}).get('client_id',[])
+    print(errs[0] if errs else '')
+except Exception:
+    print('')
+" 2>/dev/null || echo "")"
+        if [[ "$SOFT_OAUTH_MSG" == "$MSG_INVALID_CREDENTIALS" ]]; then
+            pass "Soft-deleted service user cannot exchange OAuth token (422)"
+        else
+            fail "Soft-deleted Service OAuth Message Leak: '${SOFT_OAUTH_MSG}'"
+        fi
+    else
+        fail "Soft-deleted Service User OAuth Returned $(json_status)"
+    fi
+else
+    warn "Soft-deleted OAuth Client" "Could Not Create Soft-deleted Client"
+fi
+
 OAUTH_LIMITED=0
 for _ in $(seq 1 15); do
     code=$(post_json_status "$BASE/oauth/token" -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"wrong"}')
@@ -1115,9 +1157,9 @@ for legacy in \
     "$BASE/two-factor/status"; do
     code=$(post_json_status "$legacy" -d '{"email":"admin@example.com","password":"password"}')
     if [[ "$code" == "404" || "$code" == "405" ]]; then
-        pass "Legacy path gone: ${legacy#$BASE} ($code)"
+        pass "Legacy path gone: ${legacy#"$BASE"} ($code)"
     else
-        fail "Legacy Path Still Reachable: ${legacy#$BASE} ($code)"
+        fail "Legacy Path Still Reachable: ${legacy#"$BASE"} ($code)"
     fi
 done
 
@@ -1359,7 +1401,7 @@ if [[ -n "$USER_SCOPE_TOKEN" ]]; then
 fi
 
 # --- 35. Stale session_version after force-logout ---
-echo "--- 35. Stale `session_version` Gate ---"
+echo "--- 35. Stale session_version Gate ---"
 reset_rate_limits
 STALE_EMAIL="session-stale-${RANDOM}@example.com"
 STALE_TOKEN="$(register_and_login_token "$STALE_EMAIL" "$STRONG_PASS" "Stale")"
@@ -1995,8 +2037,6 @@ ROT_ADMIN_TOKEN="$(login_token admin@example.com password)"
 if [[ -z "$ROT_ADMIN_TOKEN" ]]; then
     fail "Could Not Obtain Admin Token for Rotation Probes"
 else
-    ROT_CLIENT_ID="$(artisan_tinker "\$c=App\\Models\\ApiClient::factory()->create(['client_secret'=>Illuminate\\Support\\Facades\\Hash::make('PenRotatingSecret1')]); echo \$c->client_id;")"
-
     code=$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
         -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"DemoClientSecret12"}')
     expect_code "Pre-rotation exchange works" "200" "$code"
@@ -2029,6 +2069,10 @@ else
     code=$(status_code -X POST "$BASE/clients/1/rotate-secret" -H "Accept: application/json")
     expect_code "Unauthenticated rotation rejected" "401" "$code"
 fi
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
 
 echo ""
 echo ""

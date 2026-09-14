@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\ApiClients;
 
 use App\Models\ApiClient;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Deactivates an API client and revokes every token on its service User.
@@ -28,10 +29,12 @@ final class RevokeApiClientAction
      */
     public function execute(ApiClient $client): void
     {
-        $client->forceFill([
-            'is_active' => false,
-        ])->save();
+        DB::transaction(function () use ($client): void {
+            $client->forceFill([
+                'is_active' => false,
+            ])->save();
 
-        $client->user->tokens()->delete();
+            $client->user->tokens()->delete();
+        });
     }
 }
