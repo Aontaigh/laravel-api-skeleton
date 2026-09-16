@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.2] - 2026-09-16
+
+### Changed
+
+- Bump development dependencies: `laravel/pint` to 1.31.0, `larastan/larastan` to 3.11.0, and `laravel/pao` to 1.1.5
+
 ## [1.15.1] - 2026-09-16
 
 ### Fixed
@@ -570,7 +576,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.2...HEAD
+[1.15.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.1...v1.15.2
 [1.15.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.3...v1.15.0
 [1.14.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.2...v1.14.3
