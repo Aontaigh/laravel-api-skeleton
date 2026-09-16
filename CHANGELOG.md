@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.0] - 2026-09-16
+
+### Added
+
+- `PasswordByteLength` validation rule rejects passwords longer than bcrypt's 72-byte limit on registration, password reset, user creation, and password change
+- `actor_user_id` on `auth_audit_logs` records the authenticated actor behind a privileged action (admin force-logout, session revocation), so the actor is answerable from the table alone
+- `AuthTimingHash` resolves the login timing-normalisation hash lazily and memoises it, so an unset value is no longer hashed at boot
+- `PresentingToken` distinguishes a persisted Personal Access Token from a cookie-session credential
+- `RequestId::current()` memoises the correlation ID per request so the response header, logs, and audit rows all join on one value
+
+### Changed
+
+- Force-logout revokes credentials before recording the audit row and attributes the acting admin
+- Soft-delete revokes tokens and web sessions inside the deletion transaction
+- Store-token audit dispatch is wrapped so a queued-listener failure cannot abort the one-time token response
+- `AuthenticateUserAction` and `AuthenticateClientCredentialsAction` read the timing hash through `AuthTimingHash`
+- `scripts/pen-test-auth.sh`, `scripts/semgrep.sh`, and `scripts/verify-openapi-examples.sh` follow the bash scripting standards; Semgrep scans the Laravel ruleset plus the shared custom rules
+
+### Fixed
+
+- Session versioning is enforced on a cookie session that also presents an `Authorization` header; a superseded session could previously skip the stamp check
+- Session cookies default to `Secure` and `SESSION_DOMAIN` to null
+- Fail-closed session rotation skips a keyless `withDefault()` owner instead of issuing an unscoped `UPDATE` across every User row
+- A scoped Personal Access Token can no longer mint a broader token through `POST /tokens`
+- Force-logout `ids` are validated as strict integers and rejected with a per-index message
+
 ## [1.14.3] - 2026-09-14
 
 ### Changed
@@ -538,7 +564,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.3...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.0...HEAD
+[1.15.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.3...v1.15.0
 [1.14.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.2...v1.14.3
 [1.14.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.1...v1.14.2
 [1.14.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...v1.14.1

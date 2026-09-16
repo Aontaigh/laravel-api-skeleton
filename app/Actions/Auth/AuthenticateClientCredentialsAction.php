@@ -7,6 +7,7 @@ namespace App\Actions\Auth;
 use App\DataTransferObjects\Auth\ClientCredentialsData;
 use App\Models\ApiClient;
 use App\Models\User;
+use App\Support\AuthTimingHash;
 use Closure;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
@@ -129,6 +130,6 @@ final class AuthenticateClientCredentialsAction
      */
     private function timingNormalisationHash(): string
     {
-        return config()->string('api.auth_timing_normalisation_hash');
+        return AuthTimingHash::value();
     }
 }

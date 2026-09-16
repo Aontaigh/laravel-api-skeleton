@@ -63,6 +63,14 @@ final class LogoutUserAction
 
         $this->revokeAllWebSessions->execute($user);
 
+        /*
+         * Best-effort cleanup of database-driver session rows. `sessions` is
+         * only meaningful under the `database` driver, but deleting is safe in
+         * every environment that seeds the table (tests do); environments
+         * without the table surface a QueryException from the delete, which
+         * the revocation order below tolerates - tokens and the session
+         * version are already rotated before this runs.
+         */
         DB::table(config()->string('session.table'))
             ->where('user_id', $user->id)
             ->delete();

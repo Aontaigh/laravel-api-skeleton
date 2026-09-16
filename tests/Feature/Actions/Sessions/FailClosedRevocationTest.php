@@ -241,4 +241,41 @@ final class FailClosedRevocationTest extends TestCase
          */
         $this->assertSessionVersion($user, $versionBefore + 1);
     }
+
+    /**
+     * Refuse to bump anything when the registry row's owner is orphaned.
+     *
+     * An owner resolved through `belongsTo(...)->withDefault()` is a keyless
+     * default User (`exists === false`); `rotateSessions()` on it would run an
+     * unscoped query-builder update stamping every user row - a fleet-wide
+     * logout.
+     */
+    #[Test]
+    public function it_refuses_the_fallback_for_an_orphaned_registry_owner(): void
+    {
+        // Arrange
+
+        /*
+         * Simulate the orphan: a User model with no key that never existed.
+         */
+        $orphan = new User;
+        self::assertFalse($orphan->exists);
+
+        /** @var int $versionBefore */
+        $versionBefore = User::query()->max('session_version') ?? 0;
+
+        $action = $this->app->make(InvalidateStoredSessionAction::class);
+
+        // Act
+
+        $action->failClosed($orphan);
+
+        // Assert
+
+        /*
+         * No user row may be stamped: the highest version is unchanged.
+         */
+        $highestAfter = User::query()->max('session_version') ?? 0;
+        $this->assertSame($versionBefore, $highestAfter);
+    }
 }

@@ -289,6 +289,61 @@ final class StoreTokenControllerTest extends TestCase
     }
 
     /**
+     * Deny a scoped Personal Access Token minting a broader one.
+     *
+     * The new token defaults to a wildcard ability set, so a scoped token
+     * admitted to this endpoint would escalate out of its own scope.
+     */
+    #[Test]
+    public function it_denies_a_scoped_token_from_minting_a_token(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        $scoped = $viewer->createToken('scoped', ['users.list']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this
+            ->withToken($scoped->plainTextToken)
+            ->postJson('/api/tokens', ['name' => 'Escalated Token']);
+
+        // Assert
+
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Escalated Token']);
+    }
+
+    /**
+     * Allow an unrestricted Personal Access Token to mint a new one.
+     */
+    #[Test]
+    public function it_allows_an_unrestricted_token_to_mint_a_token(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        $unrestricted = $viewer->createToken('unrestricted', ['*']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this
+            ->withToken($unrestricted->plainTextToken)
+            ->postJson('/api/tokens', ['name' => 'Minted Token']);
+
+        // Assert
+
+        $response->assertCreated();
+        $this->assertDatabaseHas('personal_access_tokens', ['name' => 'Minted Token']);
+    }
+
+    /**
      * Deny unauthenticated requests.
      */
     #[Test]

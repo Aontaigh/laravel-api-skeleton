@@ -106,6 +106,17 @@ final class InvalidateStoredSessionAction
      */
     public function failClosed(User $user): void
     {
+        /*
+         * An orphaned registry row resolves its owner to a keyless default
+         * User (`belongsTo(...)->withDefault()`). `rotateSessions()` on an
+         * unsaved model runs an unscoped query-builder update, which would
+         * bump `session_version` for every user row and log out the whole
+         * system.
+         */
+        if (! $user->exists) {
+            return;
+        }
+
         $user->rotateSessions();
 
         $actorId = Auth::id();

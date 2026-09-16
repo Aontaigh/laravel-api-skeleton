@@ -51,17 +51,19 @@ final class DestroySessionController
         $action->execute($webSession, $request);
 
         /*
-         * The row carries the session owner, matching force-logout: an Admin
-         * revoking a foreign session is attributed to the affected account,
-         * with the actor recoverable from the recorded IP and user agent.
-         * The e-mail is read with a direct query so serialising the row never
-         * triggers a lazy load under `preventLazyLoading()`.
+         * The row carries the session owner as `user_id`, matching force-logout.
+         * When an admin revokes a foreign session, `actor_user_id` names the
+         * administrator who performed it, so "which admin revoked that
+         * session?" is answerable from the audit table alone. The e-mail is
+         * read with a direct query so serialising the row never triggers a
+         * lazy load under `preventLazyLoading()`.
          */
         $ownerEmail = User::query()->whereKey($webSession->user_id)->value('email');
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::SessionRevoked,
             userId: $webSession->user_id,
+            actorUserId: $request->user()?->id,
             email: is_string($ownerEmail) ? $ownerEmail : null,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),

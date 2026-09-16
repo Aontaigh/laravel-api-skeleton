@@ -7,6 +7,7 @@ namespace App\Http\Requests\Tokens;
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\ResolvesAuthenticatedViewer;
 use App\Http\Requests\Concerns\Tokens\ValidatesTokenPayload;
+use App\Support\PresentingToken;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
@@ -32,11 +33,24 @@ final class StoreTokenRequest extends ApiFormRequest
     /**
      * Determine whether the User is authorised to make this request.
      *
+     * A scoped Personal Access Token must not be able to mint a broader one:
+     * the new token defaults to a wildcard ability set, so allowing a scoped
+     * token through this endpoint would let it escalate out of its own scope.
+     * Cookie and unrestricted (`['*']`) callers are unaffected.
+     *
      * @return bool true when the User may create their own Token
      */
     public function authorize(): bool
     {
-        return $this->user()?->can('create', PersonalAccessToken::class) === true;
+        $user = $this->user();
+
+        if ($user?->can('create', PersonalAccessToken::class) !== true) {
+            return false;
+        }
+
+        $presenting = $user->currentAccessToken();
+
+        return ! PresentingToken::isPersonalAccessToken($presenting) || $presenting->can('*');
     }
 
     /*

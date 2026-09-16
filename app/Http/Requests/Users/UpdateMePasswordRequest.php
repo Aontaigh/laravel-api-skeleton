@@ -6,6 +6,7 @@ namespace App\Http\Requests\Users;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Models\User;
+use App\Rules\PasswordByteLength;
 use App\Support\Auth\PasswordMaxLength;
 use Illuminate\Validation\Rules\Password;
 
@@ -59,8 +60,8 @@ final class UpdateMePasswordRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'current_password' => ['bail', 'required', 'string', PasswordMaxLength::rule()],
-            'password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), 'confirmed', 'different:current_password', Password::defaults()],
+            'current_password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), new PasswordByteLength],
+            'password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), 'confirmed', 'different:current_password', new PasswordByteLength, Password::defaults()],
             'password_confirmation' => ['required', 'string', PasswordMaxLength::rule()],
         ];
     }

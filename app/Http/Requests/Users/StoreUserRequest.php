@@ -9,6 +9,7 @@ use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesPlainTextAndEmail;
 use App\Models\User;
 use App\Rules\E164PhoneNumber;
+use App\Rules\PasswordByteLength;
 use App\Support\Auth\EmailMaxLength;
 use App\Support\Auth\PasswordMaxLength;
 use Illuminate\Validation\Rule;
@@ -59,7 +60,7 @@ final class StoreUserRequest extends ApiFormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', EmailMaxLength::rule(), 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            'password' => ['required', 'string', 'confirmed', new PasswordByteLength, Password::defaults()],
             'role' => ['sometimes', 'string', Rule::in(RoleName::Admin->value, RoleName::Manager->value, RoleName::User->value)],
             'team_id' => ['sometimes', 'integer', Rule::exists('teams', 'id')],
             'phone' => ['sometimes', 'nullable', 'string', 'max:32', new E164PhoneNumber],

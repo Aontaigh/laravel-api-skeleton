@@ -14,6 +14,7 @@ use App\Http\Resources\PersonalAccessTokenResource;
 use App\Support\ApiResponse;
 use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
+use Throwable;
 
 /**
  * Issues a new Personal Access Token for the authenticated User.
@@ -65,15 +66,27 @@ final class StoreTokenController
 
         $viewer = $request->viewer();
 
-        AuthEventOccurred::dispatch(new RecordAuthAuditData(
-            event: AuthAuditEvent::TokenCreated,
-            userId: $viewer->id,
-            email: $viewer->email,
-            personalAccessTokenId: $newToken->accessToken->id,
-            ipAddress: $request->ip(),
-            userAgent: $request->userAgent(),
-            requestId: RequestId::current($request),
-        ));
+        /*
+         * Audit dispatch is wrapped so a listener failure cannot abort the 201:
+         * `RecordAuthAuditLog` is queued, and an error while submitting the
+         * queued listener would otherwise return an error response while the
+         * persisted token stays active and the client never receives the
+         * one-time `plain_text_token`. Losing an audit row is recoverable;
+         * losing the only plaintext delivery is not.
+         */
+        try {
+            AuthEventOccurred::dispatch(new RecordAuthAuditData(
+                event: AuthAuditEvent::TokenCreated,
+                userId: $viewer->id,
+                email: $viewer->email,
+                personalAccessTokenId: $newToken->accessToken->id,
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
+            ));
+        } catch (Throwable $exception) {
+            report($exception);
+        }
 
         /*
         |--------------------------------------------------------------------------

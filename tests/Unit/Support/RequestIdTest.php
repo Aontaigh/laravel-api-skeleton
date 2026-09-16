@@ -110,6 +110,51 @@ final class RequestIdTest extends UnitTestCase
     }
 
     /**
+     * Return the same ID on every read within one request.
+     *
+     * Multiple callers read the correlation ID per request (an audit event and
+     * the response header, say); a second generate would leave logs and audit
+     * rows unjoinable.
+     */
+    #[Test]
+    public function it_caches_the_resolved_id_for_the_request(): void
+    {
+        // Arrange
+
+        $request = Request::create('/');
+
+        // Act
+
+        $first = RequestId::current($request);
+        $second = RequestId::current($request);
+
+        // Assert
+
+        $this->assertSame($first, $second);
+    }
+
+    /**
+     * Honour a caller-supplied ID consistently across repeated reads too.
+     */
+    #[Test]
+    public function it_caches_a_supplied_id_for_the_request(): void
+    {
+        // Arrange
+
+        $request = Request::create('/', server: ['HTTP_X_REQUEST_ID' => 'req-abc_123.~']);
+
+        // Act
+
+        $first = RequestId::current($request);
+        $second = RequestId::current($request);
+
+        // Assert
+
+        $this->assertSame('req-abc_123.~', $first);
+        $this->assertSame($first, $second);
+    }
+
+    /**
      * Judge ID safety for headers, logs, and columns.
      *
      * @param string $value    the candidate ID

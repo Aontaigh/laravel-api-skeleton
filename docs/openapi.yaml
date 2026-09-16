@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.14.3
+  version: 1.15.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -3001,6 +3001,7 @@ components:
         data:
           - id: 23
             user_id: 1
+            actor_user_id: null
             event: Login
             email: admin@example.com
             ip_address: 127.0.0.1
@@ -3477,7 +3478,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.14.3
+          version: 1.15.0
         meta: {}
 
     HealthUnavailable:
@@ -4031,9 +4032,10 @@ components:
         type: string
         example: id,event,email,created_at
       description: |
-        Sparse Fieldset for Auth Audit Log Columns. Allowed: `id`, `user_id`, `event`,
-        `email`, `ip_address`, `user_agent`, `location_city`, `location_country`,
-        `personal_access_token_id`, `api_client_id`, `remember_me`, `created_at`.
+        Sparse Fieldset for Auth Audit Log Columns. Allowed: `id`, `user_id`,
+        `actor_user_id`, `event`, `email`, `ip_address`, `user_agent`,
+        `location_city`, `location_country`, `personal_access_token_id`,
+        `api_client_id`, `remember_me`, `created_at`.
 
   schemas:
     SuccessEnvelope:
@@ -4158,7 +4160,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.14.3
+          example: 1.15.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -4501,6 +4503,11 @@ components:
           oneOf:
             - type: integer
             - type: 'null'
+        actor_user_id:
+          oneOf:
+            - type: integer
+            - type: 'null'
+          description: The authenticated actor who performed a privileged action, set when it differs from the affected `user_id`
         event:
           type: string
         email:

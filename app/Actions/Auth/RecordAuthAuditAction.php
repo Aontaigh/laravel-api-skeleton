@@ -52,6 +52,7 @@ final class RecordAuthAuditAction
         /** @var AuthAuditLog $log */
         $log = AuthAuditLog::query()->create([
             'user_id' => $data->userId,
+            'actor_user_id' => $data->actorUserId,
             'event' => $data->event,
             'email' => $data->email,
             'ip_address' => $data->ipAddress,

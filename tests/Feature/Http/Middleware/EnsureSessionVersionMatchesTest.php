@@ -243,6 +243,37 @@ final class EnsureSessionVersionMatchesTest extends TestCase
     }
 
     /**
+     * Gate a cookie session even when the caller sends a bogus Authorization
+     * header. Sanctum still authenticates the cookie session - an arbitrary
+     * Bearer value does not make the caller stateless, so a superseded session
+     * must not escape the stamp comparison by attaching any header.
+     */
+    #[Test]
+    public function it_gates_a_cookie_session_that_sends_a_bogus_bearer_header(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->admin()->create();
+
+        $user->rotateSessions();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this
+            ->actingAs($user)
+            ->withHeader('Origin', config()->string('app.url'))
+            ->withHeader('Authorization', 'Bearer forged-token-value')
+            ->getJson('/api/users');
+
+        // Assert
+
+        /* The stale session is turned away despite the Bearer header. */
+        $response->assertUnauthorized();
+    }
+
+    /**
      * Leave Bearer-token callers untouched even when a stateful Origin binds a session.
      */
     #[Test]

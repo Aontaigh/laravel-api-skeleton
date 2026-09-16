@@ -6,6 +6,7 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesAuthCredentials;
+use App\Rules\PasswordByteLength;
 use App\Support\Auth\EmailMaxLength;
 use App\Support\Auth\PasswordMaxLength;
 use App\Support\Auth\PasswordResetTokenMaxLength;
@@ -61,7 +62,7 @@ final class ResetPasswordRequest extends ApiFormRequest
         return [
             'token' => ['required', 'string', PasswordResetTokenMaxLength::rule()],
             'email' => ['required', 'string', 'email', EmailMaxLength::rule()],
-            'password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), Password::defaults()],
+            'password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), new PasswordByteLength, Password::defaults()],
         ];
     }
 

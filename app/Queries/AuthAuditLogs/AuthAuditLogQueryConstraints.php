@@ -53,6 +53,7 @@ final class AuthAuditLogQueryConstraints
     public const ALLOWED_FIELDS = [
         'id',
         'user_id',
+        'actor_user_id',
         'event',
         'email',
         'ip_address',

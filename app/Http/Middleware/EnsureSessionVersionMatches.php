@@ -6,6 +6,7 @@ namespace App\Http\Middleware;
 
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\PresentingToken;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -37,11 +38,6 @@ final class EnsureSessionVersionMatches
      * Written at the privilege boundary (login, remember-me restore) and read
      * here on every authenticated cookie request; shared with the fail-closed
      * restamp in InvalidateStoredSessionAction so both sides cannot drift.
-    /**
-     * Session-payload key holding the User's stamped `session_version`.
-     * Written at the privilege boundary (login, remember-me restore) and read
-     * here on every authenticated cookie request; shared with the fail-closed
-     * restamp in InvalidateStoredSessionAction so both sides cannot drift.
      */
     public const string SESSION_KEY = 'session_version';
 
@@ -70,10 +66,16 @@ final class EnsureSessionVersionMatches
         }
 
         /*
-         * A stateful Origin can bind a session even when the caller authenticated
-         * with a Bearer token. Session versioning only applies to cookie sessions.
+         * Session versioning only applies to cookie sessions. Branch on the
+         * resolved identity, not the raw Authorization header: Sanctum still
+         * authenticates a cookie session when an arbitrary Bearer value is
+         * present, so a bare header check would let a superseded session
+         * escape the stamp comparison by sending `Authorization: Bearer x`
+         * with its cookies. Only a persisted Personal Access Token marks a
+         * stateless caller - a session user carries a TransientToken, which
+         * must still face the stamp check.
          */
-        if ($request->bearerToken() !== null) {
+        if (PresentingToken::isPersonalAccessToken($user->currentAccessToken())) {
             return $next($request);
         }
 

@@ -22,7 +22,8 @@ final readonly class RecordAuthAuditData
      * Create a new RecordAuthAuditData value object.
      *
      * @param AuthAuditEvent $event                 the authentication event type
-     * @param int|null       $userId                the authenticated User ID when known
+     * @param int|null       $userId                the affected User ID when known (session owner, suspended account)
+     * @param int|null       $actorUserId           the authenticated actor performing a privileged action when they differ
      * @param string|null    $email                 the email address attempted or used
      * @param string|null    $ipAddress             the client IP address
      * @param string|null    $userAgent             the client user agent
@@ -36,6 +37,7 @@ final readonly class RecordAuthAuditData
     public function __construct(
         public AuthAuditEvent $event,
         public ?int $userId = null,
+        public ?int $actorUserId = null,
         public ?string $email = null,
         public ?string $ipAddress = null,
         public ?string $userAgent = null,
@@ -68,6 +70,7 @@ final readonly class RecordAuthAuditData
         return new self(
             event: $this->event,
             userId: $this->userId,
+            actorUserId: $this->actorUserId,
             email: $this->email,
             ipAddress: $this->ipAddress,
             userAgent: $this->userAgent,

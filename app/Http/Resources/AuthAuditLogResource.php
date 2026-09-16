@@ -48,6 +48,10 @@ final class AuthAuditLogResource extends JsonResource
                 'user_id',
                 fn (): ?int => $this->resource->user_id,
             ),
+            'actor_user_id' => $this->whenAttributeSelected(
+                'actor_user_id',
+                fn (): ?int => $this->resource->actor_user_id,
+            ),
             'event' => $this->whenAttributeSelected(
                 'event',
                 fn (): string => $this->resource->event->value,

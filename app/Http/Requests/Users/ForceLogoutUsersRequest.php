@@ -67,7 +67,7 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
     {
         return [
             'ids' => ['required', 'array', 'min:1', 'max:'.self::MAX_USER_IDS],
-            'ids.*' => ['integer', 'distinct'],
+            'ids.*' => ['required', 'integer', 'distinct'],
         ];
     }
 
@@ -78,7 +78,11 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
     */
 
     /**
-     * Reject IDs that do not exist on a non-service account, including soft-deleted rows.
+     * Reject non-integer IDs and IDs that do not exist on a non-service account.
+     *
+     * `integer` also accepts numeric strings, so enforce the real type here -
+     * a silent `continue` would drop the value from the existence check and
+     * let it slip through as an unvalidated ID.
      *
      * @param  Validator $validator the validator under extension
      * @return void
@@ -100,10 +104,13 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
             /** @var array<int, int> $idsByIndex */
             $idsByIndex = [];
 
-            foreach (array_keys($rawIds) as $index) {
-                $value = $rawIds[$index];
-
+            foreach ($rawIds as $index => $value) {
                 if (! is_int($value)) {
+                    $check->errors()->add(
+                        "ids.{$index}",
+                        "The selected ids.{$index} is invalid.",
+                    );
+
                     continue;
                 }
 

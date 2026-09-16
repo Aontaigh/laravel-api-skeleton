@@ -61,16 +61,27 @@ final class ForceLogoutUsersAction
             ->get();
 
         foreach ($users as $user) {
+            /*
+             * Revoke first, then audit: recording ForcedLogout before the
+             * credentials are gone would report success even if logout threw.
+             */
+            $this->logoutUser->execute($user);
+
+            /*
+             * The acting admin is recorded in `actor_user_id` (they differ from
+             * `user_id`, the forced-out account), so "which admin revoked that
+             * session?" is answerable from the audit table alone.
+             */
             $this->audit->execute(new RecordAuthAuditData(
                 event: AuthAuditEvent::ForcedLogout,
                 userId: $user->id,
+                actorUserId: $request->user()?->id,
                 email: $user->email,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
                 requestId: RequestId::current($request),
             ));
 
-            $this->logoutUser->execute($user);
             $loggedOutIds[] = $user->id;
         }
 

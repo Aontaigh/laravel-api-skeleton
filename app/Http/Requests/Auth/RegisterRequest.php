@@ -6,6 +6,7 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesAuthCredentials;
+use App\Rules\PasswordByteLength;
 use App\Support\Auth\EmailMaxLength;
 use App\Support\Auth\PasswordMaxLength;
 use Illuminate\Validation\Rules\Password;
@@ -55,7 +56,7 @@ final class RegisterRequest extends ApiFormRequest
         return [
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', EmailMaxLength::rule(), 'unique:users,email'],
-            'password' => ['required', 'string', 'confirmed', Password::defaults()],
+            'password' => ['required', 'string', 'confirmed', Password::defaults(), new PasswordByteLength],
             'device_name' => ['sometimes', 'string', 'max:255'],
         ];
     }

@@ -456,6 +456,14 @@ final class ForceLogoutUsersControllerTest extends TestCase
                 ['ids' => ['abc']],
                 'ids.0',
             ],
+            'numeric string id' => [
+                ['ids' => ['5']],
+                'ids.0',
+            ],
+            'null id element' => [
+                ['ids' => [null]],
+                'ids.0',
+            ],
         ];
     }
 }

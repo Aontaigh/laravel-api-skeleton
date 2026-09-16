@@ -37,6 +37,7 @@ final class AuthAuditLogFactory extends Factory
     {
         return [
             'user_id' => null,
+            'actor_user_id' => null,
             'event' => AuthAuditEvent::Login,
             'email' => fake()->unique()->safeEmail(),
             'ip_address' => fake()->ipv4(),

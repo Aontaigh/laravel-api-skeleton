@@ -1,14 +1,29 @@
 #!/bin/bash
+#
 # Verify OpenAPI component examples match live API response shape and envelope fields.
-# Local: Sail + seeded DB (default), or `php artisan serve` with OPENAPI_VERIFY_BASE.
-# CI: sets ARTISAN_CMD=php artisan and OPENAPI_VERIFY_BASE=http://127.0.0.1:8000/api.
+#
+# Local: Sail and a seeded database (default), or `php artisan serve` with
+# `OPENAPI_VERIFY_BASE`.
+#
+# Usage:
+#   scripts/verify-openapi-examples.sh
+#
+# Environment:
+#   ARTISAN_CMD          artisan invocation override (default: Sail, then php)
+#   OPENAPI_VERIFY_BASE  API base URL (default: http://localhost/api)
+#   PHP_BIN              PHP binary for the helper scripts (default: php)
 #
 # Diagnostic copy follows php-quality (CLI and Diagnostic Errors): Title Case
 # headlines, no trailing full stop; detail after a colon when needed.
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT"
+# ---------------------------------------------------------------------------
+# Setup
+# ---------------------------------------------------------------------------
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
+cd "${REPO_ROOT}"
 
 if [[ -n "${ARTISAN_CMD:-}" ]]; then
     :
@@ -21,33 +36,27 @@ fi
 BASE="${OPENAPI_VERIFY_BASE:-http://localhost/api}"
 PHP_BIN="${PHP_BIN:-php}"
 
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+# openapi_example <component> : print the named OpenAPI example as JSON
 openapi_example() {
-    "$PHP_BIN" "$ROOT/scripts/openapi-example-json.php" "$1"
+    "$PHP_BIN" "${REPO_ROOT}/scripts/openapi-example-json.php" "$1"
 }
 
+# merge_created_token <example-json> <response-json> : overlay the response's one-time token onto the example
 merge_created_token() {
-    "$PHP_BIN" "$ROOT/scripts/openapi-merge-created-token.php" "$1" "$2"
+    "$PHP_BIN" "${REPO_ROOT}/scripts/openapi-merge-created-token.php" "$1" "$2"
 }
 
+# artisan <args...> : run artisan through the resolved invocation
 artisan() {
     # shellcheck disable=SC2086
     $ARTISAN_CMD "$@"
 }
 
-ADMIN_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
-TEST_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'test@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
-
-# The ClientShowSuccess example documents a never-used client. Anything that
-# ran earlier (pen test, manual exchanges) stamps `last_used_at`, so reset it
-# here: this gate verifies example shape, and must not depend on which gates
-# ran before it.
-artisan tinker --execute="App\\Models\\ApiClient::query()->update(['last_used_at' => null]);" >/dev/null 2>&1
-
-# Rate-limit budgets (token creation, registration) are per-minute buckets
-# that earlier runs may have exhausted. A clean cache makes this gate
-# order-independent for the same reason as the `last_used_at` reset above.
-artisan cache:clear >/dev/null 2>&1
-
+# api <method> <path> [token] [body] : call the API with a Sanctum bearer token
 api() {
     local method="$1" path="$2" token="${3:-$ADMIN_TOKEN}" body="${4:-}"
     if [[ -n "$body" ]]; then
@@ -57,15 +66,17 @@ api() {
     fi
 }
 
+# check <name> <example-json> <response-json> : compare an example against a live envelope
 check() {
-    "$PHP_BIN" "$ROOT/scripts/openapi-compare-envelope.php" "$1" "$2" "$3"
+    "$PHP_BIN" "${REPO_ROOT}/scripts/openapi-compare-envelope.php" "$1" "$2" "$3"
 }
 
+# verify_two_factor_status_success : log in an MFA User and compare the pending status envelope
 verify_two_factor_status_success() {
     local mfa_email mfa_login mfa_token response
 
-  # Seed the User in the shared database, then log in over HTTP so the pending
-  # challenge lands in the API server's cache (CI uses CACHE_STORE=array).
+    # Seed the User in the shared database, then log in over HTTP so the pending
+    # challenge lands in the API server's cache (CI uses CACHE_STORE=array).
     mfa_email="$(artisan tinker --execute="echo App\\Models\\User::factory()->create(['email' => 'mfa-status-'.uniqid().'@example.com', 'mfa_method' => App\\Enums\\MfaMethod::Email])->email;" 2>/dev/null | tail -1)"
 
     mfa_login="$(curl -s -X POST -H "Content-Type: application/json" \
@@ -84,6 +95,24 @@ verify_two_factor_status_success() {
 
     check TwoFactorStatusSuccess "$(openapi_example TwoFactorStatusSuccess)" "$response"
 }
+
+# ---------------------------------------------------------------------------
+# Work
+# ---------------------------------------------------------------------------
+
+ADMIN_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
+TEST_TOKEN="$(artisan tinker --execute="echo App\Models\User::where('email', 'test@example.com')->first()->createToken('verify-examples')->plainTextToken;" 2>/dev/null | tail -1)"
+
+# The ClientShowSuccess example documents a never-used client. Anything that
+# ran earlier (pen test, manual exchanges) stamps `last_used_at`, so reset it
+# here: this gate verifies example shape, and must not depend on which gates
+# ran before it.
+artisan tinker --execute="App\\Models\\ApiClient::query()->update(['last_used_at' => null]);" >/dev/null 2>&1
+
+# Rate-limit budgets (token creation, registration) are per-minute buckets
+# that earlier runs may have exhausted. A clean cache makes this gate
+# order-independent for the same reason as the `last_used_at` reset above.
+artisan cache:clear >/dev/null 2>&1
 
 # Success envelopes
 check UsersIndexSuccess "$(openapi_example UsersIndexSuccess)" \
@@ -221,5 +250,9 @@ check TokenRevokeSuccess "$(openapi_example TokenRevokeSuccess)" \
   "$(api DELETE "/tokens/${REVOKE_ID}")"
 
 verify_two_factor_status_success
+
+# ---------------------------------------------------------------------------
+# Summary
+# ---------------------------------------------------------------------------
 
 echo "All OpenAPI Examples Verified"

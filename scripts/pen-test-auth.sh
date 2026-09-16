@@ -98,7 +98,18 @@ artisan_tinker() {
 }
 
 status_code() {
-    curl --globoff -s -o "$BODY_FILE" -w '%{http_code}' "$@"
+    local code
+    # curl prints `000` on transport failures (connection refused, timeout) but
+    # writes nothing at all for a malformed or empty URL. Both mean "no HTTP
+    # response", and curl's non-zero exit must never abort the run under
+    # `set -e`: the probe's own comparison records the FAIL instead.
+    code=$(curl --globoff -s -o "$BODY_FILE" -w '%{http_code}' "$@" || true)
+
+    if [[ -z "$code" ]]; then
+        code="000"
+    fi
+
+    printf '%s' "$code"
 }
 
 post_json() {
@@ -1719,7 +1730,10 @@ echo "--- 43. Email Verification: Foreign Mailbox Hash ---"
 reset_rate_limits
 FORGED_URL=$(artisan_tinker "echo URL::temporarySignedRoute('email.verification.verify', now()->addMinutes(60), ['id' => ${VERIF_ID}, 'hash' => sha1('attacker@example.com')]);")
 FORGED_CODE=$(status_code "$FORGED_URL")
-FORGED_LOC=$(curl -s -o /dev/null -w '%{redirect_url}' "$FORGED_URL")
+# A bare curl here would abort the run under `set -e` when the URL is
+# unreachable (curl exit 7); the redirect location is only needed when the
+# status is 302, so degrade to an empty value on transport failures.
+FORGED_LOC=$(curl -s -o /dev/null -w '%{redirect_url}' "$FORGED_URL" || true)
 if [[ "$FORGED_CODE" == "302" && "$FORGED_LOC" == *"verified=0"* ]]; then
     pass "Foreign mailbox hash answered verified=0 (generic failure)"
 else
@@ -2068,6 +2082,17 @@ else
 
     code=$(status_code -X POST "$BASE/clients/1/rotate-secret" -H "Accept: application/json")
     expect_code "Unauthenticated rotation rejected" "401" "$code"
+
+    # Restore the demo secret: rotation is a permanent mutation, so a second
+    # run of this suite would otherwise fail its own pre-rotation probe
+    # against the stale secret.
+    artisan_tinker "
+        \$client = App\\Models\\ApiClient::where('client_id', 'demo-integration-client')->first();
+        if (\$client) {
+            \$client->forceFill(['client_secret' => Illuminate\\Support\\Facades\\Hash::make('DemoClientSecret12')])->save();
+            echo 'restored';
+        }
+    " > /dev/null
 fi
 
 # ---------------------------------------------------------------------------

@@ -1,0 +1,10 @@
+rules:
+  - id: laravel-no-env-outside-config
+    languages: [php]
+    message: Use config() instead of env() outside config files
+    severity: ERROR
+    patterns:
+      - pattern: env(...)
+    paths:
+      exclude:
+        - config/

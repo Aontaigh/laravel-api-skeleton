@@ -48,6 +48,7 @@ final class AuthAuditLog extends Model
     /** @var list<string> */
     protected $fillable = [
         'user_id',
+        'actor_user_id',
         'event',
         'email',
         'ip_address',

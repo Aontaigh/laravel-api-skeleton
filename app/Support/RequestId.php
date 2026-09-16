@@ -40,12 +40,18 @@ final class RequestId
      *
      * Correlation IDs are short opaque tokens; anything longer is either a
      * mistake or log-bloat abuse.
-    /**
-     * Longest inbound ID honoured before a fresh one is generated.
-     * Correlation IDs are short opaque tokens; anything longer is either a
-     * mistake or log-bloat abuse.
      */
     private const int MAX_LENGTH = 128;
+
+    /**
+     * Request-attribute key caching the resolved correlation ID.
+     *
+     * `current()` is called more than once per request (for example
+     * `RememberLoginController` reads it for both the audit event and the
+     * response), and each call must return the same value - otherwise the logs
+     * and audit rows for one request cannot be joined.
+     */
+    private const string ATTRIBUTE = 'request_id';
 
     /*
     |--------------------------------------------------------------------------
@@ -64,6 +70,37 @@ final class RequestId
      * @return string  the correlation ID for this request
      */
     public static function current(Request $request): string
+    {
+        $cached = $request->attributes->get(self::ATTRIBUTE);
+
+        if (is_string($cached) && $cached !== '') {
+            return $cached;
+        }
+
+        $resolved = self::resolve($request);
+
+        $request->attributes->set(self::ATTRIBUTE, $resolved);
+
+        return $resolved;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Private
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Resolve a fresh correlation ID from the inbound headers.
+     *
+     * Prefers a well-formed inbound `X-Request-ID`, then the trace ID of a
+     * well-formed `traceparent`, then a fresh UUID. Always returns a value
+     * safe for headers, logs, and database columns.
+     *
+     * @param  Request $request the inbound HTTP request
+     * @return string  the correlation ID for this request
+     */
+    private static function resolve(Request $request): string
     {
         $header = $request->headers->get(self::HEADER);
 

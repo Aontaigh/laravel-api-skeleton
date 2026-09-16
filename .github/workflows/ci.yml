@@ -34,6 +34,8 @@ env:
     PHP_VERSION: '8.5'
     # Human-readable tool output in Actions logs (not agent JSON from laravel/pao).
     PAO_DISABLE: 'true'
+    ZIZMOR_IMAGE: ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 # 1.30.1
+    ACTIONLINT_IMAGE: rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # 1.7.12
 
 jobs:
     # ---------------------------------------------------------------------
@@ -346,13 +348,39 @@ jobs:
                   persist-credentials: false
 
             - name: Audit Workflows
+              id: audit
+              run: |
+                  docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" "${{ env.ZIZMOR_IMAGE }}" \
+                    --config /repo/.github/zizmor.yml /repo/.github/workflows/
+
+            # SARIF output always exits 0, so the gate above runs plain output and
+            # this step re-runs for the upload file only.
+            - name: Write SARIF Report
+              if: always()
+              run: |
+                  docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" "${{ env.ZIZMOR_IMAGE }}" \
+                    --config /repo/.github/zizmor.yml --format sarif /repo/.github/workflows/ > zizmor.sarif
+
+            - name: Upload SARIF
+              if: >-
+                  always() &&
+                  (github.event_name != 'pull_request' ||
+                  github.event.pull_request.head.repo.full_name == github.repository)
+              # Code scanning upload needs GHAS on private repos; the Require step below is the merge gate
+              continue-on-error: true
               # Pinned third-party action per .github/zizmor.yml policy.
-              # Findings upload to code scanning (Advanced Security); merge
-              # blocking needs a ruleset - this step alone never fails on findings.
-              uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+              uses: github/codeql-action/upload-sarif@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4
               with:
-                  version: v1.30.1
-                  config: .github/zizmor.yml
+                  sarif_file: zizmor.sarif
+                  category: zizmor
+
+            - name: Require A Clean Audit
+              if: always()
+              run: |
+                  if [ "${{ steps.audit.outcome }}" != "success" ]; then
+                      echo "::error::Zizmor Findings Must Be Resolved Before Merge"
+                      exit 1
+                  fi
 
     # ---------------------------------------------------------------------
     # Workflow Lint (actionlint)
@@ -372,7 +400,8 @@ jobs:
                   node-version: 22
 
             - name: Lint Workflows
-              uses: docker://rhysd/actionlint:1.7.12
+              run: |
+                  docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" -w /repo "${{ env.ACTIONLINT_IMAGE }}"
 
             - name: Validate Renovate Config
               run: npx --yes -p renovate renovate-config-validator

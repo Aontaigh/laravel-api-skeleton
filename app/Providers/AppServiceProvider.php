@@ -30,7 +30,6 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
@@ -193,7 +192,6 @@ final class AppServiceProvider extends ServiceProvider
         $this->registerTelescopeGate();
         $this->configurePasswordDefaults();
         $this->configureApiRateLimiting();
-        $this->configureAuthTimingNormalisation();
         $this->registerScopedTokenBinding();
         $this->registerScopedWebSessionBinding();
     }
@@ -509,20 +507,6 @@ final class AppServiceProvider extends ServiceProvider
                 'CORS_ALLOWED_ORIGINS Must Not Contain * While CORS_SUPPORTS_CREDENTIALS Is Enabled',
             );
         }
-    }
-
-    /**
-     * Resolve the timing-normalisation hash when not set in config.
-     *
-     * @return void
-     */
-    private function configureAuthTimingNormalisation(): void
-    {
-        if (config('api.auth_timing_normalisation_hash') !== null) {
-            return;
-        }
-
-        config(['api.auth_timing_normalisation_hash' => Hash::make('auth-timing-normalisation')]);
     }
 
     /**

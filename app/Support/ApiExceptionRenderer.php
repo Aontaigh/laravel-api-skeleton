@@ -8,6 +8,7 @@ use App\Exceptions\InvalidTokenAbilitiesException;
 use App\Services\Permissions\PermissionAbilityCatalog;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Foundation\Configuration\Exceptions;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -275,6 +276,17 @@ final class ApiExceptionRenderer
         Throwable $exception,
         Request $request,
     ): ?JsonResponse {
+        /*
+         * A FormRequest failure throws HttpResponseException carrying an
+         * already-prepared response (the 422 envelope from `failedValidation`).
+         * The framework unwraps that after the render callbacks, so this
+         * catch-all must decline it - matching it here would replace a
+         * validation response with a 500.
+         */
+        if ($exception instanceof HttpResponseException) {
+            return null;
+        }
+
         return self::envelope(
             request: $request,
             message: 'Server Error',
