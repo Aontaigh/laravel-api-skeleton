@@ -22,13 +22,6 @@ final class UserQueryConstraints
 
     /**
      * Columns callers may sort on via `?sort=`, before per-viewer filtering.
-     *
-     * `email` is deliberately absent: `AppliesUserFilters::allowedSortColumns()`
-     * appends it only for viewers holding `users.view-email`, mirroring the
-     * sparse-fieldset gate, so the column cannot leak its existence through
-     * ordering to viewers who may not read it.
-    /**
-     * Columns callers may sort on via `?sort=`, before per-viewer filtering.
      * `email` is deliberately absent: `AppliesUserFilters::allowedSortColumns()`
      * appends it only for viewers holding `users.view-email`, mirroring the
      * sparse-fieldset gate, so the column cannot leak its existence through
@@ -38,22 +31,11 @@ final class UserQueryConstraints
 
     /**
      * Relations callers may request via `?include=`.
-     *
-     * Unknown keys answer `422`, so the index can never be pushed into
-     * eager-loading an unlisted relation.
-    /**
-     * Relations callers may request via `?include=`.
      * Unknown keys answer `422`, so the index can never be pushed into
      * eager-loading an unlisted relation.
      */
     public const ALLOWED_INCLUDES = ['team', 'role'];
 
-    /**
-     * Sparse fieldset columns every viewer may request via `fields[users]=`.
-     *
-     * `email` is deliberately absent from the base list: it is appended only
-     * for viewers holding `users.view-email`, so the column cannot leak to
-     * viewers who may not read it.
     /**
      * Sparse fieldset columns every viewer may request via `fields[users]=`.
      * `email` is deliberately absent from the base list: it is appended only
@@ -62,11 +44,6 @@ final class UserQueryConstraints
      */
     public const ALLOWED_FIELDS = ['id', 'name', 'phone', 'created_at'];
 
-    /**
-     * `fields[…]` keys accepted on the User Index.
-     *
-     * Nested keys let a caller constrain eager-loaded relations
-     * (`fields[teams]=id,name`) while the primary key constrains `users`.
     /**
      * `fields[…]` keys accepted on the User Index.
      * Nested keys let a caller constrain eager-loaded relations
@@ -83,12 +60,6 @@ final class UserQueryConstraints
     /** Default page size when `per_page` is omitted. */
     public const DEFAULT_PER_PAGE = 25;
 
-    /**
-     * Hard maximum for `per_page`, regardless of what the caller sends.
-     *
-     * The cap bounds the worst-case page a single request can pull, so one
-     * caller cannot turn the index into a table dump - larger values answer
-     * `422` instead of a huge page.
     /**
      * Hard maximum for `per_page`, regardless of what the caller sends.
      * The cap bounds the worst-case page a single request can pull, so one
