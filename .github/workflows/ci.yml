@@ -3,7 +3,7 @@ name: CI
 # Runs every quality gate from the project rules in parallel:
 #
 #   - Pint (format)
-#   - Larastan Level 9 + strict + deprecation rules (static analysis)
+#   - Larastan Level 10 + strict + deprecation rules (static analysis)
 #   - PHPUnit + coverage gate (>= 90% line coverage on `app/`)
 #   - composer audit (any advisory in production deps = fail)
 #   - Semgrep SAST (PHP, Laravel security, and GitHub Actions rule packs)
@@ -69,10 +69,10 @@ jobs:
               run: composer verify:version
 
     # ---------------------------------------------------------------------
-    # Static Analysis (Larastan, PHPStan Level 9 + Strict + Deprecation)
+    # Static Analysis (Larastan, PHPStan Level 10 + Strict + Deprecation)
     # ---------------------------------------------------------------------
     static-analysis:
-        name: Larastan (Level 9)
+        name: Larastan (Level 10)
         runs-on: ubuntu-latest
         timeout-minutes: 10
         steps:
