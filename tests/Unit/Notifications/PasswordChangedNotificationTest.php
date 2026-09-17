@@ -53,7 +53,7 @@ final class PasswordChangedNotificationTest extends UnitTestCase
 
         // Assert
 
-        $body = implode("\n", $mail->introLines);
+        $body = implode("\n", array_values(array_filter($mail->introLines, 'is_string')));
 
         $this->assertSame('Your Password Was Changed', $mail->subject);
         $this->assertSame('https://app.example.com/forgot-password', $mail->actionUrl);
@@ -81,7 +81,7 @@ final class PasswordChangedNotificationTest extends UnitTestCase
 
         // Assert
 
-        $body = implode("\n", $mail->introLines);
+        $body = implode("\n", array_values(array_filter($mail->introLines, 'is_string')));
 
         $this->assertStringContainsString('Your Account Security Settings', $body);
         $this->assertStringContainsString('IP Unknown', $body);

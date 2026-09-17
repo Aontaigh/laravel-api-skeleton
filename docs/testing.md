@@ -25,7 +25,7 @@ Run in this order; stop at the first failure.
 | Step | Command | Checks | Pass condition |
 | --- | --- | --- | --- |
 | 1 | `./vendor/bin/sail composer lint` | Pint style check (`lint:fix` to auto-fix) | Exit 0 |
-| 2 | `./vendor/bin/sail composer analyse` | Larastan at level 9 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors` |
+| 2 | `./vendor/bin/sail composer analyse` | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors` |
 | 3 | `./vendor/bin/sail composer test` | Full PHPUnit suite (unit + feature, ~1100 tests) | All pass |
 | 4 | `./vendor/bin/sail composer test:coverage:check` | Step 3 plus the 90% line-coverage gate over `app/` | `Coverage Gate Passed` |
 | 5 | `./vendor/bin/sail composer verify:openapi` | Replays every example in [openapi.yaml](openapi.yaml) against the live app | `All OpenAPI Examples Verified` |
@@ -35,7 +35,7 @@ Run in this order; stop at the first failure.
 `composer ci` chains lint, analyse, coverage, and `composer audit`; the OpenAPI,
 Semgrep, and Zizmor checks run as separate CI jobs. Do not add baseline entries to
 silence new static-analysis findings - the typed accessors and narrowed
-properties the codebase uses exist to keep level 9 green.
+properties the codebase uses exist to keep level 10 green.
 
 > [!NOTE]
 > `verify:openapi` needs a running app with a seeded database. Its admin login

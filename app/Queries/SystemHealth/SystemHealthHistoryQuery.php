@@ -105,7 +105,7 @@ final class SystemHealthHistoryQuery
             ")
             ->groupByRaw('date(checked_at)')
             ->get()
-            ->keyBy(fn (stdClass $row): string => (string) $row->day);
+            ->keyBy(fn (stdClass $row): string => $this->stringColumn($row, 'day'));
 
         $history = [];
         $cursor = $start->copy();
@@ -117,8 +117,8 @@ final class SystemHealthHistoryQuery
 
             $history[] = [
                 'date' => $dateKey,
-                'uptime_percentage' => $row === null ? null : round((float) $row->uptime_percentage, 1),
-                'status' => $row === null ? null : $this->statusFromSeverity((int) $row->worst_severity)->value,
+                'uptime_percentage' => $row === null ? null : round($this->numericColumn($row, 'uptime_percentage') ?? 0.0, 1),
+                'status' => $row === null ? null : $this->statusFromSeverity((int) ($this->numericColumn($row, 'worst_severity') ?? 0))->value,
             ];
 
             $cursor = $cursor->addDay();
@@ -152,11 +152,17 @@ final class SystemHealthHistoryQuery
             ")
             ->first();
 
-        if ($row === null || (int) $row->total === 0) {
+        if ($row === null) {
             return null;
         }
 
-        return round(((float) $row->up_weight / (int) $row->total) * 100, 1);
+        $total = (int) ($this->numericColumn($row, 'total') ?? 0);
+
+        if ($total === 0) {
+            return null;
+        }
+
+        return round((($this->numericColumn($row, 'up_weight') ?? 0.0) / $total) * 100, 1);
     }
 
     /*
@@ -164,6 +170,37 @@ final class SystemHealthHistoryQuery
     | Private
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Read a numeric aggregate column off a raw query row.
+     *
+     * `toBase()` returns `stdClass` rows with dynamic properties, so each value
+     * is `mixed`; narrowing to a number keeps `mixed` out of the arithmetic.
+     *
+     * @param  stdClass   $row    the aggregate row
+     * @param  string     $column the column to read
+     * @return float|null the numeric value, or null when absent
+     */
+    private function numericColumn(stdClass $row, string $column): ?float
+    {
+        $value = $row->{$column} ?? null;
+
+        return is_numeric($value) ? (float) $value : null;
+    }
+
+    /**
+     * Read a string value off a raw query row.
+     *
+     * @param  stdClass $row    the aggregate row
+     * @param  string   $column the column to read
+     * @return string   the value as a string, or an empty string when absent
+     */
+    private function stringColumn(stdClass $row, string $column): string
+    {
+        $value = $row->{$column} ?? null;
+
+        return is_scalar($value) ? (string) $value : '';
+    }
 
     /**
      * Resolve the inclusive UTC window `[today - days + 1, today]` as

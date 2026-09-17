@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.3] - 2026-09-16
+
+### Changed
+
+- Raise Larastan/PHPStan to **level 10**; narrow the raw aggregate rows and the query-builder WHERE clauses in tests so the strictest level stays green
+
 ## [1.15.2] - 2026-09-16
 
 ### Changed
@@ -576,7 +582,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.2...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.3...HEAD
+[1.15.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.2...v1.15.3
 [1.15.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.1...v1.15.2
 [1.15.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.0...v1.15.1
 [1.15.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.3...v1.15.0

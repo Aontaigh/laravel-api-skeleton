@@ -89,7 +89,7 @@ final class VerifyEmailNotificationTest extends UnitTestCase
 
         // Assert
 
-        $this->assertStringContainsString('90 minutes', implode("\n", $mail->introLines));
+        $this->assertStringContainsString('90 minutes', implode("\n", array_values(array_filter($mail->introLines, 'is_string'))));
     }
 
     /**

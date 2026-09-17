@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Resources;
 
+use App\Http\Resources\RoleResource;
+use App\Http\Resources\TeamResource;
 use App\Http\Resources\UserResource;
 use App\Models\Team;
 use App\Models\User;
@@ -145,8 +147,10 @@ final class UserResourceTest extends UnitTestCase
         // Assert
 
         $this->assertArrayHasKey('team', $data);
-        $this->assertSame(5, $data['team']['id']);
-        $this->assertSame('Engineering', $data['team']['name']);
+        $team = $data['team'];
+        $this->assertInstanceOf(TeamResource::class, $team);
+        $this->assertSame(5, $team['id']);
+        $this->assertSame('Engineering', $team['name']);
     }
 
     /**
@@ -191,8 +195,10 @@ final class UserResourceTest extends UnitTestCase
         // Assert
 
         $this->assertArrayHasKey('role', $data);
-        $this->assertSame(1, $data['role']['id']);
-        $this->assertSame('Admin', $data['role']['name']);
+        $role = $data['role'];
+        $this->assertInstanceOf(RoleResource::class, $role);
+        $this->assertSame(1, $role['id']);
+        $this->assertSame('Admin', $role['name']);
     }
 
     /**

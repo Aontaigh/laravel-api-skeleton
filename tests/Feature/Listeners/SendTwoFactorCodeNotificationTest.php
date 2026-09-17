@@ -63,8 +63,9 @@ final class SendTwoFactorCodeNotificationTest extends TestCase
             TwoFactorCodeNotification::class,
             function (TwoFactorCodeNotification $notification) use ($user): bool {
                 $mail = $notification->toMail($user);
+                $line = $mail->introLines[0] ?? '';
 
-                return str_contains((string) ($mail->introLines[0] ?? ''), '123456');
+                return is_string($line) && str_contains($line, '123456');
             },
         );
     }

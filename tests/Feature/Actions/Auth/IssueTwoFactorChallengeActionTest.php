@@ -148,8 +148,9 @@ final class IssueTwoFactorChallengeActionTest extends TestCase
             TwoFactorCodeNotification::class,
             function (TwoFactorCodeNotification $notification) use ($user): bool {
                 $mail = $notification->toMail($user);
+                $line = $mail->introLines[0] ?? '';
 
-                return preg_match('/\d{6}/', (string) ($mail->introLines[0] ?? '')) === 1;
+                return is_string($line) && preg_match('/\d{6}/', $line) === 1;
             },
         );
     }

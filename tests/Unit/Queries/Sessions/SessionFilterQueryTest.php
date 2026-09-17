@@ -79,11 +79,11 @@ final class SessionFilterQueryTest extends UnitTestCase
 
         $this->assertSame(
             SessionQueryConstraints::TABLE.'.revoked_at',
-            $query->getQuery()->wheres[0]['column'],
+            $this->queryWheres($query)[0]['column'],
         );
         $this->assertSame(
             SessionQueryConstraints::TABLE.'.user_id',
-            $query->getQuery()->wheres[1]['column'],
+            $this->queryWheres($query)[1]['column'],
         );
         $this->assertSame([self::VIEWER_ID], $query->getBindings());
     }
@@ -113,7 +113,7 @@ final class SessionFilterQueryTest extends UnitTestCase
         $this->assertCount(1, $query->getQuery()->wheres);
         $this->assertSame(
             SessionQueryConstraints::TABLE.'.revoked_at',
-            $query->getQuery()->wheres[0]['column'],
+            $this->queryWheres($query)[0]['column'],
         );
     }
 
@@ -142,7 +142,7 @@ final class SessionFilterQueryTest extends UnitTestCase
 
         $this->assertSame(
             SessionQueryConstraints::TABLE.'.user_id',
-            $query->getQuery()->wheres[1]['column'],
+            $this->queryWheres($query)[1]['column'],
         );
         $this->assertSame([99], array_slice($query->getBindings(), -1));
     }
@@ -174,7 +174,7 @@ final class SessionFilterQueryTest extends UnitTestCase
 
         $this->assertStringContainsString(
             'ESCAPE',
-            (string) ($query->getQuery()->wheres[2]['query']->wheres[0]['sql'] ?? ''),
+            $this->clauseSql($this->nestedQueryWheres($query, 2)[0] ?? []),
         );
     }
 

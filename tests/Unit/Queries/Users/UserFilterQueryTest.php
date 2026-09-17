@@ -82,7 +82,7 @@ final class UserFilterQueryTest extends UnitTestCase
 
         // Assert
 
-        $this->assertSame('users.team_id', $query->getQuery()->wheres[0]['column']);
+        $this->assertSame('users.team_id', $this->queryWheres($query)[0]['column']);
         $this->assertSame([self::VIEWER_TEAM_ID], $query->getBindings());
     }
 
@@ -116,8 +116,8 @@ final class UserFilterQueryTest extends UnitTestCase
          * rather than a bound `= ?` comparison, so this asserts the clause
          * type instead of a bindable value.
          */
-        $this->assertSame('Null', $query->getQuery()->wheres[0]['type']);
-        $this->assertSame('users.team_id', $query->getQuery()->wheres[0]['column']);
+        $this->assertSame('Null', $this->queryWheres($query)[0]['type']);
+        $this->assertSame('users.team_id', $this->queryWheres($query)[0]['column']);
     }
 
     /**
@@ -178,8 +178,8 @@ final class UserFilterQueryTest extends UnitTestCase
 
         $this->assertSame([$expectedPattern, $expectedPattern], $query->getBindings());
 
-        $searchGroup = $query->getQuery()->wheres[0]['query']->wheres ?? [];
-        $this->assertStringContainsString('ESCAPE', (string) ($searchGroup[0]['sql'] ?? ''));
+        $searchGroup = $this->nestedQueryWheres($query, 0);
+        $this->assertStringContainsString('ESCAPE', $this->clauseSql($searchGroup[0] ?? []));
     }
 
     /*

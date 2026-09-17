@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Http\Resources;
 
+use App\Http\Resources\PermissionResource;
 use App\Http\Resources\RoleResource;
 use App\Support\ApiDateTime;
 use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -100,8 +102,12 @@ final class RoleResourceTest extends UnitTestCase
         // Assert
 
         $this->assertArrayHasKey('permissions', $data);
-        $this->assertCount(1, $data['permissions']);
-        $this->assertSame(1, $data['permissions'][0]['id']);
-        $this->assertSame('users.list', $data['permissions'][0]['name']);
+        $permissions = $data['permissions'];
+        $this->assertInstanceOf(AnonymousResourceCollection::class, $permissions);
+        $this->assertCount(1, $permissions);
+        $permission = $permissions[0];
+        $this->assertInstanceOf(PermissionResource::class, $permission);
+        $this->assertSame(1, $permission['id']);
+        $this->assertSame('users.list', $permission['name']);
     }
 }

@@ -254,7 +254,7 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | [Laravel 13](https://laravel.com/docs) | API framework | [laravel.com/docs](https://laravel.com/docs) |
 | [Laravel Sanctum](https://laravel.com/docs/sanctum) | Bearer token authentication | [Sanctum](https://laravel.com/docs/sanctum) |
 | [Spatie Laravel Permission](https://github.com/spatie/laravel-permission) | Roles (`Admin`, `Manager`, `User`, `Service`) and fine-grained permissions | [Package docs](https://spatie.be/docs/laravel-permission) |
-| Larastan + Pint | Static analysis (level 9) and formatting | [Larastan](https://github.com/larastan/larastan) |
+| Larastan + Pint | Static analysis (level 10) and formatting | [Larastan](https://github.com/larastan/larastan) |
 | PHPUnit | Unit and feature tests with a 90% line-coverage gate | [PHPUnit](https://phpunit.de) |
 | [Laravel Sail](https://laravel.com/docs/sail) | Dockerised local development | [Sail](https://laravel.com/docs/sail) |
 | [Laravel Telescope](https://laravel.com/docs/telescope) | Request debugging (admin-only gate, local only) | [Telescope](https://laravel.com/docs/telescope) |
@@ -666,7 +666,7 @@ Local (Sail - matches PHP 8.5 when host PHP is older):
 ```bash
 ./vendor/bin/sail composer lint          # Pint (--test)
 ./vendor/bin/sail composer lint:fix      # Pint, auto-fix
-./vendor/bin/sail composer analyse       # Larastan, level 9
+./vendor/bin/sail composer analyse       # Larastan, level 10
 ./vendor/bin/sail composer test          # PHPUnit
 ./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
 ./vendor/bin/sail composer ci            # lint + analyse + coverage + composer audit

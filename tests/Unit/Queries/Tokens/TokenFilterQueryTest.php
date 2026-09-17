@@ -79,11 +79,11 @@ final class TokenFilterQueryTest extends UnitTestCase
 
         $this->assertSame(
             TokenQueryConstraints::TABLE.'.tokenable_type',
-            $query->getQuery()->wheres[0]['column'],
+            $this->queryWheres($query)[0]['column'],
         );
         $this->assertSame(
             TokenQueryConstraints::TABLE.'.tokenable_id',
-            $query->getQuery()->wheres[1]['column'],
+            $this->queryWheres($query)[1]['column'],
         );
         $this->assertSame([User::class, self::VIEWER_ID], $query->getBindings());
     }
@@ -151,7 +151,7 @@ final class TokenFilterQueryTest extends UnitTestCase
 
         $this->assertStringContainsString(
             'ESCAPE',
-            (string) ($query->getQuery()->wheres[2]['sql'] ?? ''),
+            $this->clauseSql($this->queryWheres($query)[2] ?? []),
         );
     }
 

@@ -45,7 +45,7 @@ final class RoleFilterQueryTest extends UnitTestCase
 
         // Assert
 
-        $this->assertSame(RoleQueryConstraints::TABLE.'.guard_name', $query->getQuery()->wheres[0]['column']);
+        $this->assertSame(RoleQueryConstraints::TABLE.'.guard_name', $this->queryWheres($query)[0]['column']);
         $this->assertSame([RoleQueryConstraints::GUARD_NAME], $query->getBindings());
     }
 
@@ -75,7 +75,7 @@ final class RoleFilterQueryTest extends UnitTestCase
         $this->assertSame([RoleQueryConstraints::GUARD_NAME, $expectedPattern], $query->getBindings());
         $this->assertStringContainsString(
             'ESCAPE',
-            (string) ($query->getQuery()->wheres[1]['sql'] ?? ''),
+            $this->clauseSql($this->queryWheres($query)[1] ?? []),
         );
     }
 
