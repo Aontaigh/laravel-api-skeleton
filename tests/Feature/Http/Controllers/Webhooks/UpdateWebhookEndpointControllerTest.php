@@ -48,7 +48,7 @@ final class UpdateWebhookEndpointControllerTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

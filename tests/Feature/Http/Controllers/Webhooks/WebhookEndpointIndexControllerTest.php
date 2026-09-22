@@ -48,7 +48,7 @@ final class WebhookEndpointIndexControllerTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

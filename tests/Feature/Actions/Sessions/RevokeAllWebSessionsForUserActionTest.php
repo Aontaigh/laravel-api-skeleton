@@ -31,7 +31,7 @@ final class RevokeAllWebSessionsForUserActionTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

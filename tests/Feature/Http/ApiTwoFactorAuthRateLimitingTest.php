@@ -39,7 +39,7 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

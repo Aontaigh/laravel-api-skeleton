@@ -42,7 +42,7 @@ final class DestroyOtherSessionsControllerTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

@@ -167,6 +167,7 @@ Route::get('/app-info', \App\Http\Controllers\Api\ShowAppInfoController::class)
 Route::post('/csp-reports', \App\Http\Controllers\CspReports\StoreCspReportController::class)
     ->middleware('throttle:csp-reports')
     ->name('csp-reports.store');
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated API

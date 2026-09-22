@@ -33,7 +33,7 @@ final class InvalidateStoredSessionActionTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

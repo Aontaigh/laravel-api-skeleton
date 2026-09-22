@@ -51,7 +51,7 @@ final class StoreWebhookEndpointControllerTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

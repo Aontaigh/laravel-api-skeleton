@@ -43,7 +43,7 @@ final class RotateWebhookEndpointSecretControllerTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

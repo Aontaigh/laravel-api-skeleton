@@ -32,7 +32,7 @@ final class UpdatePasswordActionSessionInvalidationTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

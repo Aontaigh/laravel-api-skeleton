@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\Api\ShowOpenApiSpecRequest;
 use Illuminate\Support\Facades\File;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -25,9 +26,10 @@ final class ShowOpenApiSpecController
     /**
      * Return the OpenAPI 3.1 YAML document.
      *
-     * @return BinaryFileResponse the OpenAPI specification file response
+     * @param  ShowOpenApiSpecRequest $request the empty OpenAPI spec request
+     * @return BinaryFileResponse     the OpenAPI specification file response
      */
-    public function __invoke(): BinaryFileResponse
+    public function __invoke(ShowOpenApiSpecRequest $request): BinaryFileResponse
     {
         /*
         |--------------------------------------------------------------------------

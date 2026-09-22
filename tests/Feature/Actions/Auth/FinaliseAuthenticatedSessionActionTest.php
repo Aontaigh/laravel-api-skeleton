@@ -30,7 +30,7 @@ final class FinaliseAuthenticatedSessionActionTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

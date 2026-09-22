@@ -20,7 +20,7 @@ final class AuthenticatedUserResourceTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

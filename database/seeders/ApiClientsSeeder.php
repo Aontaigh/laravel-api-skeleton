@@ -34,6 +34,14 @@ final class ApiClientsSeeder extends Seeder
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * Seed the demo API Client and its service account.
+     *
+     * A no-op outside `local` and `testing`: the credentials are public in this
+     * repository, so a production `db:seed` must never create them.
+     *
+     * @return void
+     */
     public function run(): void
     {
         /*

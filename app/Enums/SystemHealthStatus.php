@@ -30,12 +30,6 @@ enum SystemHealthStatus: string
      *
      * @return string the display label
      */
-    /*
-    |--------------------------------------------------------------------------
-    | Public
-    |--------------------------------------------------------------------------
-    */
-
     public function label(): string
     {
         return match ($this) {

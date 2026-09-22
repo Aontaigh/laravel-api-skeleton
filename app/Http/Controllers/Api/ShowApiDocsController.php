@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Api;
 
+use App\Http\Requests\Api\ShowApiDocsRequest;
 use Illuminate\View\View;
 
 /**
@@ -23,9 +24,10 @@ final class ShowApiDocsController
     /**
      * Show the interactive API documentation page.
      *
-     * @return View the Scalar API reference Blade view
+     * @param  ShowApiDocsRequest $request the empty API docs request
+     * @return View               the Scalar API reference Blade view
      */
-    public function __invoke(): View
+    public function __invoke(ShowApiDocsRequest $request): View
     {
         /*
         |--------------------------------------------------------------------------

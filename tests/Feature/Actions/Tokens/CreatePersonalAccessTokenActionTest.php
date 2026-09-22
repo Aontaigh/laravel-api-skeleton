@@ -33,7 +33,7 @@ final class CreatePersonalAccessTokenActionTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

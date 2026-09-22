@@ -23,7 +23,7 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
 {
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 

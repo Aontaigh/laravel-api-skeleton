@@ -16,7 +16,7 @@ final class ResendVerificationRequest extends ApiFormRequest
 {
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Authorisation
     |--------------------------------------------------------------------------
     */
 

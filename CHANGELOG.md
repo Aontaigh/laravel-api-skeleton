@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.15.4] - 2026-09-22
+
+### Added
+
+- [`ShowApiDocsRequest`](app/Http/Requests/Api/ShowApiDocsRequest.php) and
+  [`ShowOpenApiSpecRequest`](app/Http/Requests/Api/ShowOpenApiSpecRequest.php) - empty
+  FormRequests for `GET /api/docs` and the served OpenAPI YAML so those controllers follow
+  the FormRequest convention
+
+### Changed
+
+- `ShowApiDocsController` and `ShowOpenApiSpecController` type-hint the new request classes
+- Unauthenticated public FormRequests (`ShowHealth`, `ShowAppInfo`, CSP reports, security.txt,
+  system status, e-mail verification) use the **Authorisation** pipe section instead of
+  **Public**
+- `MfaMethod` and `SystemHealthStatus` drop redundant **Public** dividers before `label()`
+- Test suite: rename **Setup** regions to **Setup / Teardown** where `tearDown()` is present
+  (`UnitTestCase` and matching feature/unit tests)
+- [`ApiClientsSeeder`](database/seeders/ApiClientsSeeder.php) documents production no-op behaviour;
+  `VerifyEmailController` documents the injected verification action
+
 ## [1.15.3] - 2026-09-16
 
 ### Changed
@@ -582,7 +603,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.3...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.4...HEAD
+[1.15.4]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.3...v1.15.4
 [1.15.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.2...v1.15.3
 [1.15.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.1...v1.15.2
 [1.15.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.0...v1.15.1

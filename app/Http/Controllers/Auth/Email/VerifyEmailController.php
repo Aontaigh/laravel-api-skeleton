@@ -36,6 +36,7 @@ final class VerifyEmailController
      * @param  VerifyEmailRequest $request the request (signed route)
      * @param  string             $id      the User id from the signed URL
      * @param  string             $hash    the e-mail hash from the signed URL
+     * @param  VerifyEmailAction  $action  the Action that performs the verification
      * @return RedirectResponse   a redirect to the SPA result page
      */
     public function __invoke(

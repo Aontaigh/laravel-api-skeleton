@@ -34,7 +34,7 @@ final class PermissionAbilityCatalogTest extends UnitTestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Setup
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 
