@@ -48,9 +48,52 @@ final class ShowAppInfoControllerTest extends TestCase
                 'php' => ['version', 'sapi'],
                 'server' => ['os', 'architecture'],
                 'laravel' => ['version'],
+                'auth' => ['token_expiration_days'],
                 'drivers' => ['cache', 'session', 'queue', 'database', 'mail', 'filesystem'],
             ],
         ]);
+    }
+
+    /**
+     * Report the configured Token lifetime so clients can mirror it.
+     */
+    #[Test]
+    public function it_reports_the_configured_token_lifetime(): void
+    {
+        // Arrange
+
+        config(['api.token_expiration_days' => 45]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->getJson('/api/app-info');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.auth.token_expiration_days', 45);
+    }
+
+    /**
+     * Report a zero lifetime unchanged, meaning Tokens never expire.
+     */
+    #[Test]
+    public function it_reports_a_zero_lifetime_unchanged(): void
+    {
+        // Arrange
+
+        config(['api.token_expiration_days' => 0]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->getJson('/api/app-info');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.auth.token_expiration_days', 0);
     }
 
     /**
@@ -70,8 +113,13 @@ final class ShowAppInfoControllerTest extends TestCase
 
         $body = (string) $response->getContent();
 
+        /*
+         * `token_expiration_days` is a public lifetime figure, not a
+         * credential, so the guard names credential-bearing markers instead
+         * of the word "token".
+         */
         $this->assertStringNotContainsStringIgnoringCase('secret', $body);
         $this->assertStringNotContainsStringIgnoringCase('password', $body);
-        $this->assertStringNotContainsStringIgnoringCase('token', $body);
+        $this->assertStringNotContainsStringIgnoringCase('authorization', $body);
     }
 }

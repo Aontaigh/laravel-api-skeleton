@@ -273,7 +273,7 @@ final class ForceLogoutUsersControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

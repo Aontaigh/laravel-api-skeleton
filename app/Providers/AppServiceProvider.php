@@ -33,6 +33,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Support\Str;
 use Illuminate\Validation\NotPwnedVerifier;
 use Illuminate\Validation\Rules\Password;
 use InvalidArgumentException;
@@ -392,15 +393,21 @@ final class AppServiceProvider extends ServiceProvider
     /**
      * Build a composite rate-limit key from a normalised credential field and the IP.
      *
+     * The raw input is read rather than `$request->string()`: the limiter runs
+     * in middleware before validation, and a caller can send the credential as
+     * an array or object, which `string()` throws on - a 500 from the throttle
+     * middleware before validation could answer 422. A malformed value degrades
+     * to an empty segment, so junk payloads still share the per-IP ceiling.
+     *
      * @param  Request $request the incoming request
      * @param  string  $field   the credential field name (`email` or `client_id`)
      * @return string  the `field|ip` limiter key
      */
     private function authCompositeKey(Request $request, string $field): string
     {
-        $value = $request->string($field, '')->lower()->toString();
+        $value = $request->input($field);
 
-        return $value.'|'.$request->ip();
+        return (is_string($value) ? Str::lower($value) : '').'|'.$request->ip();
     }
 
     /**

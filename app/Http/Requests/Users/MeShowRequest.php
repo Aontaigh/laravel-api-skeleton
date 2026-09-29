@@ -44,30 +44,6 @@ final class MeShowRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Allow-lists
-    |--------------------------------------------------------------------------
-    */
-
-    /*
-    |--------------------------------------------------------------------------
-    | Query Accessors
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Columns the caller may request via `fields[users]=` on their own profile.
-     *
-     * Always includes `email` - unlike the User index and show endpoints.
-     *
-     * @return list<string> the User columns available on `GET /me`
-     */
-    public function allowedUserFields(): array
-    {
-        return [...UserQueryConstraints::ALLOWED_FIELDS, 'email'];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Validation Rules
     |--------------------------------------------------------------------------
     */
@@ -97,5 +73,22 @@ final class MeShowRequest extends ApiFormRequest
     public function withValidator(Validator $validator): void
     {
         $this->validateUserShowParams($validator);
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | Query Accessors
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Columns the caller may request via `fields[users]=` on their own profile.
+     *
+     * Always includes `email` - unlike the User index and show endpoints.
+     *
+     * @return list<string> the User columns available on `GET /me`
+     */
+    public function allowedUserFields(): array
+    {
+        return [...UserQueryConstraints::ALLOWED_FIELDS, 'email'];
     }
 }

@@ -14,6 +14,7 @@ use App\Queries\AuthAuditLogs\AuthAuditLogQueryConstraints;
 use App\Queries\IndexFieldsQuery;
 use App\Queries\IndexSortQuery;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -88,7 +89,7 @@ final class AuthAuditLogIndexController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<AuthAuditLog> $query */
+        /** @var Builder<AuthAuditLog> $query */
         $query = AuthAuditLog::query();
 
         $this->filterQuery->apply($query, $filters);

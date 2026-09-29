@@ -284,8 +284,8 @@ final class TokenIndexControllerTest extends TestCase
         // Assert
 
         $response->assertOk();
-        $response->assertJsonPath('data.0.id', $older->accessToken->id);
-        $response->assertJsonPath('data.1.id', $newer->accessToken->id);
+        $response->assertJsonPath('data.0.id', $newer->accessToken->id);
+        $response->assertJsonPath('data.1.id', $older->accessToken->id);
     }
 
     /**

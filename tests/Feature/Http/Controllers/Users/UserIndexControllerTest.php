@@ -858,4 +858,109 @@ final class UserIndexControllerTest extends TestCase
             'page below one' => ['page=0', 'page'],
         ];
     }
+
+    /**
+     * Filter the directory by account status: `active`, `suspended`, and the
+     * trashed-only `deleted` scope that backs the restore flow.
+     */
+    #[Test]
+    public function it_filters_by_status(): void
+    {
+        // Arrange
+
+        $active = User::factory()->for($this->team)->user()->create();
+        $suspended = User::factory()->for($this->team)->suspended()->create();
+        $deleted = User::factory()->for($this->team)->user()->create();
+        $deleted->delete();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $activeResponse */
+        $activeResponse = $this->actingAs($this->viewer)->getJson('/api/users?filter[status]=active');
+        /** @var TestResponse<JsonResponse> $suspendedResponse */
+        $suspendedResponse = $this->actingAs($this->viewer)->getJson('/api/users?filter[status]=suspended');
+        /** @var TestResponse<JsonResponse> $deletedResponse */
+        $deletedResponse = $this->actingAs($this->viewer)->getJson('/api/users?filter[status]=deleted');
+
+        // Assert
+
+        /** @var list<array{id: int}> $activeRows */
+        $activeRows = $activeResponse->json('data');
+        $activeIds = array_map(static fn (array $row): int => $row['id'], $activeRows);
+        $this->assertContains($active->id, $activeIds);
+        $this->assertNotContains($suspended->id, $activeIds);
+        $this->assertNotContains($deleted->id, $activeIds);
+
+        /** @var list<array{id: int}> $suspendedRows */
+        $suspendedRows = $suspendedResponse->json('data');
+        $this->assertSame(
+            [$suspended->id],
+            array_map(static fn (array $row): int => $row['id'], $suspendedRows),
+        );
+
+        /** @var list<array{id: int}> $deletedRows */
+        $deletedRows = $deletedResponse->json('data');
+        $this->assertSame(
+            [$deleted->id],
+            array_map(static fn (array $row): int => $row['id'], $deletedRows),
+        );
+    }
+
+    /**
+     * Reject an unknown account status filter rather than silently ignoring it.
+     */
+    #[Test]
+    public function it_rejects_an_invalid_status_filter(): void
+    {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/users?filter[status]=archived');
+
+        // Assert
+
+        $response->assertUnprocessable();
+    }
+
+    /**
+     * Filter the directory by role name through the Spatie role relation.
+     */
+    #[Test]
+    public function it_filters_by_role(): void
+    {
+        // Arrange
+
+        $admin = User::factory()->for($this->team)->admin()->create();
+        $member = User::factory()->for($this->team)->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/users?filter[role]=Admin');
+
+        // Assert
+
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+
+        $this->assertContains($admin->id, $ids);
+        $this->assertNotContains($member->id, $ids);
+    }
+
+    /**
+     * Reject an unknown role name filter.
+     */
+    #[Test]
+    public function it_rejects_an_invalid_role_filter(): void
+    {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/users?filter[role]=Wizard');
+
+        // Assert
+
+        $response->assertUnprocessable();
+    }
 }

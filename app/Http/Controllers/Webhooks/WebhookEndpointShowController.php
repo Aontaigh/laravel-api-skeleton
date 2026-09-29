@@ -10,6 +10,7 @@ use App\Models\WebhookEndpoint;
 use App\Queries\IndexFieldsQuery;
 use App\Queries\Webhooks\WebhookEndpointQueryConstraints;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -66,7 +67,7 @@ final class WebhookEndpointShowController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<WebhookEndpoint> $query */
+        /** @var Builder<WebhookEndpoint> $query */
         $query = WebhookEndpoint::query()->whereKey($webhookEndpoint->getKey());
 
         $this->fieldsQuery->apply(

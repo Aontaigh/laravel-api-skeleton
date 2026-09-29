@@ -4,25 +4,26 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers\Users;
 
-use App\Actions\Users\SuspendUserAction;
+use App\Actions\Users\RestoreUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\Enums\AuthAuditEvent;
 use App\Enums\WebhookEvent;
 use App\Events\AuthEventOccurred;
 use App\Events\WebhookEventDispatched;
-use App\Http\Requests\Users\SuspendUserRequest;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Users\RestoreUserRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
 use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
- * Suspends a User's account.
+ * Restores a soft-deleted User record.
  *
  * @example
- * POST /api/users/{user}/suspend
+ * POST /api/users/1/restore
  */
-final class SuspendUserController
+final class RestoreUserController extends Controller
 {
     /*
     |--------------------------------------------------------------------------
@@ -31,17 +32,21 @@ final class SuspendUserController
     */
 
     /**
-     * Suspend the given User.
+     * Restore the route-bound, trashed User.
      *
-     * @param  SuspendUserRequest $request the validated suspend request
-     * @param  User               $user    the User being suspended (route-bound)
-     * @param  SuspendUserAction  $action  the suspend Action
+     * The audit row is recorded after the restore succeeds and carries the
+     * acting Admin - a privileged action that un-exiles an account is exactly
+     * the one an operator most needs attributed.
+     *
+     * @param  RestoreUserRequest $request the authorised restore request
+     * @param  User               $user    the route-bound, trashed User
+     * @param  RestoreUserAction  $restore the restore Action
      * @return JsonResponse       the standardised success envelope
      */
     public function __invoke(
-        SuspendUserRequest $request,
+        RestoreUserRequest $request,
         User $user,
-        SuspendUserAction $action,
+        RestoreUserAction $restore,
     ): JsonResponse {
         /*
         |--------------------------------------------------------------------------
@@ -49,22 +54,20 @@ final class SuspendUserController
         |--------------------------------------------------------------------------
         */
 
-        $action->execute($user);
+        $restore->execute($user);
 
-        event(
-            new WebhookEventDispatched(
-                event: WebhookEvent::UserSuspended,
-                data: [
-                    'id' => $user->id,
-                    'email' => $user->email,
-                ],
-            ),
-        );
+        event(new WebhookEventDispatched(
+            event: WebhookEvent::UserRestored,
+            data: [
+                'id' => $user->id,
+                'email' => $user->email,
+            ],
+        ));
 
         $actor = $request->user();
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
-            event: AuthAuditEvent::UserSuspended,
+            event: AuthAuditEvent::UserRestored,
             userId: $user->id,
             actorUserId: $actor instanceof User ? $actor->id : null,
             email: $user->email,
@@ -79,6 +82,6 @@ final class SuspendUserController
         |--------------------------------------------------------------------------
         */
 
-        return ApiResponse::success(data: null, message: 'User Suspended Successfully');
+        return ApiResponse::success(data: null, message: 'User Restored Successfully');
     }
 }

@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Queries\IndexFieldsQuery;
 use App\Queries\Teams\TeamQueryConstraints;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -66,7 +67,7 @@ final class TeamShowController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<Team> $query */
+        /** @var Builder<Team> $query */
         $query = Team::query()->whereKey($team->getKey());
 
         $this->fieldsQuery->apply(

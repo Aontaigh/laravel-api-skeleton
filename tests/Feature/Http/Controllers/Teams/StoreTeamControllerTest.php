@@ -192,7 +192,7 @@ final class StoreTeamControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

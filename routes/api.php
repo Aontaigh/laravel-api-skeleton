@@ -283,6 +283,10 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
     Route::patch('/users/{user}', \App\Http\Controllers\Users\UpdateUserController::class)
         ->name('users.update');
 
+    Route::post('/users/{user}/restore', \App\Http\Controllers\Users\RestoreUserController::class)
+        ->withTrashed()
+        ->name('users.restore');
+
     Route::delete('/users/{user}', \App\Http\Controllers\Users\DestroyUserController::class)
         ->name('users.destroy');
 

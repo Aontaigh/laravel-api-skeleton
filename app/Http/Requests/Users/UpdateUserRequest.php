@@ -103,24 +103,6 @@ final class UpdateUserRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Validation Messages
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * {@inheritDoc}
-     *
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'role.in' => 'The Selected Role Is Invalid',
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Validator Hooks
     |--------------------------------------------------------------------------
     */
@@ -144,6 +126,24 @@ final class UpdateUserRequest extends ApiFormRequest
             );
         });
     }
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'role.in' => 'The Selected Role Is Invalid',
+        ];
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Preparation
@@ -179,12 +179,6 @@ final class UpdateUserRequest extends ApiFormRequest
     {
         return ['name'];
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Sanitisation
-    |--------------------------------------------------------------------------
-    */
 
     /**
      * {@inheritDoc}

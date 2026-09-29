@@ -46,15 +46,17 @@ return [
     | Expiration Minutes
     |--------------------------------------------------------------------------
     |
-    | This value controls the number of minutes until an issued token will be
-    | considered expired. This will override any values set in the token's
-    | "expires_at" attribute, but first-party sessions are not affected.
+    | Every issued Token carries an explicit "expires_at" set by
+    | CreatePersonalAccessTokenAction (the configured default lifetime, or an
+    | explicit caller-chosen expiry), so the per-token attribute stays the
+    | single authority. A global value here would silently cap any explicit
+    | expiry above it, and would also outlive its usefulness the moment the
+    | configured default changes, because it overrides "expires_at" rather
+    | than complementing it.
     |
     */
 
-    'expiration' => (($days = config('api.token_expiration_days')) > 0)
-        ? $days * 24 * 60
-        : null,
+    'expiration' => null,
 
     /*
     |--------------------------------------------------------------------------

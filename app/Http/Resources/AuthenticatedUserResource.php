@@ -38,6 +38,13 @@ final class AuthenticatedUserResource extends JsonResource
             'name' => $this->resource->name,
             'email' => $this->resource->email,
             'created_at' => ApiDateTime::serialize($this->resource->created_at),
+            /*
+             * The caller's own authorisation context, so the SPA can hide a
+             * control it cannot use without a second request. The server stays
+             * the enforcement; this only tells the UI what to render.
+             */
+            'roles' => $this->resource->getRoleNames()->all(),
+            'permissions' => $this->resource->getAllPermissions()->pluck('name')->all(),
         ];
     }
 }

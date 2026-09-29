@@ -64,7 +64,8 @@ final class PermissionAbilityCatalogTest extends TestCase
         $this->assertContains('users.list', $names);
         $this->assertContains('tokens.list-own', $names);
         $this->assertContains('users.delete', $names);
-        $this->assertCount(33, $names);
+        $this->assertContains('users.restore', $names);
+        $this->assertCount(34, $names);
     }
 
     /**

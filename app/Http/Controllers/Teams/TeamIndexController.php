@@ -13,6 +13,7 @@ use App\Queries\IndexSortQuery;
 use App\Queries\Teams\TeamFilterQuery;
 use App\Queries\Teams\TeamQueryConstraints;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -80,7 +81,7 @@ final class TeamIndexController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<Team> $query */
+        /** @var Builder<Team> $query */
         $query = Team::query();
 
         $this->filterQuery->apply($query, $filters);

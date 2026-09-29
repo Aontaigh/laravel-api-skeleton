@@ -145,7 +145,7 @@ final class DestroyWebhookEndpointControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

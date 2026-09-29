@@ -5,11 +5,15 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\SoftDeleteUserAction;
+use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuthAuditEvent;
 use App\Enums\WebhookEvent;
+use App\Events\AuthEventOccurred;
 use App\Events\WebhookEventDispatched;
 use App\Http\Requests\Users\DestroyUserRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -56,6 +60,18 @@ final class DestroyUserController
                 'id' => $user->id,
                 'email' => $user->email,
             ],
+        ));
+
+        $actor = $request->user();
+
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::UserDeleted,
+            userId: $user->id,
+            actorUserId: $actor instanceof User ? $actor->id : null,
+            email: $user->email,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
         ));
 
         /*

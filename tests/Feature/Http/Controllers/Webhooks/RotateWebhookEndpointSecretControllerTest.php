@@ -153,7 +153,7 @@ final class RotateWebhookEndpointSecretControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

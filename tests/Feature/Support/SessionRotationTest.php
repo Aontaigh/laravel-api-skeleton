@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Support;
 
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
  * Feature tests for the session store behaviour the remember-me flow relies on.
  */
+#[CoversNothing]
 final class SessionRotationTest extends TestCase
 {
     /*

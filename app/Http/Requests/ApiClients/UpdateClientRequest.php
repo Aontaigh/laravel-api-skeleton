@@ -63,24 +63,6 @@ final class UpdateClientRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Validation Messages
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * {@inheritDoc}
-     *
-     * @return array<string, string>
-     */
-    public function messages(): array
-    {
-        return [
-            'abilities.min' => 'Abilities Must Not Be Empty',
-        ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
     | Validator Hooks
     |--------------------------------------------------------------------------
     */
@@ -103,6 +85,23 @@ final class UpdateClientRequest extends ApiFormRequest
                     );
                 }
             },
+        ];
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * {@inheritDoc}
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'abilities.min' => 'Abilities Must Not Be Empty',
         ];
     }
 }

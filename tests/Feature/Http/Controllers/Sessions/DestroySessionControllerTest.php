@@ -146,7 +146,7 @@ final class DestroySessionControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

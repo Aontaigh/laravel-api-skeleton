@@ -255,7 +255,7 @@ final class StoreWebhookEndpointControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

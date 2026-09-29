@@ -172,7 +172,7 @@ final class WebhookEndpointShowControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

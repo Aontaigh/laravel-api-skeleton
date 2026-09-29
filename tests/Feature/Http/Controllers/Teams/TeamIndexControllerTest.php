@@ -249,7 +249,7 @@ final class TeamIndexControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

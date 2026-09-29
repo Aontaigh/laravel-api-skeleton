@@ -27,11 +27,15 @@ final readonly class UserFilters
      * @param bool        $listsAllTeams whether the viewer may see every Team, not just their own
      * @param string|null $search        optional name/email search term
      * @param bool        $canViewEmails whether the viewer may read User emails
+     * @param string|null $status        optional account status filter (`active`, `suspended`, or `deleted`)
+     * @param string|null $role          optional role name filter (`Admin`, `Manager`, `User`, or `Service`)
      */
     public function __construct(
         public User $viewer,
         public bool $listsAllTeams = false,
         public ?string $search = null,
         public bool $canViewEmails = false,
+        public ?string $status = null,
+        public ?string $role = null,
     ) {}
 }

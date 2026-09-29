@@ -166,7 +166,7 @@ final class DestroyTeamControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

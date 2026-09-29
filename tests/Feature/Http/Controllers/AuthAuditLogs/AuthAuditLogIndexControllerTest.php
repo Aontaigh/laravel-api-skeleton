@@ -116,6 +116,8 @@ final class AuthAuditLogIndexControllerTest extends TestCase
     {
         // Arrange
 
+        AuthAuditLog::query()->delete();
+
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
         AuthAuditLog::factory()->count(2)->create();
@@ -164,6 +166,8 @@ final class AuthAuditLogIndexControllerTest extends TestCase
     public function it_filters_audit_logs_by_event(): void
     {
         // Arrange
+
+        AuthAuditLog::query()->delete();
 
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
@@ -327,7 +331,7 @@ final class AuthAuditLogIndexControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 
@@ -361,7 +365,9 @@ final class AuthAuditLogIndexControllerTest extends TestCase
         // Arrange
 
         /** @var User $user */
-        $user = User::factory()->user()->create();
+        $user = User::factory()->user()->create([
+            'email' => 'audit-deny-'.uniqid('', true).'@example.com',
+        ]);
 
         // Act
 

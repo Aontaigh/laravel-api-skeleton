@@ -7,6 +7,76 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-09-29
+
+### Added
+
+- `POST /api/users/{user}/restore` - [`RestoreUserController`](app/Http/Controllers/Users/RestoreUserController.php),
+  [`RestoreUserAction`](app/Actions/Users/RestoreUserAction.php), and
+  [`RestoreUserRequest`](app/Http/Requests/Users/RestoreUserRequest.php) restore a soft-deleted User;
+  `users.restore` is seeded on the **Admin** role only (Managers retain `users.delete` but not restore)
+- User index filters `filter[status]=` (`active`, `suspended`, `deleted`) and `filter[role]=` (Spatie
+  role name), wired through [`AppliesUserFilters`](app/Http/Requests/Concerns/Users/AppliesUserFilters.php)
+  and [`UserFilterQuery`](app/Queries/Users/UserFilterQuery.php); `deleted` selects the trashed-only
+  scope used to locate records eligible for restore
+- Auth audit events **User Deleted** and **User Restored** on [`DestroyUserController`](app/Http/Controllers/Users/DestroyUserController.php)
+  and restore; privileged user lifecycle actions record `actor_user_id` on delete, suspend, and
+  unsuspend; admin `POST /api/users/{user}/tokens` records the acting Admin when the target differs
+- Webhook event `user.restored` ([`WebhookEvent::UserRestored`](app/Enums/WebhookEvent.php))
+- `POST /api/tokens` accepts optional `expires_at`: omitted keeps `API_TOKEN_EXPIRATION_DAYS`, an
+  explicit future timestamp sets expiry, and explicit `null` opts the Token into never expiring
+  (admin-issued tokens keep the configured default only)
+- `GET /api/app-info` exposes `data.auth.token_expiration_days` so clients can mirror the configured
+  default lifetime (`0` means never expire by default)
+- [`AuthenticatedUserResource`](app/Http/Resources/AuthenticatedUserResource.php) includes `roles` and
+  `permissions` on auth success payloads (login, registration, remember-me, and two-factor verify)
+  so the SPA can hide controls the server would still deny
+- [`AuthRateLimitKeySafetyTest`](tests/Feature/Http/AuthRateLimitKeySafetyTest.php) - malformed
+  credential shapes on auth endpoints answer validation instead of tripping the throttle key builder
+- Cross-cutting test coverage attributes: [`EnvExampleParityTest`](tests/Unit/Config/EnvExampleParityTest.php),
+  [`SessionRotationTest`](tests/Feature/Support/SessionRotationTest.php), and
+  [`ApiCorsTest`](tests/Feature/Http/ApiCorsTest.php) declare `#[CoversNothing]` so the suite adheres
+  to the PHPUnit test coverage convention without coupling to arbitrary classes
+
+### Changed
+
+- [`FinaliseAuthenticatedSessionAction`](app/Actions/Auth/FinaliseAuthenticatedSessionAction.php) logs
+  the User into the web guard whenever the session is regenerated (stateful SPA sign-in), not only
+  when `remember` is true; `remember` controls the remember-me cookie only
+- Token index default sort is `-created_at` (newest first) via
+  [`TokenQueryConstraints`](app/Queries/Tokens/TokenQueryConstraints.php)
+- [`config/sanctum.php`](config/sanctum.php) sets global `expiration` to `null` so Sanctum no longer
+  caps or overrides the per-token `expires_at` written at issuance (unchanged
+  [`CreatePersonalAccessTokenAction`](app/Actions/Tokens/CreatePersonalAccessTokenAction.php) behaviour,
+  now authoritative end-to-end)
+- Scoped Personal Access Token escalation guard moves from [`StoreTokenRequest`](app/Http/Requests/Tokens/StoreTokenRequest.php)
+  into [`PersonalAccessTokenPolicy::create`](app/Policies/PersonalAccessTokenPolicy.php) and
+  `createForUser`, including admin issuance for another User
+- [`UserPolicy`](app/Policies/UserPolicy.php) - `restore` ability with team and service-account
+  rules; suspend, unsuspend, and delete refuse service accounts; team-less viewers may view, update,
+  or delete only their own row when they lack `users.list-all`
+- [`ForgotPasswordController`](app/Http/Controllers/Auth/ForgotPasswordController.php) catches mail
+  delivery failures, reports them, and still returns the generic success envelope so outages cannot
+  reveal which addresses have accounts
+- [`RecordAuthAuditData::withLocation`](app/DataTransferObjects/Auth/RecordAuthAuditData.php) reads
+  `actorUserId` with `?? null` so jobs serialised before that property existed restore safely
+- Index controllers and FormRequest traits - import `Builder` for `@var` phpdoc; rename empty trait
+  pipe sections (**Abstract** to **Public** / **Protected**); reorder FormRequest regions to match
+  project convention without behaviour changes
+- OpenAPI, [README](README.md), and [permissions.md](docs/permissions.md) document restore, user index
+  filters, token expiry semantics, default token sort, app-info `auth.token_expiration_days`, auth
+  payload `roles` / `permissions`, webhook `user.restored`, and the full auth-audit `filter[event]` allow-list
+- Test suite section dividers: standardised all controller test group comment blocks across 27 test
+  files to British English (**Authorisation Tests** instead of American **Authorization Tests**)
+
+### Fixed
+
+- Auth composite rate-limit keys no longer call `$request->string()` on credentials before validation;
+  non-string `email` / `client_id` values degrade to the per-IP bucket instead of returning **500**
+  from throttle middleware ([`AppServiceProvider::authCompositeKey`](app/Providers/AppServiceProvider.php))
+- Team-less Users no longer implicitly pass `view`, `update`, or `delete` checks against every other
+  team-less account when the viewer lacks `users.list-all`
+
 ## [1.15.4] - 2026-09-22
 
 ### Added
@@ -600,10 +670,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Laravel 13 API skeleton with Sanctum bearer authentication and Spatie roles and permissions
 - Users, Roles, and Tokens resources with a consistent query-driven index pattern
 - OpenAPI specification, permissions reference, and performance notes
-- CI quality gates: Pint, Larastan level 9, PHPUnit with 90% line-coverage gate, and `composer audit`
+- CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.4...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.4...v1.16.0
 [1.15.4]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.3...v1.15.4
 [1.15.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.2...v1.15.3
 [1.15.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.1...v1.15.2

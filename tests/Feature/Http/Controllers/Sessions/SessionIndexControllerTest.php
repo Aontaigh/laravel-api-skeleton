@@ -388,7 +388,7 @@ final class SessionIndexControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

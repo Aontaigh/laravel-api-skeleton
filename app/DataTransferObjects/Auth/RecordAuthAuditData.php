@@ -62,6 +62,10 @@ final readonly class RecordAuthAuditData
      * (`ipAddress` captured at dispatch) and hands it to the persistence
      * Action through this copy, so the Action never touches `request()`.
      *
+     * `actorUserId` is read with `?? null` because a queued job serialised
+     * before the property existed restores without it - unserialisation does not
+     * apply the constructor default, so a bare read would throw.
+     *
      * @param  GeoIpLocation|null $location the resolved city and country, or null
      * @return self               the copy carrying the resolved location
      */
@@ -70,7 +74,7 @@ final readonly class RecordAuthAuditData
         return new self(
             event: $this->event,
             userId: $this->userId,
-            actorUserId: $this->actorUserId,
+            actorUserId: $this->actorUserId ?? null,
             email: $this->email,
             ipAddress: $this->ipAddress,
             userAgent: $this->userAgent,

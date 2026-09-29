@@ -70,12 +70,6 @@ trait AppliesUserShowParams
         return $fields;
     }
 
-    /*
-    |--------------------------------------------------------------------------
-    | Query Accessors
-    |--------------------------------------------------------------------------
-    */
-
     /**
      * Get sparse fieldset columns for Users, or null when omitted.
      *

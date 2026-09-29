@@ -257,7 +257,7 @@ final class RotateClientSecretControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

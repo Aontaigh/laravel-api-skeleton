@@ -13,6 +13,7 @@ use App\Queries\IndexSortQuery;
 use App\Queries\Webhooks\WebhookEndpointFilterQuery;
 use App\Queries\Webhooks\WebhookEndpointQueryConstraints;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -80,7 +81,7 @@ final class WebhookEndpointIndexController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<WebhookEndpoint> $query */
+        /** @var Builder<WebhookEndpoint> $query */
         $query = WebhookEndpoint::query();
 
         $this->filterQuery->apply($query, $filters);

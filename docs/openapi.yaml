@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.15.4
+  version: 1.16.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -51,6 +51,8 @@ info:
     | `fields[{resource}]` | comma-separated columns | Sparse fieldset - only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. |
     | `include` | comma-separated relations | Whitelisted eager loads. Singular keys may load plural relations (e.g. `include=role` eager-loads `roles`). |
     | `filter[search]` | string (max 255) | Partial match on name (and email for users and audit logs). Only whitelisted `filter[…]` keys are accepted per resource. |
+    | `filter[status]` | `active`, `suspended`, or `deleted` | **`GET /users` only** — account status; `deleted` selects soft-deleted rows for restore workflows. |
+    | `filter[role]` | `Admin`, `Manager`, `User`, or `Service` | **`GET /users` only** — exact Spatie role name. |
     | `page` | integer ≥ 1 | Offset pagination page (default `1`). |
     | `per_page` | integer 1–100 | Page size (default `25`). |
 
@@ -81,6 +83,12 @@ info:
     `401 Unauthenticated`. Admins suspend and unsuspend accounts via
     `POST /users/{user}/suspend` and `POST /users/{user}/unsuspend`
     (requires `users.suspend`).
+
+    Soft-deleted accounts (`deleted_at` set) are hidden from the default user index.
+    Admins list them with `GET /users?filter[status]=deleted` and restore via
+    `POST /users/{user}/restore` (requires `users.restore`, Admin only). Restoration
+    clears the delete marker but does not restore tokens or sessions revoked at
+    delete time — the User must sign in again.
 
     ## Rate Limits
 
@@ -1060,6 +1068,10 @@ paths:
         **User Columns:** `id`, `name`, `created_at`; plus `email` when the viewer
         holds `users.view-email`. `email` is also stripped at serialisation time
         without that permission, even when `fields[users]` is omitted.
+
+        **Filter:** `filter[search]`; `filter[status]` (`active`, `suspended`, or
+        `deleted` — the trashed-only scope for restore workflows); `filter[role]`
+        (`Admin`, `Manager`, `User`, or `Service`).
       operationId: listUsers
       parameters:
         - $ref: '#/components/parameters/QuerySortUsers'
@@ -1068,6 +1080,8 @@ paths:
         - $ref: '#/components/parameters/QueryFieldsTeams'
         - $ref: '#/components/parameters/QueryFieldsRoles'
         - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterUserStatus'
+        - $ref: '#/components/parameters/QueryFilterUserRole'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -1293,8 +1307,10 @@ paths:
       summary: Soft-Delete User
       description: |
         Soft-deletes the user (`deleted_at` set). Requires `users.delete`.
-        Callers cannot delete their own account. Soft-deleted users disappear
-        from the index and return `404` on show.
+        Callers cannot delete their own account. Service accounts cannot be
+        soft-deleted. Soft-deleted users disappear from the default index; list
+        them with `filter[status]=deleted` and restore with `POST /users/{user}/restore`.
+        Records a **User Deleted** audit event with the acting User as `actor_user_id`.
       operationId: deleteUser
       responses:
         '200':
@@ -1313,6 +1329,47 @@ paths:
               examples:
                 default:
                   $ref: '#/components/examples/UserDeleteSuccess'
+        '401': { $ref: '#/components/responses/Unauthorized' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /users/{user}/restore:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+
+    post:
+      tags: [Users]
+      summary: Restore User
+      description: |
+        Clear a soft-delete (`deleted_at`) and return the User to the directory.
+        Requires `users.restore` (Admin only). The route binds trashed records via
+        `withTrashed()`; restoring a live User answers `403`.
+
+        Restoration does not re-issue tokens or sessions revoked at delete time —
+        the account must sign in again. Service accounts cannot be restored. Row
+        scoping matches delete: without `users.list-all`, only Users on the caller's
+        Team may be restored. Nobody may restore their own account.
+
+        Dispatches webhook `user.restored` and records a **User Restored** audit
+        event with the acting Admin as `actor_user_id`.
+      operationId: restoreUser
+      responses:
+        '200':
+          description: User Restored
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/SuccessEnvelope'
+                  - type: object
+                    properties:
+                      message:
+                        example: User Restored Successfully
+                      data:
+                        type: 'null'
+              examples:
+                default:
+                  $ref: '#/components/examples/UserRestoreSuccess'
         '401': { $ref: '#/components/responses/Unauthorized' }
         '403': { $ref: '#/components/responses/Forbidden' }
         '404': { $ref: '#/components/responses/NotFound' }
@@ -1763,7 +1820,7 @@ paths:
         `tokens.list-own`. No `include` keys are supported.
 
         **Sort Whitelist:** `id`, `name`, `created_at`, `last_used_at`,
-        `expires_at` (default `id` ascending).
+        `expires_at` (default `-created_at`, newest first).
 
         **Fields Keys:** `fields[tokens]` only.
       operationId: listTokens
@@ -1809,8 +1866,12 @@ paths:
         `abilities` defaults to `["*"]` when omitted. Each ability must be a
         registered Spatie permission name.
 
-        Tokens expire after `API_TOKEN_EXPIRATION_DAYS` (default 90). The
-        `expires_at` timestamp is set on creation and enforced by Sanctum.
+        Tokens expire after `API_TOKEN_EXPIRATION_DAYS` (default 90); set the
+        env var to `0` for never-expiring defaults. Send `expires_at` to set
+        an explicit expiry: omitted keeps the configured default, an explicit
+        `null` opts the Token into never expiring, and a value in the past
+        answers `422`. The `expires_at` timestamp is set on creation and
+        enforced by Sanctum.
       operationId: createToken
       requestBody:
         required: true
@@ -2646,6 +2707,15 @@ components:
         data: null
         meta: {}
 
+    UserRestoreSuccess:
+      summary: User Restored
+      value:
+        status: success
+        status_code: 200
+        message: User Restored Successfully
+        data: null
+        meta: {}
+
     LoginSuccess:
       summary: Logged In
       value:
@@ -2658,6 +2728,10 @@ components:
             name: Test User
             email: test@example.com
             created_at: '2026-08-05T23:14:13+00:00'
+            roles:
+              - User
+            permissions:
+              - tokens.create-own
           token:
             id: 10
             name: API Session
@@ -2772,13 +2846,6 @@ components:
         status_code: 200
         message: Tokens Retrieved Successfully
         data:
-          - id: 3
-            name: scalar-docs
-            abilities:
-              - '*'
-            last_used_at: null
-            expires_at: '2026-11-03T23:15:04+00:00'
-            created_at: '2026-08-05T23:14:13+00:00'
           - id: 4
             name: curl-verify
             abilities:
@@ -2786,6 +2853,13 @@ components:
             last_used_at: null
             expires_at: '2026-11-03T23:15:04+00:00'
             created_at: '2026-08-05T23:14:42+00:00'
+          - id: 3
+            name: scalar-docs
+            abilities:
+              - '*'
+            last_used_at: null
+            expires_at: '2026-11-03T23:15:04+00:00'
+            created_at: '2026-08-05T23:14:13+00:00'
         meta:
           pagination:
             current_page: 1
@@ -3478,7 +3552,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.15.4
+          version: 1.16.0
         meta: {}
 
     HealthUnavailable:
@@ -3512,6 +3586,8 @@ components:
             architecture: x86_64
           laravel:
             version: 13.0.0
+          auth:
+            token_expiration_days: 90
           drivers:
             cache: redis
             session: redis
@@ -3673,8 +3749,27 @@ components:
         type: string
         maxLength: 255
       description: |
-        Partial Match on `name`. For Users, Also Matches `email`. Only `search` Is
-        Allowed Under `filter[…]`; Other Keys Return `422`.
+        Partial Match on `name`. For Users, Also Matches `email` When the Viewer
+        Holds `users.view-email`. Allowed `filter[…]` Keys Are Resource-Specific
+        (See Each List Operation).
+
+    QueryFilterUserStatus:
+      name: filter[status]
+      in: query
+      schema:
+        type: string
+        enum: [active, suspended, deleted]
+      description: |
+        **`GET /users` only.** `active` excludes suspended rows; `suspended` selects
+        rows with `suspended_at` set; `deleted` selects soft-deleted rows (`onlyTrashed`).
+
+    QueryFilterUserRole:
+      name: filter[role]
+      in: query
+      schema:
+        type: string
+        enum: [Admin, Manager, User, Service]
+      description: Exact Match on the User's Spatie Role Name (`GET /users` Only).
 
     QueryFilterSearchAuthAuditLogs:
       name: filter[search]
@@ -3709,6 +3804,23 @@ components:
           - Email Verification Sent
           - Email Verified
           - Email Verification Failed
+          - Password Changed
+          - User Suspended
+          - User Unsuspended
+          - User Deleted
+          - User Restored
+          - User Role Changed
+          - Session Revoked
+          - Token Created
+          - Token Revoked
+          - API Client Created
+          - API Client Updated
+          - API Client Deleted
+          - Client Secret Rotated
+          - Webhook Endpoint Created
+          - Webhook Endpoint Updated
+          - Webhook Endpoint Deleted
+          - Webhook Secret Rotated
       description: Exact Match on the Persisted Event Value.
 
     QueryFilterUserId:
@@ -3784,7 +3896,7 @@ components:
           - -last_used_at
           - expires_at
           - -expires_at
-        default: id
+        default: -created_at
 
     QuerySortWebhooks:
       name: sort
@@ -3821,7 +3933,7 @@ components:
       in: query
       schema:
         type: string
-        enum: [user.created, user.suspended, user.unsuspended, user.deleted, team.created, team.updated, team.deleted, webhook.ping]
+        enum: [user.created, user.suspended, user.unsuspended, user.deleted, user.restored, team.created, team.updated, team.deleted, webhook.ping]
       description: Exact Event Identifier Match (`webhook.ping` Covers Synthetic Test Pings)
 
     QueryFilterWebhookStatus:
@@ -4160,7 +4272,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.15.4
+          example: 1.16.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -4200,6 +4312,13 @@ components:
           properties:
             version:
               type: string
+        auth:
+          type: object
+          required: [token_expiration_days]
+          properties:
+            token_expiration_days:
+              type: integer
+              description: Non-Sensitive Token Lifetime Defaults So Clients Can Mirror the Configured Expiry; Zero Means Tokens Never Expire by Default
         drivers:
           type: object
           properties:
@@ -4612,7 +4731,7 @@ components:
           maxItems: 20
           items:
             type: string
-            enum: [user.created, user.suspended, user.unsuspended, team.created, team.deleted]
+            enum: [user.created, user.suspended, user.unsuspended, user.deleted, user.restored, team.created, team.updated, team.deleted]
 
     UpdateWebhookEndpointRequest:
       type: object
@@ -4632,7 +4751,7 @@ components:
           maxItems: 20
           items:
             type: string
-            enum: [user.created, user.suspended, user.unsuspended, team.created, team.deleted]
+            enum: [user.created, user.suspended, user.unsuspended, user.deleted, user.restored, team.created, team.updated, team.deleted]
         is_active:
           type: boolean
           description: Re-Enabling Clears the Failure Streak
@@ -4825,7 +4944,7 @@ components:
 
     AuthenticatedUser:
       type: object
-      required: [id, name, email, created_at]
+      required: [id]
       properties:
         id:
           type: integer
@@ -4837,6 +4956,16 @@ components:
           description: Always Present for the Session Owner on Login and Registration
         created_at:
           $ref: '#/components/schemas/ApiDateTime'
+        roles:
+          type: array
+          items:
+            type: string
+          description: The Session Owner's Role Names
+        permissions:
+          type: array
+          items:
+            type: string
+          description: The Session Owner's Permission Names
 
     AuthSessionData:
       type: object
@@ -4871,6 +5000,12 @@ components:
           items:
             type: string
           description: Registered Spatie Permission Names; Defaults to `["*"]`
+        expires_at:
+          oneOf:
+            - type: string
+              format: date-time
+            - type: 'null'
+          description: Explicit Expiry; Omitted Keeps the Configured Default Lifetime, an Explicit `null` Never Expires, and a Value in the Past Answers `422`
 
     UpdateUserRequest:
       type: object

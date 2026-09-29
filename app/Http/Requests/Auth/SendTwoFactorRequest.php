@@ -40,24 +40,22 @@ final class SendTwoFactorRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Preparation
+    | Validation Rules
     |--------------------------------------------------------------------------
     */
 
     /**
-     * Normalise the requested channel before validation.
+     * Get the validation rules that apply to the request.
      *
-     * @return void
+     * @return array<string, array<int, mixed>>
      */
-    protected function prepareForValidation(): void
+    public function rules(): array
     {
-        $channel = $this->input('channel');
-
-        if (is_string($channel)) {
-            $this->merge(['channel' => mb_strtolower(trim($channel))]);
-        }
+        return [
+            'channel' => ['required', Rule::enum(MfaMethod::class)],
+            'two_factor_token' => ['sometimes', 'string', 'max:255'],
+        ];
     }
-
     /*
     |--------------------------------------------------------------------------
     | Query Accessors
@@ -79,20 +77,21 @@ final class SendTwoFactorRequest extends ApiFormRequest
 
     /*
     |--------------------------------------------------------------------------
-    | Validation Rules
+    | Preparation
     |--------------------------------------------------------------------------
     */
 
     /**
-     * Get the validation rules that apply to the request.
+     * Normalise the requested channel before validation.
      *
-     * @return array<string, array<int, mixed>>
+     * @return void
      */
-    public function rules(): array
+    protected function prepareForValidation(): void
     {
-        return [
-            'channel' => ['required', Rule::enum(MfaMethod::class)],
-            'two_factor_token' => ['sometimes', 'string', 'max:255'],
-        ];
+        $channel = $this->input('channel');
+
+        if (is_string($channel)) {
+            $this->merge(['channel' => mb_strtolower(trim($channel))]);
+        }
     }
 }

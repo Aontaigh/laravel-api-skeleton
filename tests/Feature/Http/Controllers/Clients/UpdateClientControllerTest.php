@@ -203,7 +203,7 @@ final class UpdateClientControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

@@ -158,7 +158,7 @@ final class ClientIndexControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

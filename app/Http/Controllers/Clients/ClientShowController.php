@@ -10,6 +10,7 @@ use App\Models\ApiClient;
 use App\Queries\ApiClients\ApiClientQueryConstraints;
 use App\Queries\IndexFieldsQuery;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -64,7 +65,7 @@ final class ClientShowController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<ApiClient> $query */
+        /** @var Builder<ApiClient> $query */
         $query = ApiClient::query()->whereKey($client->getKey());
 
         $this->fieldsQuery->apply(

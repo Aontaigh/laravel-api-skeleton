@@ -62,6 +62,9 @@ final class ShowAppInfoController
                 'laravel' => [
                     'version' => app()->version(),
                 ],
+                'auth' => [
+                    'token_expiration_days' => config()->integer('api.token_expiration_days'),
+                ],
                 'drivers' => [
                     'cache' => $this->driver('cache.default'),
                     'session' => $this->driver('session.driver'),

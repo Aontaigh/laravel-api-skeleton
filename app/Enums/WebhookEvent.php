@@ -25,6 +25,7 @@ enum WebhookEvent: string
     case TeamUpdated = 'team.updated';
     case TeamDeleted = 'team.deleted';
     case UserDeleted = 'user.deleted';
+    case UserRestored = 'user.restored';
 
     /*
     |--------------------------------------------------------------------------

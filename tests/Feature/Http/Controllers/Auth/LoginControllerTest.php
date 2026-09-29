@@ -612,4 +612,37 @@ final class LoginControllerTest extends TestCase
 
         return $guard;
     }
+
+    /**
+     * A standard sign-in establishes a browser session, not only a token.
+     *
+     * The SPA authenticates with the session cookie rather than a bearer token,
+     * so a login that leaves the web guard unauthenticated shows the user as a
+     * guest on every screen. Only a bearer caller has no session to log into,
+     * which is what the regenerate flag distinguishes.
+     */
+    #[Test]
+    public function it_establishes_a_session_on_a_standard_login(): void
+    {
+        // Arrange
+
+        $user = User::factory()->create([
+            'email' => 'alice@example.com',
+            'password' => Hash::make('SecretPass12'),
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->withHeader('Origin', 'http://localhost')
+            ->postJson('/api/auth/login', [
+                'email' => 'alice@example.com',
+                'password' => 'SecretPass12',
+            ]);
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertAuthenticatedAs($user);
+    }
 }

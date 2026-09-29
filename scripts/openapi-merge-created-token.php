@@ -22,6 +22,11 @@ $liveToken = $live['data']['token'];
 $liveToken['id'] = $expectedToken['id'];
 $liveToken['created_at'] = $expectedToken['created_at'];
 $liveToken['expires_at'] = $expectedToken['expires_at'];
+
+if (! array_key_exists('last_used_at', $liveToken) && array_key_exists('last_used_at', $expectedToken)) {
+    $liveToken['last_used_at'] = $expectedToken['last_used_at'];
+}
+
 $live['data']['plain_text_token'] = $expected['data']['plain_text_token'];
 $live['data']['token'] = $liveToken;
 

@@ -12,10 +12,12 @@ use App\Support\ApiResponse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Password;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use RuntimeException;
 use Tests\TestCase;
 
 /**
@@ -114,6 +116,37 @@ final class ForgotPasswordControllerTest extends TestCase
         $response->assertJsonPath('message', 'If the Account Exists, a Reset Link Has Been Sent');
 
         Notification::assertNothingSent();
+    }
+
+    /**
+     * A delivery failure for an existing account must not surface: the
+     * response stays identical to the unknown-address case, so a mail outage
+     * cannot reveal which addresses have accounts.
+     */
+    #[Test]
+    public function it_returns_the_generic_response_when_delivery_fails(): void
+    {
+        // Arrange
+
+        Password::shouldReceive('sendResetLink')
+            ->once()
+            ->andThrow(new RuntimeException('Mail Transport Unavailable'));
+
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/forgot-password', [
+            'email' => $user->email,
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('status', 'success');
+        $response->assertJsonPath('message', 'If the Account Exists, a Reset Link Has Been Sent');
     }
 
     /**

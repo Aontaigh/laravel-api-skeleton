@@ -61,9 +61,12 @@ final class UnsuspendUserController
             ),
         );
 
+        $actor = $request->user();
+
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::UserUnsuspended,
             userId: $user->id,
+            actorUserId: $actor instanceof User ? $actor->id : null,
             email: $user->email,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),

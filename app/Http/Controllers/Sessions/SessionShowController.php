@@ -11,6 +11,7 @@ use App\Queries\IndexFieldsQuery;
 use App\Queries\Sessions\SessionIncludeQuery;
 use App\Queries\Sessions\SessionQueryConstraints;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -75,7 +76,7 @@ final class SessionShowController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<WebSession> $query */
+        /** @var Builder<WebSession> $query */
         $query = WebSession::query()
             ->whereKey($webSession->getKey())
             ->whereNull(SessionQueryConstraints::TABLE.'.revoked_at');

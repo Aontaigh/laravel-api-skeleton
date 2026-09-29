@@ -117,6 +117,27 @@ final class DestroyUserControllerTest extends TestCase
     }
 
     /**
+     * Record a `User Deleted` audit event carrying the acting User.
+     */
+    #[Test]
+    public function it_records_a_user_deleted_audit_event(): void
+    {
+        // Act
+
+        $this->actingAs($this->manager)
+            ->deleteJson("/api/users/{$this->teamMember->id}")
+            ->assertOk();
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => 'User Deleted',
+            'user_id' => $this->teamMember->id,
+            'actor_user_id' => $this->manager->id,
+        ]);
+    }
+
+    /**
      * Allow an admin to soft-delete a User on another Team.
      */
     #[Test]

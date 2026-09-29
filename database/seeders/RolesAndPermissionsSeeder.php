@@ -42,6 +42,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         'users.assign-role',       // role changes on PATCH /api/users/{user}
         'users.reassign-team',     // team_id changes on PATCH /api/users/{user}
         'users.delete',            // DELETE /api/users/{user} (soft delete)
+        'users.restore',           // POST /api/users/{user}/restore
         'users.force-logout',      // POST /api/users/logout (admin session termination)
         'users.suspend',           // POST /api/users/{user}/suspend and /unsuspend
         'users.create',            // POST /api/users
@@ -86,6 +87,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             'users.assign-role',
             'users.reassign-team',
             'users.delete',
+            'users.restore',
             'users.force-logout',
             'users.suspend',
             'users.create',

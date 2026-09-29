@@ -49,5 +49,28 @@ final class UserFilterQuery
                 }
             });
         }
+
+        if ($filters->status === 'active') {
+            $query->whereNull('users.suspended_at');
+        }
+
+        if ($filters->status === 'suspended') {
+            $query->whereNotNull('users.suspended_at');
+        }
+
+        if ($filters->status === 'deleted') {
+            /*
+             * Soft-deleted Users are hidden by the default scope, so the only
+             * way to reach them - and therefore to restore one - is the
+             * trashed-only scope this filter selects.
+             */
+            $query->onlyTrashed();
+        }
+
+        if ($filters->role !== null) {
+            $query->whereHas('roles', function (Builder $roles) use ($filters): void {
+                $roles->where('name', $filters->role);
+            });
+        }
     }
 }

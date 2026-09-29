@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Policies;
 
 use App\Models\User;
+use App\Support\PresentingToken;
 use Laravel\Sanctum\PersonalAccessToken;
 
 /**
@@ -32,12 +33,23 @@ final class PersonalAccessTokenPolicy
     /**
      * Whether the User may create a Token for themselves.
      *
+     * A scoped Personal Access Token must not be able to mint a broader one:
+     * the new token defaults to a wildcard ability set, so letting a scoped
+     * token through would escalate out of its own scope. The presenting token
+     * is read from the User so a bare `can('create', …)` check cannot omit it.
+     *
      * @param  User $user the authenticated User
      * @return bool true when the User may create their own Token
      */
     public function create(User $user): bool
     {
-        return $user->can('tokens.create-own') && ! $user->isServiceAccount();
+        if (! $user->can('tokens.create-own') || $user->isServiceAccount()) {
+            return false;
+        }
+
+        $presenting = $user->currentAccessToken();
+
+        return ! PresentingToken::isPersonalAccessToken($presenting) || $presenting->can('*');
     }
 
     /**
@@ -62,11 +74,22 @@ final class PersonalAccessTokenPolicy
     /**
      * Whether the User may create a Token on behalf of another User.
      *
+     * A scoped Personal Access Token is refused: the granted abilities must
+     * stay within the presenting token's own scope, so a narrow token cannot
+     * mint a wildcard one for its target. The presenting token is read from the
+     * User so a bare `can('createForUser', …)` check cannot omit it.
+     *
      * @param  User $user the authenticated User
      * @return bool true when the User may issue Tokens for other Users
      */
     public function createForUser(User $user): bool
     {
-        return $user->can('tokens.create-for-user');
+        if (! $user->can('tokens.create-for-user')) {
+            return false;
+        }
+
+        $presenting = $user->currentAccessToken();
+
+        return ! PresentingToken::isPersonalAccessToken($presenting) || $presenting->can('*');
     }
 }

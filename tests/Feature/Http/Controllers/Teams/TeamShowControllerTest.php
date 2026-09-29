@@ -144,7 +144,7 @@ final class TeamShowControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

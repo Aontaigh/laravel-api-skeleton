@@ -106,6 +106,16 @@ final class StoreUserTokenControllerTest extends TestCase
             'tokenable_id' => $target->id,
             'tokenable_type' => User::class,
         ]);
+
+        /*
+         * The Token belongs to the target User; the acting Admin is the actor,
+         * so a privileged issuance is attributable to whoever ran it.
+         */
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => 'Token Created',
+            'user_id' => $target->id,
+            'actor_user_id' => $admin->id,
+        ]);
     }
 
     /**
@@ -179,7 +189,7 @@ final class StoreUserTokenControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 
@@ -215,6 +225,37 @@ final class StoreUserTokenControllerTest extends TestCase
         // Assert
 
         $response->assertForbidden();
+    }
+
+    /**
+     * A scoped administrator Personal Access Token must not issue a wildcard
+     * token for another User: the granted abilities have to stay within the
+     * presenting token's own scope, or a narrow token escalates.
+     */
+    #[Test]
+    public function it_denies_a_scoped_token_issuing_a_token_for_another_user(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var User $target */
+        $target = User::factory()->user()->create();
+
+        $scoped = $admin->createToken('scoped', ['tokens.create-for-user']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this
+            ->withToken($scoped->plainTextToken)
+            ->postJson("/api/users/{$target->id}/tokens", ['name' => 'Escalated Token']);
+
+        // Assert
+
+        $response->assertForbidden();
+        $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Escalated Token']);
     }
 
     /**

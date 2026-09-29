@@ -37,6 +37,13 @@ final class AuthenticatedUserResourceTest extends UnitTestCase
         $user->email = 'alice@example.com';
         $user->created_at = Carbon::parse('2026-01-15T10:30:00Z');
 
+        /*
+         * The authorisation context reads the relations rather than querying, so
+         * the unit test supplies them and stays inside the no-query guard.
+         */
+        $user->setRelation('roles', collect());
+        $user->setRelation('permissions', collect());
+
         return $user;
     }
 

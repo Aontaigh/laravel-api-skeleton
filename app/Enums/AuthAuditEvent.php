@@ -35,6 +35,8 @@ enum AuthAuditEvent: string
     case PasswordChanged = 'Password Changed';
     case UserSuspended = 'User Suspended';
     case UserUnsuspended = 'User Unsuspended';
+    case UserDeleted = 'User Deleted';
+    case UserRestored = 'User Restored';
     case UserRoleChanged = 'User Role Changed';
     case SessionRevoked = 'Session Revoked';
     case TokenCreated = 'Token Created';

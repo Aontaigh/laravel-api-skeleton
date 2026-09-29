@@ -31,6 +31,7 @@ Policy or request concern.
 | `users.assign-role` | Change `role` on `PATCH /api/users/{user}` | `UserPolicy::assignRole()` |
 | `users.reassign-team` | Reassign `team_id` on `PATCH /api/users/{user}` | `UserPolicy::reassignTeam()` |
 | `users.delete` | Soft-delete a user via `DELETE /api/users/{user}` | `UserPolicy::delete()` |
+| `users.restore` | Restore a soft-deleted user via `POST /api/users/{user}/restore` | `UserPolicy::restore()` |
 | `users.force-logout` | Force-logout Users via `POST /api/users/logout` | `UserPolicy::forceLogout()` |
 | `users.suspend` | Suspend or unsuspend a User via `POST /api/users/{user}/suspend` and `POST /api/users/{user}/unsuspend` | `UserPolicy::suspend()` and `UserPolicy::unsuspend()` |
 | `roles.list` | Access to `GET /api/roles` and `GET /api/roles/{role}` | `RolePolicy::viewAny()` and `RolePolicy::view()` |
@@ -125,9 +126,19 @@ no administrator).
 #### `users.delete`
 
 Soft-deletes the target user (`deleted_at` is set; the row remains in the database).
-Managers may delete users on their own team; Admins may delete any user. Callers
-cannot delete their own account through this endpoint. Soft-deleted users are
-excluded from the index and return 404 on show.
+Managers may delete users on their own team; Admins may delete any non-service user. Callers
+cannot delete their own account through this endpoint. Service accounts cannot be deleted.
+Soft-deleted users are excluded from the default index; list them with
+`GET /api/users?filter[status]=deleted`. Show returns `404` for trashed rows unless the caller
+uses the restore route.
+
+#### `users.restore`
+
+Admin-only restoration of a soft-deleted user via `POST /api/users/{user}/restore`. Requires
+a genuinely trashed record (the route binds with `withTrashed()`). Row scoping matches delete:
+Managers cannot restore (they hold `users.delete` but not `users.restore`). Restoration clears
+`deleted_at` but does not re-issue tokens or sessions revoked at delete time — the User must
+sign in again. Service accounts and self-restore are refused.
 
 #### Teams
 
@@ -163,11 +174,11 @@ role. Managers, Users, and Service identities cannot list or show audit rows.
 
 The log covers authentication (login, logout, registration, 2FA, recovery,
 email verification) and access-control changes: password changes, role changes,
-suspensions, session revokes, token issuance and revocation, API client
+suspensions, user soft-delete and restore, session revokes, token issuance and revocation, API client
 lifecycle, and webhook endpoint lifecycle (create, update, delete, secret
 rotation - the target URL is an attacker-controlled exfiltration channel, so
 every configuration change is audited). Plain resource administration (user
-create/rename/delete, team CRUD)
+create/rename, team CRUD)
 stays out by design, so incident response is never buried under admin noise.
 User-targeted rows carry the affected account; token and client rows carry the
 acting Admin alongside the issued credential ID where one exists.

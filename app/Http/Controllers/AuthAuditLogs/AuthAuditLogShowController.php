@@ -11,6 +11,7 @@ use App\Queries\AuthAuditLogs\AuthAuditLogIncludeQuery;
 use App\Queries\AuthAuditLogs\AuthAuditLogQueryConstraints;
 use App\Queries\IndexFieldsQuery;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -71,7 +72,7 @@ final class AuthAuditLogShowController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<AuthAuditLog> $query */
+        /** @var Builder<AuthAuditLog> $query */
         $query = AuthAuditLog::query()->whereKey($authAuditLog->getKey());
 
         $this->fieldsQuery->apply(

@@ -13,6 +13,7 @@ use App\Support\ApiResponse;
 use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Password;
+use Throwable;
 
 /**
  * Sends a password reset link for an account identified by email.
@@ -53,9 +54,20 @@ final class ForgotPasswordController
         |--------------------------------------------------------------------------
         | Action
         |--------------------------------------------------------------------------
+        |
+        | A delivery failure (mail transport down, queue unreachable) is caught
+        | and reported rather than allowed to escape: an unknown address never
+        | reaches delivery and answers the same generic success, so surfacing
+        | the failure would reveal which addresses have accounts. The request is
+        | still audited below.
+        |
         */
 
-        Password::sendResetLink(['email' => $email]);
+        try {
+            Password::sendResetLink(['email' => $email]);
+        } catch (Throwable $deliveryFailure) {
+            report($deliveryFailure);
+        }
 
         $user = User::query()->where('email', $email)->first();
 

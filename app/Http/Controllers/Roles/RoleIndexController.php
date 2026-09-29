@@ -13,6 +13,7 @@ use App\Queries\Roles\RoleFilterQuery;
 use App\Queries\Roles\RoleIncludeQuery;
 use App\Queries\Roles\RoleQueryConstraints;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Spatie\Permission\Models\Role;
 
@@ -85,7 +86,7 @@ final class RoleIndexController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<Role> $query */
+        /** @var Builder<Role> $query */
         $query = Role::query();
 
         $this->filterQuery->apply($query, $filters);

@@ -65,9 +65,12 @@ final class StoreUserTokenController
 
         $newToken = $action->execute($data);
 
+        $actor = $request->user();
+
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::TokenCreated,
             userId: $user->id,
+            actorUserId: $actor instanceof User && $actor->id !== $user->id ? $actor->id : null,
             email: $user->email,
             personalAccessTokenId: $newToken->accessToken->id,
             ipAddress: $request->ip(),

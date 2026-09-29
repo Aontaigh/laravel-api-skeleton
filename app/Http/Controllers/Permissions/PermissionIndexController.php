@@ -12,6 +12,7 @@ use App\Queries\IndexSortQuery;
 use App\Queries\Permissions\PermissionFilterQuery;
 use App\Queries\Permissions\PermissionQueryConstraints;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Spatie\Permission\Models\Permission;
 
@@ -80,7 +81,7 @@ final class PermissionIndexController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<Permission> $query */
+        /** @var Builder<Permission> $query */
         $query = Permission::query();
 
         $this->filterQuery->apply($query, $filters);

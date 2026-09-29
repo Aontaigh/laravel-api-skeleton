@@ -192,4 +192,47 @@ final class UserPolicyTest extends TestCase
 
         $this->assertFalse($allowed);
     }
+
+    /**
+     * Deny suspending, unsuspending, or deleting a service account.
+     */
+    #[Test]
+    public function it_denies_lifecycle_actions_on_a_service_account(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var User $serviceAccount */
+        $serviceAccount = User::factory()->serviceAccount()->service()->create();
+
+        // Act + Assert
+
+        $this->assertFalse($this->policy->suspend($admin, $serviceAccount));
+        $this->assertFalse($this->policy->unsuspend($admin, $serviceAccount));
+        $this->assertFalse($this->policy->delete($admin, $serviceAccount));
+    }
+
+    /**
+     * A team-less viewer sees only their own team-less account, not every one.
+     */
+    #[Test]
+    public function it_scopes_a_team_less_viewer_to_their_own_account(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->manager()->create(['team_id' => null]);
+
+        /** @var User $other */
+        $other = User::factory()->create(['team_id' => null]);
+
+        // Act + Assert
+
+        $this->assertTrue($this->policy->view($viewer, $viewer));
+        $this->assertFalse($this->policy->view($viewer, $other));
+        $this->assertFalse($this->policy->update($viewer, $other));
+        $this->assertFalse($this->policy->delete($viewer, $other));
+    }
 }

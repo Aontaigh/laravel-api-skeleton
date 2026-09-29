@@ -253,7 +253,7 @@ final class UpdateTeamControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

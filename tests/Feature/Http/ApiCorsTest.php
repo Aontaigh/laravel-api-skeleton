@@ -9,12 +9,14 @@ use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Testing\TestResponse;
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
  * Feature tests for cross-origin API access from browser clients.
  */
+#[CoversNothing]
 final class ApiCorsTest extends TestCase
 {
     /*

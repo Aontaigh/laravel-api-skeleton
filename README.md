@@ -140,6 +140,9 @@ POST /api/logout                        # Bearer token required - revokes every 
 
 No prior token required for login, register, and client-credentials exchange.
 
+Successful login, registration, remember-me, and two-factor verify responses include a `user`
+object with `roles` and `permissions` arrays so SPAs can hide controls the server would still deny.
+
 **Rate Limits**
 
 - Login and register share a per-email+IP budget (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**),
@@ -176,11 +179,11 @@ log in, read `GET /me`, resend the link, and sign out - every other business rou
 until the address is confirmed. Resend is keyed on the authenticated User ID + IP
 (`API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE`, default **3**) and both answers are generic.
 Login, logout, registration, e-mail verification outcomes, failed logins, remember-me restores,
-password changes, role changes, suspensions, session revokes, token issuance and
-revocation, and API client lifecycle are recorded to `auth_audit_logs` - written by a
+password changes, role changes, suspensions, user soft-delete and restore, session revokes, token
+issuance and revocation, and API client lifecycle are recorded to `auth_audit_logs` - written by a
 **queued listener** ([RecordAuthAuditLog](app/Listeners/RecordAuthAuditLog.php)) off the
 request hot path, so a queue worker must be running in non-`sync` environments. Plain
-resource administration (user create/rename/delete, team CRUD) stays out by design -
+resource administration (user create/rename, team CRUD) stays out by design -
 see [docs/permissions.md](docs/permissions.md#get-apiaudit-logs).
 
 Set `remember: true` on login for industry-standard remember-me - extended Sanctum
@@ -279,7 +282,7 @@ Every list endpoint shares this query contract:
 | `sort` | Whitelisted column; prefix `-` for descending (default varies per resource, e.g. `id` ascending) |
 | `fields[{resource}]` | Sparse fieldset - only requested columns are selected and returned |
 | `include` | Whitelisted eager loads for nested relations |
-| `filter[{key}]` | Resource-specific filters (e.g. `filter[search]` - trimmed via `SearchTermParser`) |
+| `filter[{key}]` | Resource-specific filters (e.g. `filter[search]`; Users also support `filter[status]` and `filter[role]` — trimmed via `SearchTermParser` where applicable) |
 | `page`, `per_page` | Pagination |
 
 > [!WARNING]
@@ -291,8 +294,11 @@ Full allow-lists: [docs/openapi.yaml](docs/openapi.yaml) and `*QueryConstraints`
 ### Users
 
 ```http
-GET /api/users?filter[search]=acme&fields[users]=id,name,email&include=team,role&sort=-created_at&page=1&per_page=25
+GET /api/users?filter[search]=acme&filter[status]=active&filter[role]=User&fields[users]=id,name,email&include=team,role&sort=-created_at&page=1&per_page=25
 ```
+
+**Filters:** `filter[status]` accepts `active`, `suspended`, or `deleted` (trashed-only scope for
+restore workflows). `filter[role]` accepts `Admin`, `Manager`, `User`, or `Service`.
 
 **Row Scoping:** Managers and Users see their own team only; Admins see all teams
 (`users.list-all`). Details: [docs/permissions.md](docs/permissions.md#userslist-vs-userslist-all).
@@ -323,7 +329,8 @@ new accounts are auto-enrolled in email MFA; no bearer token is returned.
 | `POST` | `/api/users` | Create account (`users.create`); optional `role`, `team_id`, and E.164 `phone` |
 | `GET` | `/api/users/{user}` | Show - same `fields`/`include` as index |
 | `PATCH` | `/api/users/{user}` | Update `name`/`phone`; Admins may reassign `team_id` (`users.reassign-team`) and `role` (`users.assign-role`, never self/service, never last Admin) |
-| `DELETE` | `/api/users/{user}` | Soft-delete; cannot delete own account |
+| `DELETE` | `/api/users/{user}` | Soft-delete; cannot delete own account or service accounts |
+| `POST` | `/api/users/{user}/restore` | Restore soft-deleted user (`users.restore`, Admin only) |
 | `POST` | `/api/users/logout` | Admin force-logout by IDs (`users.force-logout`) |
 | `POST` | `/api/users/{user}/tokens` | Admin token issuance (`tokens.create-for-user`) |
 | `POST` | `/api/users/{user}/suspend` | Admin suspend (`users.suspend`) |
@@ -425,7 +432,7 @@ key. Subscribed events: `user.created`, `user.deleted`, `user.suspended`, `user.
 
 ```http
 GET    /api/tokens
-POST   /api/tokens                       # {"name": "...", "abilities": ["*"]}
+POST   /api/tokens                       # {"name": "...", "abilities": ["*"], "expires_at": null}
 DELETE /api/tokens/{token}
 POST   /api/users/{user}/tokens          # Admin only
 ```
@@ -435,6 +442,9 @@ validated against registered Spatie permissions via
 [PermissionAbilityCatalog](app/Services/Permissions/PermissionAbilityCatalog.php). The plaintext
 token is returned once on `POST` and never stored. New tokens expire after
 `API_TOKEN_EXPIRATION_DAYS` (default **90**); set to `0` to disable expiration locally.
+`expires_at` overrides that default: a future date sets the expiry, an explicit `null`
+opts the Token into never expiring, and omitting it keeps the configured default.
+The index lists newest first by default.
 
 **Source of Truth:** [TokenQueryConstraints](app/Queries/Tokens/TokenQueryConstraints.php),
 [PersonalAccessTokenPolicy](app/Policies/PersonalAccessTokenPolicy.php).
@@ -522,7 +532,8 @@ GET  /.well-known/security.txt   # public; RFC 9116 disclosure contact (served a
 `POST /api/csp-reports` accepts legacy `report-uri` and modern Reporting API
 shapes (per-IP throttled, `413` past 16 KiB) into the dedicated `csp-reports`
 log channel; both CSP policies point `report-uri` at it. `GET /api/app-info`
-reports application, runtime, and driver names for deploy verification behind
+reports application, runtime, driver names, and `auth.token_expiration_days` (configured default
+Personal Access Token lifetime; `0` means never expire by default) for deploy verification behind
 the status page throttle. Disclosure policy: [SECURITY.md](SECURITY.md).
 
 **Source of Truth:** [StoreCspReportController](app/Http/Controllers/CspReports/StoreCspReportController.php),

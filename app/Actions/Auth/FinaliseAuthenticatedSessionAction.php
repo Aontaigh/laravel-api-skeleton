@@ -58,11 +58,18 @@ final class FinaliseAuthenticatedSessionAction
 
         if ($data->remember) {
             $this->applyRemember->execute($user);
-            Auth::guard('web')->login($user->refresh(), true);
+        }
 
-            if ($data->regenerateSession) {
-                session()->regenerate();
-            }
+        /*
+         * A stateful sign-in logs the user into the web guard, because the SPA
+         * authenticates with the session cookie rather than the issued token.
+         * `remember` controls only the remember-me cookie, so it must not decide
+         * whether a session exists; a bearer caller has no session to log into,
+         * which is what the regenerate flag distinguishes.
+         */
+        if ($data->regenerateSession) {
+            Auth::guard('web')->login($user->refresh(), $data->remember);
+            session()->regenerate();
         }
 
         $newToken = $this->issueToken->execute(new CreateTokenData(

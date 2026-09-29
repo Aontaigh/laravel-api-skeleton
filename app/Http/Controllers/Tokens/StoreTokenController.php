@@ -54,6 +54,8 @@ final class StoreTokenController
             forUser: $request->viewer(),
             name: $input->string('name')->toString(),
             abilities: $request->tokenAbilities(),
+            expiresAt: $request->expiresAt(),
+            useConfiguredExpiration: $request->useConfiguredExpiration(),
         );
 
         /*

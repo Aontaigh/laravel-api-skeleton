@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Unit\Config;
 
+use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\UnitTestCase;
 
@@ -14,6 +15,7 @@ use Tests\UnitTestCase;
  * (active or commented) so operators and agents discover it without opening
  * `config/`. `.env.ci` mirrors the same section structure for CI parity.
  */
+#[CoversNothing]
 final class EnvExampleParityTest extends UnitTestCase
 {
     /*

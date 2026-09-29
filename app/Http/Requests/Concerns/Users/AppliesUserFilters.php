@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns\Users;
 
+use App\Enums\RoleName;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
@@ -14,6 +15,7 @@ use App\Queries\Teams\TeamQueryConstraints;
 use App\Queries\Users\UserQueryConstraints;
 use App\Support\AllowListValidation;
 use Illuminate\Contracts\Validation\Validator;
+use Illuminate\Validation\Rule;
 
 /**
  * Shared User Index filter rules and typed accessors.
@@ -53,6 +55,34 @@ trait AppliesUserFilters
         return $this->viewer()->can('users.list-all');
     }
 
+    /**
+     * Get the requested account status filter.
+     *
+     * @return string|null the validated status (`active`, `suspended`, or `deleted`), or null when omitted
+     */
+    public function statusFilter(): ?string
+    {
+        if (! $this->safe()->filled('filter.status')) {
+            return null;
+        }
+
+        return $this->safe()->string('filter.status')->toString();
+    }
+
+    /**
+     * Get the requested role name filter.
+     *
+     * @return string|null the validated role name, or null when omitted
+     */
+    public function roleFilter(): ?string
+    {
+        if (! $this->safe()->filled('filter.role')) {
+            return null;
+        }
+
+        return $this->safe()->string('filter.role')->toString();
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Allow-lists
@@ -78,12 +108,6 @@ trait AppliesUserFilters
 
         return $fields;
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Query Accessors
-    |--------------------------------------------------------------------------
-    */
 
     /**
      * Get sparse fieldset columns for Users, or null when omitted.
@@ -131,6 +155,16 @@ trait AppliesUserFilters
             'filter' => ['sometimes', 'array'],
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
+            'filter.status' => [
+                'sometimes',
+                'string',
+                Rule::in(UserQueryConstraints::ALLOWED_STATUSES),
+            ],
+            'filter.role' => [
+                'sometimes',
+                'string',
+                Rule::enum(RoleName::class),
+            ],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => [
                 'sometimes',
@@ -196,7 +230,7 @@ trait AppliesUserFilters
      */
     protected function allowedFilterKeys(): array
     {
-        return ['search'];
+        return ['search', 'status', 'role'];
     }
 
     /**

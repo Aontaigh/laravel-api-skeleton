@@ -90,6 +90,12 @@ final class UnsuspendUserControllerTest extends TestCase
         $response->assertJsonPath('message', 'User Unsuspended Successfully');
 
         $this->assertNull($target->fresh()?->suspended_at);
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => 'User Unsuspended',
+            'user_id' => $target->id,
+            'actor_user_id' => $admin->id,
+        ]);
     }
 
     /**

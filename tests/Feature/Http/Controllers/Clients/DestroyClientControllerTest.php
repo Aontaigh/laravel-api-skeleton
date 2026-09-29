@@ -129,7 +129,7 @@ final class DestroyClientControllerTest extends TestCase
     }
 
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

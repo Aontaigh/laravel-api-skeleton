@@ -37,6 +37,15 @@ final class UserQueryConstraints
     public const ALLOWED_INCLUDES = ['team', 'role'];
 
     /**
+     * Account statuses callers may filter on via `filter[status]=`.
+     *
+     * `deleted` selects the trashed-only scope, which is the only way to reach
+     * a soft-deleted record - and therefore the data source for the restore
+     * flow.
+     */
+    public const ALLOWED_STATUSES = ['active', 'suspended', 'deleted'];
+
+    /**
      * Sparse fieldset columns every viewer may request via `fields[users]=`.
      * `email` is deliberately absent from the base list: it is appended only
      * for viewers holding `users.view-email`, so the column cannot leak to

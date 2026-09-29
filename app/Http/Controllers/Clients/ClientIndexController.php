@@ -13,6 +13,7 @@ use App\Queries\ApiClients\ApiClientQueryConstraints;
 use App\Queries\IndexFieldsQuery;
 use App\Queries\IndexSortQuery;
 use App\Support\ApiResponse;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 
 /**
@@ -80,7 +81,7 @@ final class ClientIndexController
         |--------------------------------------------------------------------------
         */
 
-        /** @var \Illuminate\Database\Eloquent\Builder<ApiClient> $query */
+        /** @var Builder<ApiClient> $query */
         $query = ApiClient::query();
 
         $this->filterQuery->apply($query, $filters);

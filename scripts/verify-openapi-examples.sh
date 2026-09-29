@@ -114,6 +114,12 @@ artisan tinker --execute="App\\Models\\ApiClient::query()->update(['last_used_at
 # order-independent for the same reason as the `last_used_at` reset above.
 artisan cache:clear >/dev/null 2>&1
 
+LOGIN_RESPONSE="$(curl -s -X POST -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"password","device_name":"API Session"}' \
+  "${BASE}/auth/login")"
+check LoginSuccess "$(openapi_example LoginSuccess)" \
+  "$(merge_created_token "$(openapi_example LoginSuccess)" "$LOGIN_RESPONSE")"
+
 # Success envelopes
 check UsersIndexSuccess "$(openapi_example UsersIndexSuccess)" \
   "$(api GET '/users?per_page=2&include=team,role&fields%5Busers%5D=id,name&fields%5Bteams%5D=id,name&fields%5Broles%5D=id,name')"
@@ -217,7 +223,7 @@ api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-index-1","abilities":["token
 api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-index-2","abilities":["tokens.list-own"]}' > /dev/null
 
 check TokensIndexSuccess "$(openapi_example TokensIndexSuccess)" \
-  "$(api GET '/tokens?per_page=2&sort=-id')"
+  "$(api GET '/tokens?per_page=2&sort=-created_at')"
 
 TOKEN_CREATE="$(api POST '/tokens' "$ADMIN_TOKEN" '{"name":"openapi-example","abilities":["tokens.list-own"]}')"
 check TokenCreateSuccess "$(openapi_example TokenCreateSuccess)" \
@@ -242,8 +248,26 @@ check ValidationErrorExample "$(openapi_example ValidationErrorExample)" \
 check InvalidAbilitiesError "$(openapi_example InvalidAbilitiesError)" \
   "$(api POST '/tokens' "$ADMIN_TOKEN" '{"name":"bad","abilities":["not.real"]}')"
 
+LIFECYCLE_USER_ID="$(artisan tinker --execute="
+\$team = App\\Models\\Team::first();
+\$user = App\\Models\\User::factory()->for(\$team)->user()->create([
+    'name' => 'OpenAPI Lifecycle',
+    'email' => 'openapi-lifecycle-'.uniqid('', true).'@example.com',
+]);
+echo \$user->id;
+" 2>/dev/null | tail -1)"
+
+check UserSuspendSuccess "$(openapi_example UserSuspendSuccess)" \
+  "$(api POST "/users/${LIFECYCLE_USER_ID}/suspend" "$ADMIN_TOKEN")"
+
+check UserUnsuspendSuccess "$(openapi_example UserUnsuspendSuccess)" \
+  "$(api POST "/users/${LIFECYCLE_USER_ID}/unsuspend" "$ADMIN_TOKEN")"
+
 check UserDeleteSuccess "$(openapi_example UserDeleteSuccess)" \
-  "$(api DELETE "/users/$(artisan tinker --execute="\$t=App\Models\Team::first(); \$u=App\Models\User::factory()->for(\$t)->user()->create(['name'=>'Del','email'=>'del-'.uniqid().'@example.com']); echo \$u->id;" 2>/dev/null | tail -1)")"
+  "$(api DELETE "/users/${LIFECYCLE_USER_ID}" "$ADMIN_TOKEN")"
+
+check UserRestoreSuccess "$(openapi_example UserRestoreSuccess)" \
+  "$(api POST "/users/${LIFECYCLE_USER_ID}/restore" "$ADMIN_TOKEN")"
 
 REVOKE_ID="$(echo "$TOKEN_CREATE" | "$PHP_BIN" -r 'echo json_decode(stream_get_contents(STDIN), true, 512, JSON_THROW_ON_ERROR)["data"]["token"]["id"];')"
 check TokenRevokeSuccess "$(openapi_example TokenRevokeSuccess)" \

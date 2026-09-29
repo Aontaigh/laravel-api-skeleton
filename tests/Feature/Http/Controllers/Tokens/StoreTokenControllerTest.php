@@ -183,6 +183,77 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertJsonPath('data.token.abilities', ['tokens.list-own']);
     }
 
+    /**
+     * Apply an explicit future expiry verbatim.
+     */
+    #[Test]
+    public function it_applies_an_explicit_expiry(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($viewer)->postJson('/api/tokens', [
+            'name' => 'Dated Token',
+            'expires_at' => '2030-01-31T23:59:59+00:00',
+        ]);
+
+        // Assert
+
+        $response->assertCreated();
+
+        $expiresAt = $response->json('data.token.expires_at');
+        $this->assertIsString($expiresAt);
+        $this->assertSame(
+            '2030-01-31 23:59:59',
+            Carbon::parse($expiresAt)->toDateTimeString(),
+        );
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'name' => 'Dated Token',
+            'tokenable_id' => $viewer->id,
+            'tokenable_type' => User::class,
+        ]);
+    }
+
+    /**
+     * Issue a never-expiring Token only when the caller sends an explicit null.
+     *
+     * Omitting `expires_at` applies the default lifetime; only an explicit
+     * `null` opts out, so a forgotten field can never produce a Token that
+     * lives forever.
+     */
+    #[Test]
+    public function it_issues_a_never_expiring_token_when_expires_at_is_null(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($viewer)->postJson('/api/tokens', [
+            'name' => 'Never Expiring Token',
+            'expires_at' => null,
+        ]);
+
+        // Assert
+
+        $response->assertCreated();
+        $response->assertJsonPath('data.token.expires_at', null);
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'name' => 'Never Expiring Token',
+            'tokenable_id' => $viewer->id,
+            'tokenable_type' => User::class,
+            'expires_at' => null,
+        ]);
+    }
+
     /*
      * Validation Tests
      * ----------------
@@ -262,8 +333,84 @@ final class StoreTokenControllerTest extends TestCase
         $this->assertApiValidationErrors($response, ['abilities.0']);
     }
 
+    /**
+     * Reject an expiry in the past.
+     */
+    #[Test]
+    public function it_rejects_an_expiry_in_the_past(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($viewer)->postJson('/api/tokens', [
+            'name' => 'Past Expiry Token',
+            'expires_at' => '2020-01-01T00:00:00+00:00',
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['expires_at']);
+        $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Past Expiry Token']);
+    }
+
+    /**
+     * Reject a malformed expiry.
+     */
+    #[Test]
+    public function it_rejects_a_malformed_expiry(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($viewer)->postJson('/api/tokens', [
+            'name' => 'Malformed Expiry Token',
+            'expires_at' => 'not-a-date',
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['expires_at']);
+    }
+
+    /**
+     * Reject a numeric expiry.
+     */
+    #[Test]
+    public function it_rejects_a_numeric_expiry(): void
+    {
+        // Arrange
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($viewer)->postJson('/api/tokens', [
+            'name' => 'Numeric Expiry Token',
+            'expires_at' => 12345,
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['expires_at']);
+    }
+
     /*
-     * Authorization Tests
+     * Authorisation Tests
      * -------------------
      */
 

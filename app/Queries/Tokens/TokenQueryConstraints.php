@@ -59,10 +59,10 @@ final class TokenQueryConstraints
     public const ALLOWED_FIELDS_KEYS = ['tokens'];
 
     /** Sort column applied when `sort` is omitted. */
-    public const DEFAULT_SORT_COLUMN = 'id';
+    public const DEFAULT_SORT_COLUMN = 'created_at';
 
-    /** Sort direction applied when `sort` is omitted. */
-    public const DEFAULT_SORT_DIRECTION = 'asc';
+    /** Sort direction applied when `sort` is omitted - newest Token first. */
+    public const DEFAULT_SORT_DIRECTION = 'desc';
 
     /** Page size applied when `per_page` is omitted. */
     public const DEFAULT_PER_PAGE = 25;

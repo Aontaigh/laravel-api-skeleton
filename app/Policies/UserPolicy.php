@@ -93,6 +93,10 @@ final class UserPolicy
             return true;
         }
 
+        if ($user->team_id === null) {
+            return $user->is($model);
+        }
+
         return $user->team_id === $model->team_id;
     }
 
@@ -115,6 +119,10 @@ final class UserPolicy
 
         if ($user->can('users.list-all')) {
             return true;
+        }
+
+        if ($user->team_id === null) {
+            return $user->is($model);
         }
 
         return $user->team_id === $model->team_id;
@@ -189,6 +197,10 @@ final class UserPolicy
             return false;
         }
 
+        if ($model->isServiceAccount()) {
+            return false;
+        }
+
         return $user->id !== $model->id;
     }
 
@@ -206,6 +218,10 @@ final class UserPolicy
     public function unsuspend(User $user, User $model): bool
     {
         if (! $user->can('users.suspend')) {
+            return false;
+        }
+
+        if ($model->isServiceAccount()) {
             return false;
         }
 
@@ -233,8 +249,60 @@ final class UserPolicy
             return false;
         }
 
+        if ($model->isServiceAccount()) {
+            return false;
+        }
+
         if ($user->can('users.list-all')) {
             return true;
+        }
+
+        if ($user->team_id === null) {
+            return $user->is($model);
+        }
+
+        return $user->team_id === $model->team_id;
+    }
+
+    /**
+     * Whether the User may restore a soft-deleted User record.
+     *
+     * Requires `users.restore` and a genuinely trashed record: the route binds
+     * with `withTrashed()`, and without the `trashed()` guard a live User would
+     * restore to a silent no-op success. A service account is refused because
+     * its lifecycle belongs to the API Client that owns it, and row scope
+     * matches delete: without `users.list-all` a caller may only restore Users
+     * on their own Team. Nobody may restore themselves: a deleted account
+     * cannot authenticate to reach the endpoint anyway.
+     *
+     * @param  User $user  the authenticated User
+     * @param  User $model the trashed User being restored
+     * @return bool true when the User may restore that record
+     */
+    public function restore(User $user, User $model): bool
+    {
+        if (! $user->can('users.restore')) {
+            return false;
+        }
+
+        if (! $model->trashed()) {
+            return false;
+        }
+
+        if ($user->id === $model->id) {
+            return false;
+        }
+
+        if ($model->isServiceAccount()) {
+            return false;
+        }
+
+        if ($user->can('users.list-all')) {
+            return true;
+        }
+
+        if ($user->team_id === null) {
+            return $user->is($model);
         }
 
         return $user->team_id === $model->team_id;
