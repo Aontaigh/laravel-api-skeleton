@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.16.1] - 2026-09-29
+
+### Changed
+
+- Bump `laravel/framework` to 13.34.0, `larastan/larastan` to 3.12.2, `laravel/telescope` to 5.25.0,
+  `laravel/sail` to 1.68.0, `laravel/pint` to 1.32.1, `phpunit/phpunit` to 13.3.6, and
+  `giggsey/libphonenumber-for-php` to 9.0.40
+- CI: pin `github/codeql-action/upload-sarif` to v4.38.1
+
 ## [1.16.0] - 2026-09-29
 
 ### Added
@@ -673,7 +682,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - Laravel Sail setup with MySQL and Redis for local development
 
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.1...HEAD
+[1.16.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.4...v1.16.0
 [1.15.4]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.3...v1.15.4
 [1.15.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.2...v1.15.3
