@@ -1,0 +1,12 @@
+# actionlint's built-in runner-label allow-list lags GitHub's hosted labels.
+# `ubuntu-26.04` is a GitHub-hosted label, but actionlint 1.7.12 (the latest
+# release at the time of writing) only knows up to `ubuntu-24.04`, so it flags
+# every `runs-on: ubuntu-26.04` as `[runner-label] unknown`.
+#
+# actionlint's own error text points at this file as the fix. Declaring the
+# label here silences that check; remove it once actionlint ships the label.
+# Context: actions/runner-images#14748 - `ubuntu-latest` moves from 24.04 to
+# 26.04 in a rollout beginning 2026-10-19.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04
