@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Sessions;
 
 use App\Actions\Sessions\RevokeWebSessionAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Sessions\DestroySessionRequest;
@@ -62,6 +63,7 @@ final class DestroySessionController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::SessionRevoked,
+            outcome: AuditOutcome::Succeeded,
             userId: $webSession->user_id,
             actorUserId: $request->user()?->id,
             email: is_string($ownerEmail) ? $ownerEmail : null,

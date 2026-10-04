@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Users;
 use App\Actions\Users\UpdateUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Users\UpdateUserData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\RoleName;
 use App\Events\AuthEventOccurred;
@@ -73,6 +74,7 @@ final class UpdateUserController
         if ($input->has('role')) {
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::UserRoleChanged,
+                outcome: AuditOutcome::Succeeded,
                 userId: $updatedUser->id,
                 email: $updatedUser->email,
                 ipAddress: $request->ip(),

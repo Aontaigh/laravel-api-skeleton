@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Models\User;
@@ -54,6 +55,7 @@ final class VerifyEmailAction
         if (! $user instanceof User || ! hash_equals(sha1($user->getEmailForVerification()), $hash)) {
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::EmailVerificationFailed,
+                outcome: AuditOutcome::Failed,
                 userId: $user?->id,
                 ipAddress: $ipAddress,
                 userAgent: $userAgent,
@@ -75,6 +77,7 @@ final class VerifyEmailAction
         event(new Verified($user));
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::EmailVerified,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $ipAddress,

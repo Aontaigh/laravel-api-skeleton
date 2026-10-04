@@ -4,7 +4,7 @@ Operational guidance for keeping list and show endpoints fast under load.
 Implemented optimisations live in code and migrations; the sections below cover
 trade-offs and future paths.
 
-**Related code:** [UserFilterQuery](../app/Queries/Users/UserFilterQuery.php),
+**Related Code:** [UserFilterQuery](../app/Queries/Users/UserFilterQuery.php),
 [LikePattern](../app/Support/LikePattern.php),
 [UserQueryConstraints](../app/Queries/Users/UserQueryConstraints.php).
 
@@ -15,9 +15,9 @@ trade-offs and future paths.
 constraint. Pagination caps rows per page, but Laravel's length-aware paginator
 still runs a `COUNT(*)` over the full `users` table.
 
-**Options when that becomes slow:**
+**Options When That Becomes Slow:**
 
-| Approach | When to use |
+| Approach | When to Use |
 | --- | --- |
 | **Cursor pagination** (`cursorPaginate`) | Large tables, infinite-scroll UIs; avoids offset `COUNT` |
 | **Require `filter[team_id]` for admins** | Ops tooling where cross-team views are rare |
@@ -27,13 +27,13 @@ still runs a `COUNT(*)` over the full `users` table.
 For this starter, offset pagination is sufficient until `users` exceeds low
 millions of rows or admin `COUNT` shows up in slow-query logs.
 
-## `filter[search]` and B-Tree Indexes
+## Indexing `filter[search]` with B-Tree Indexes
 
 **Issue:** [LikePattern::contains()](../app/Support/LikePattern.php) builds
 `LIKE '%term%'` predicates. Leading wildcards cannot use a standard B-tree index,
 so search scans every row in the current scope (team, guard, or token owner).
 
-**Options at scale:**
+**Options at Scale:**
 
 | Approach | Notes |
 | --- | --- |

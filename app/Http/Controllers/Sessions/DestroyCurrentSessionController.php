@@ -6,10 +6,11 @@ namespace App\Http\Controllers\Sessions;
 
 use App\Actions\Sessions\RevokeWebSessionAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Sessions\DestroyCurrentSessionRequest;
-use App\Models\User;
+use App\Queries\Sessions\CurrentWebSessionQuery;
 use App\Support\ApiResponse;
 use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
@@ -31,13 +32,15 @@ final class DestroyCurrentSessionController
     /**
      * Revoke the inbound Laravel session without touching bearer tokens.
      *
-     * @param  DestroyCurrentSessionRequest $request the validated current-session request
-     * @param  RevokeWebSessionAction       $action  the revoke-session Action
+     * @param  DestroyCurrentSessionRequest $request             the validated current-session request
+     * @param  RevokeWebSessionAction       $action              the revoke-session Action
+     * @param  CurrentWebSessionQuery       $currentSessionQuery resolves the caller's current registry row
      * @return JsonResponse                 the standardised success envelope
      */
     public function __invoke(
         DestroyCurrentSessionRequest $request,
         RevokeWebSessionAction $action,
+        CurrentWebSessionQuery $currentSessionQuery,
     ): JsonResponse {
         /*
         |--------------------------------------------------------------------------
@@ -45,7 +48,19 @@ final class DestroyCurrentSessionController
         |--------------------------------------------------------------------------
         */
 
-        $webSession = $request->currentWebSession();
+        $user = $request->user();
+
+        if ($user === null) {
+            return ApiResponse::error(
+                message: 'No Active Browser Session Found',
+                statusCode: 404,
+            );
+        }
+
+        $webSession = $currentSessionQuery->resolve(
+            $user,
+            $request->hasSession() ? $request->session()->getId() : null,
+        );
 
         if ($webSession === null) {
             return ApiResponse::error(
@@ -62,11 +77,9 @@ final class DestroyCurrentSessionController
 
         $action->execute($webSession, $request);
 
-        /** @var User $user the route sits behind the authenticated group */
-        $user = $request->user();
-
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::SessionRevoked,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $request->ip(),

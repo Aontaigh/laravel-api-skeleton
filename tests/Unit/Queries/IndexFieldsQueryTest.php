@@ -205,9 +205,6 @@ final class IndexFieldsQueryTest extends UnitTestCase
      * Reject identifiers that could carry SQL.
      */
     #[Test]
-    /**
-     * Reject identifiers that could carry SQL.
-     */
     #[DataProvider('unsafeIdentifierProvider')]
     public function it_rejects_identifiers_that_could_carry_sql(string $table, string $requiredColumn): void
     {

@@ -32,6 +32,12 @@ use Tests\TestCase;
 #[CoversClass(\App\Actions\Auth\RegisterUserAction::class)]
 final class EmailVerificationTest extends TestCase
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use RefreshDatabase;
 
     /*

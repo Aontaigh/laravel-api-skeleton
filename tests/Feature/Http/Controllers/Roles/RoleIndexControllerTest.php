@@ -266,9 +266,6 @@ final class RoleIndexControllerTest extends TestCase
      * Eager-load every allow-listed include.
      */
     #[Test]
-    /**
-     * Eager-load every allow-listed include.
-     */
     #[DataProvider('allowedIncludeProvider')]
     public function it_eager_loads_every_allow_listed_include(string $include): void
     {
@@ -361,9 +358,6 @@ final class RoleIndexControllerTest extends TestCase
      * Reject out-of-allow-list query params.
      */
     #[Test]
-    /**
-     * Reject out-of-allow-list query params.
-     */
     #[DataProvider('invalidQueryProvider')]
     public function it_rejects_out_of_allow_list_query_params(string $queryString, string $expectedErrorKey): void
     {
@@ -392,9 +386,6 @@ final class RoleIndexControllerTest extends TestCase
      * Authorise the index according to the Role matrix.
      */
     #[Test]
-    /**
-     * Authorise the index according to the Role matrix.
-     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_the_index_according_to_the_role_matrix(string $role, bool $canList): void
     {

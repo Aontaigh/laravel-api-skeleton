@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Clients;
 use App\Actions\ApiClients\CreateApiClientAction;
 use App\DataTransferObjects\ApiClients\CreateApiClientData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\ApiClients\StoreClientRequest;
@@ -67,6 +68,7 @@ final class StoreClientController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::ApiClientCreated,
+            outcome: AuditOutcome::Succeeded,
             userId: $actor->id,
             email: $actor->email,
             ipAddress: $request->ip(),

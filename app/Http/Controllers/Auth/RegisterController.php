@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\Auth\RegisterUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Auth\RegisterUserData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\WebhookEvent;
 use App\Events\AuthEventOccurred;
@@ -70,6 +71,7 @@ final class RegisterController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::Register,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $request->ip(),

@@ -25,7 +25,9 @@ final class EnvExampleParityTest extends UnitTestCase
     */
 
     /**
-     * @return list<string>
+     * Collect every `env()` key referenced by the application config files under test.
+     *
+     * @return list<string> the deduplicated, sorted key names
      */
     private function applicationConfigEnvKeys(): array
     {
@@ -61,7 +63,10 @@ final class EnvExampleParityTest extends UnitTestCase
     }
 
     /**
-     * @return list<string>
+     * Parse active and commented assignment keys from an env file.
+     *
+     * @param  string       $path absolute path to the env file
+     * @return list<string> the deduplicated key names found in the file
      */
     private function keysInEnvFile(string $path): array
     {
@@ -80,7 +85,10 @@ final class EnvExampleParityTest extends UnitTestCase
     }
 
     /**
-     * @return list<string>
+     * Read the titled section names from an env file's divider blocks.
+     *
+     * @param  string       $path absolute path to the env file
+     * @return list<string> the section titles in file order
      */
     private function sectionNames(string $path): array
     {

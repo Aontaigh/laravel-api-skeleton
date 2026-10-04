@@ -45,10 +45,10 @@ final class UpdateUserRequest extends ApiFormRequest
      *   accounts are immutable.
      * - A payload attempting a team reassignment requires the
      *   `reassignTeam` ability.
-+     *
-+     *   Both surface as authorisation (403) rather than a field-level
-+     *   validation error (422): identity and permission problems belong in
-+     *   the status the caller's retry logic expects.
+     *
+     *   Both surface as authorisation (403) rather than a field-level
+     *   validation error (422): identity and permission problems belong in
+     *   the status the caller's retry logic expects.
      *
      * @return bool true when the User may update the route-bound User
      */

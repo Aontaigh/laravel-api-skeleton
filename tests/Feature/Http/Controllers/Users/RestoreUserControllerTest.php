@@ -298,7 +298,12 @@ final class RestoreUserControllerTest extends TestCase
 
         // Assert
 
-        $response->assertForbidden();
+        /*
+         * The scoped `{user}` binding excludes machine identities even among
+         * trashed rows: a backing account's lifecycle belongs to its API
+         * Client, so its ID answers exactly like an unknown ID.
+         */
+        $response->assertNotFound();
         $this->assertSoftDeleted('users', ['id' => $serviceAccount->id]);
     }
 

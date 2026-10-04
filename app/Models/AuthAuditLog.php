@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
+use App\Enums\ClientIneligibilityReason;
 use Database\Factories\AuthAuditLogFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +18,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int                             $id
  * @property int|null                        $user_id
  * @property AuthAuditEvent                  $event
+ * @property AuditOutcome|null               $outcome
  * @property string|null                     $email
  * @property string|null                     $ip_address
  * @property string|null                     $user_agent
@@ -50,6 +53,8 @@ final class AuthAuditLog extends Model
         'user_id',
         'actor_user_id',
         'event',
+        'outcome',
+        'client_ineligibility_reason',
         'email',
         'ip_address',
         'user_agent',
@@ -76,6 +81,8 @@ final class AuthAuditLog extends Model
     {
         return [
             'event' => AuthAuditEvent::class,
+            'outcome' => AuditOutcome::class,
+            'client_ineligibility_reason' => ClientIneligibilityReason::class,
             'remember_me' => 'boolean',
         ];
     }

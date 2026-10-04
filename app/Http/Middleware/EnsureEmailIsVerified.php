@@ -13,7 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
  * Blocks an authenticated request from an account with an unverified e-mail.
  *
  * Applied to the business route groups only. The identity endpoints
- * (`POST /auth/email/resend`, `POST /logout`, `GET /me`) deliberately sit
+ * (`POST /auth/email/resend`, `POST /auth/logout`, `GET /me`) deliberately sit
  * outside this gate so the SPA can still route an unverified User to the
  * verification screen and let them sign out. Service accounts pass through:
  * they authenticate via client credentials, never email, so there is no

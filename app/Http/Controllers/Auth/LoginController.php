@@ -9,8 +9,10 @@ use App\Actions\Auth\FinaliseAuthenticatedSessionAction;
 use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\LoginCredentialsData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
+use App\Exceptions\Auth\ServiceAccountAuthenticationException;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Resources\AuthenticatedUserResource;
 use App\Http\Resources\PersonalAccessTokenResource;
@@ -70,9 +72,14 @@ final class LoginController
 
         try {
             $user = $authenticate->execute($credentials);
-        } catch (ValidationException $exception) {
+        } catch (ServiceAccountAuthenticationException $exception) {
+            /*
+             * A machine identity has no password surface: the attempt is a
+             * deliberate policy refusal, not an authentication error.
+             */
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::LoginFailed,
+                outcome: AuditOutcome::Refused,
                 email: $credentials->email,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
@@ -80,6 +87,55 @@ final class LoginController
             ));
 
             throw $exception;
+        } catch (ValidationException $exception) {
+            AuthEventOccurred::dispatch(new RecordAuthAuditData(
+                event: AuthAuditEvent::LoginFailed,
+                outcome: AuditOutcome::Refused,
+                email: $credentials->email,
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
+            ));
+
+            throw $exception;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Suspended Accounts
+        |--------------------------------------------------------------------------
+        |
+        | A credential that verifies against a suspended account is refused
+        | with a named 403 rather than the generic 422: the caller proved the
+        | password, so naming the state is the friendlier and clearer signal
+        | (the same answer the active.account middleware gives mid-session).
+        | The attempt still audits as LoginFailed, and a suspended
+        | MFA-enrolled account is refused before a two-factor challenge opens.
+        |
+        */
+
+        if ($user->isSuspended()) {
+            /*
+             * The account state is a deliberate administrative decision, so
+             * the refusal - not a failure - is what the audit row records.
+             *
+             * The password verified before this branch, so the principal is
+             * known and the row names the account it concerns. Leaving
+             * `user_id` null would make a refused sign-in unjoinable by
+             * principal, which is the one question a forensic reader asks:
+             * who was refused, and against which account.
+             */
+            AuthEventOccurred::dispatch(new RecordAuthAuditData(
+                event: AuthAuditEvent::LoginFailed,
+                outcome: AuditOutcome::Refused,
+                userId: $user->id,
+                email: $credentials->email,
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
+            ));
+
+            return ApiResponse::error(message: 'Account Suspended', statusCode: 403);
         }
 
         /*

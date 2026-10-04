@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace App\Http\Requests\Sessions;
 
 use App\Http\Requests\ApiFormRequest;
-use App\Models\WebSession;
 
 /**
  * Authorises a request to revoke the caller's current browser session.
+ *
+ * The lookup lives in `CurrentWebSessionQuery` so the current-session
+ * predicate (owner + session ID + not revoked) is uniform, and
+ * `CurrentWebSessionQuery` owns the row lookup.
  */
 final class DestroyCurrentSessionRequest extends ApiFormRequest
 {
@@ -46,29 +49,5 @@ final class DestroyCurrentSessionRequest extends ApiFormRequest
     public function rules(): array
     {
         return [];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Query Accessors
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Resolve the registry row for the inbound Laravel session ID.
-     *
-     * @return WebSession|null the current registry row, or null without a session
-     */
-    public function currentWebSession(): ?WebSession
-    {
-        if (! $this->hasSession()) {
-            return null;
-        }
-
-        return WebSession::query()
-            ->where('user_id', $this->user()?->id)
-            ->where('session_id', $this->session()->getId())
-            ->whereNull('revoked_at')
-            ->first();
     }
 }

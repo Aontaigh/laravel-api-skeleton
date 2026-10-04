@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Database\Factories;
 
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Models\AuthAuditLog;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -39,6 +40,7 @@ final class AuthAuditLogFactory extends Factory
             'user_id' => null,
             'actor_user_id' => null,
             'event' => AuthAuditEvent::Login,
+            'outcome' => AuditOutcome::Succeeded,
             'email' => fake()->unique()->safeEmail(),
             'ip_address' => fake()->ipv4(),
             'user_agent' => fake()->userAgent(),

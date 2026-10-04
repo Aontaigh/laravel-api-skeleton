@@ -8,6 +8,7 @@ use App\Actions\Auth\FinaliseAuthenticatedSessionAction;
 use App\Actions\Auth\VerifyTwoFactorCodeAction;
 use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Exceptions\Auth\TwoFactorChallengeException;
@@ -117,6 +118,7 @@ final class VerifyTwoFactorController
         } catch (TwoFactorChallengeException $exception) {
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::TwoFactorFailed,
+                outcome: AuditOutcome::Failed,
                 userId: $user->id,
                 email: $user->email,
                 ipAddress: $request->ip(),
@@ -154,6 +156,7 @@ final class VerifyTwoFactorController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::TwoFactorVerified,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $request->ip(),

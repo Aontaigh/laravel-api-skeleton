@@ -246,6 +246,6 @@ final class InvalidateStoredSessionActionTest extends TestCase
 
         (new InvalidateStoredSessionAction)->execute('raw-session-id-value');
 
-        // Assertions made on the mocked logger above.
+        // No return value; the expectations were set on the mocked logger above.
     }
 }

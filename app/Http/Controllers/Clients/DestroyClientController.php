@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Clients;
 
 use App\Actions\ApiClients\RevokeApiClientAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\ApiClients\DestroyClientRequest;
@@ -55,6 +56,7 @@ final class DestroyClientController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::ApiClientDeleted,
+            outcome: AuditOutcome::Succeeded,
             userId: $actor->id,
             email: $actor->email,
             ipAddress: $request->ip(),

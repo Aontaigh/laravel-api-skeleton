@@ -198,10 +198,11 @@ final class AuthenticateUserActionTest extends UnitTestCase
     }
 
     /**
-     * Reject suspended accounts with the same generic validation message.
+     * Return a suspended account after a successful password check so the
+     * controller can answer the named 403, without rehashing the record.
      */
     #[Test]
-    public function it_rejects_suspended_accounts_with_a_generic_message(): void
+    public function it_returns_suspended_accounts_without_rehashing(): void
     {
         // Arrange
 
@@ -221,17 +222,17 @@ final class AuthenticateUserActionTest extends UnitTestCase
             ->once()
             ->with('Xq7#mK2$vL9pTzW4', Mockery::type('string'))
             ->andReturn(true);
+        Hash::shouldReceive('needsRehash')->never();
 
-        // Act + Assert
+        // Act
 
-        try {
-            $action->execute(new LoginCredentialsData(
-                email: 'alice@example.com',
-                password: 'Xq7#mK2$vL9pTzW4',
-            ));
-            $this->fail('Expected ValidationException was not thrown');
-        } catch (ValidationException $exception) {
-            $this->assertSame(['Invalid Credentials'], $exception->errors()['email']);
-        }
+        $resolved = $action->execute(new LoginCredentialsData(
+            email: 'alice@example.com',
+            password: 'Xq7#mK2$vL9pTzW4',
+        ));
+
+        // Assert
+
+        $this->assertTrue($resolved->is($user));
     }
 }

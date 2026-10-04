@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth\Email;
 
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\ResendVerificationRequest;
@@ -54,6 +55,7 @@ final class ResendVerificationController
 
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::EmailVerificationSent,
+                outcome: AuditOutcome::Succeeded,
                 userId: $user->id,
                 email: $user->email,
                 ipAddress: $request->ip(),

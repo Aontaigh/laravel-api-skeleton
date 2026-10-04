@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Actions\Webhooks\DeleteWebhookEndpointAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Webhooks\DestroyWebhookEndpointRequest;
@@ -55,6 +56,7 @@ final class DestroyWebhookEndpointController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::WebhookEndpointDeleted,
+            outcome: AuditOutcome::Succeeded,
             userId: $actor->id,
             email: $actor->email,
             ipAddress: $request->ip(),

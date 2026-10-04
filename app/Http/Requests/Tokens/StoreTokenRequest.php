@@ -36,7 +36,11 @@ final class StoreTokenRequest extends ApiFormRequest
      * The presenting-token scope guard (a scoped PAT cannot mint a token
      * broader than itself) lives in `PersonalAccessTokenPolicy::create`, which
      * reads the presenting token from the authenticated User so a bare `can()`
-     * check cannot omit it.
+     * check cannot omit it. This is deliberate design, not an oversight:
+     * keeping the guard in the policy means it cannot be bypassed by a
+     * caller forgetting the argument - the same grant-discipline model
+     * GitHub fine-grained PATs and Stripe restricted keys use, where a
+     * credential can never mint a wider credential than itself.
      *
      * @return bool true when the User may create their own Token
      */

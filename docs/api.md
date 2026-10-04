@@ -22,7 +22,7 @@ stay same-origin - no CORS configuration needed.
 3. Issue a token (see [README Quick Start](../README.md#quick-start))
 4. Click **Authentication** in Scalar → paste `Bearer {token}` → try any endpoint
 
-**Production lock-down:** set `API_DOCS_BASIC_AUTH_USER` and
+**Production Lock-down:** set `API_DOCS_BASIC_AUTH_USER` and
 `API_DOCS_BASIC_AUTH_PASSWORD` in `.env`. Both routes (`/api/docs` and
 `/api/openapi.yaml`) then require HTTP Basic Auth. API endpoints remain protected
 by Sanctum regardless.
@@ -68,7 +68,7 @@ npx @redocly/cli preview-docs docs/openapi.yaml
 **Stoplight Elements** - drop the file into [Stoplight Studio](https://stoplight.io/studio)
 or serve Elements against the spec URL.
 
-## Import Into a Client
+## Import into a Client
 
 1. Open Postman / Insomnia / Bruno
 2. Import → OpenAPI 3.1 → select `docs/openapi.yaml` **or** fetch `{APP_URL}/api/openapi.yaml`
@@ -86,7 +86,7 @@ Cross-origin browser clients need CORS when the frontend origin differs from
 the API host. Laravel's `HandleCors` middleware is enabled by
 default; paths are `api/*` and `sanctum/csrf-cookie`.
 
-**Bearer tokens (recommended):** send `Authorization: Bearer {token}` from your
+**Bearer Tokens (Recommended):** send `Authorization: Bearer {token}` from your
 frontend. Set `CORS_ALLOWED_ORIGINS` in production to your app URL(s). Local and
 testing environments allow common dev-server origins (`localhost:3000`, `:5173`) when
 the env var is unset.
@@ -96,7 +96,7 @@ the env var is unset.
 CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 ```
 
-**axios example:**
+**Axios Example:**
 
 ```javascript
 import axios from 'axios';
@@ -109,7 +109,7 @@ const api = axios.create({
 const { data } = await api.get('/users');
 ```
 
-**Sanctum cookie / CSRF SPA auth (optional):** set `CORS_SUPPORTS_CREDENTIALS=true`,
+**Sanctum Cookie / CSRF SPA Auth (Optional):** set `CORS_SUPPORTS_CREDENTIALS=true`,
 list the frontend origin in `CORS_ALLOWED_ORIGINS`, align `SANCTUM_STATEFUL_DOMAINS`,
 and call `GET /sanctum/csrf-cookie` before login. This skeleton defaults to
 bearer-token auth; cookie mode is documented for teams that adopt Sanctum's SPA flow.
@@ -124,7 +124,7 @@ bearer-token auth; cookie mode is documented for teams that adopt Sanctum's SPA 
 
 When you add or change an endpoint:
 
-1. Update [openapi.yaml](openapi.yaml) (paths, schemas, allow-lists) - use Title Case for `##` headings, operation `summary` values, response `description` labels, and `**Bold Labels:**` in prose (see the [write-readme skill](https://github.com/Aontaigh/ai-rules/blob/main/skills/write-readme/SKILL.md))
+1. Update [openapi.yaml](openapi.yaml) (paths, schemas, allow-lists) - use Title Case for `##` headings, operation `summary` values, response `description` labels, and `**Bold Labels:**` in prose
 2. Update the matching `*QueryConstraints` class under [app/Queries/](../app/Queries/)
 3. Open [http://localhost/api/docs](http://localhost/api/docs) and spot-check the changed operation
 4. Update the README `## API` section if behaviour is user-facing

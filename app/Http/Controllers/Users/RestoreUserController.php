@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\RestoreUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\WebhookEvent;
 use App\Events\AuthEventOccurred;
@@ -68,6 +69,7 @@ final class RestoreUserController extends Controller
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::UserRestored,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             actorUserId: $actor instanceof User ? $actor->id : null,
             email: $user->email,

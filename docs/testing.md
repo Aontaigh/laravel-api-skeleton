@@ -22,7 +22,7 @@ assertable without a worker.
 
 Run in this order; stop at the first failure.
 
-| Step | Command | Checks | Pass condition |
+| Step | Command | Checks | Pass Condition |
 | --- | --- | --- | --- |
 | 1 | `./vendor/bin/sail composer lint` | Pint style check (`lint:fix` to auto-fix) | Exit 0 |
 | 2 | `./vendor/bin/sail composer analyse` | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors` |
@@ -32,8 +32,9 @@ Run in this order; stop at the first failure.
 | 6 | `bash scripts/semgrep.sh` | SAST with Laravel security rules (run on the host, not in Sail) | `Findings: 0` |
 | 7 | `bash scripts/pen-test-auth.sh` | Live adversarial probes (see below) | `Fail: 0` |
 
-`composer ci` chains lint, analyse, coverage, and `composer audit`; the OpenAPI,
-Semgrep, and Zizmor checks run as separate CI jobs. Do not add baseline entries to
+`composer ci` chains lint, analyse, semgrep, coverage, and version sync plus
+`composer audit`; the OpenAPI and Zizmor checks run as separate CI jobs. Do not
+add baseline entries to
 silence new static-analysis findings - the typed accessors and narrowed
 properties the codebase uses exist to keep level 10 green.
 
@@ -59,14 +60,14 @@ properties the codebase uses exist to keep level 10 green.
 Two suites, one rule each: **unit tests never touch the database, feature tests
 always do.**
 
-| Suite | Base class | Database | Covers |
+| Suite | Base Class | Database | Covers |
 | --- | --- | --- | --- |
 | `tests/Unit/` | [UnitTestCase](../tests/UnitTestCase.php) | Forbidden - any query fails the test at teardown | Query builders, Support parsers, DTOs, checks, notification mail bodies |
 | `tests/Feature/` | [TestCase](../tests/TestCase.php) with `RefreshDatabase` | Real MySQL (`testing` database) | HTTP endpoints, Actions, middleware, console commands, queued listeners |
 
 ## What the Suite Covers
 
-| Area | Where | What is exercised |
+| Area | Where | What Is Exercised |
 | --- | --- | --- |
 | HTTP endpoints | `tests/Feature/Http/Controllers/` | Every route in [routes/api.php](../routes/api.php): auth, two-factor, password reset, email verification, sessions, users, tokens, API clients, audit logs, roles, permissions, teams, webhooks, CSP reports, app-info, system status |
 | Actions | `tests/Feature/Actions/` | Registration, credential finalisation, token creation, session revocation, password change, user and team admin - against the real database |
@@ -93,6 +94,7 @@ tests/
 │   ├── Authorization/    # Gate and role-matrix checks
 │   ├── Console/Commands/ # Scheduled command behaviour (health:record)
 │   ├── Http/Controllers/ # Endpoint tests mirroring routes/api.php
+│   ├── Http/*.php        # Cross-cutting HTTP tests (CORS, docs, security probes, rate-limit key safety)
 │   ├── Http/Middleware/  # Gate middleware in isolation
 │   ├── Listeners/        # Queued listener behaviour (audit, OTP dispatch)
 │   ├── Models/           # Model scopes, casts, and helpers
@@ -101,6 +103,7 @@ tests/
 │   └── Support/          # Envelope and auth support helpers
 └── Unit/
     ├── Actions/          # Token and auth units, no database
+    ├── Config/           # .env.example parity checks
     ├── DataTransferObjects/ # System health result DTO
     ├── Http/Resources/   # Sparse fieldsets and serialisation branches
     ├── Notifications/    # Mail message bodies
@@ -120,8 +123,10 @@ limits, bearer and reset-token abuse, replay, remember-me and CSRF boundaries,
 suspension and soft-delete handling, web-session IDOR, credential rotation on
 password reset, session-activity tracking, email verification, team management
 boundaries, role and phone hardening, session show/revoke-others, CSP report
-abuse, security.txt, webhook management, client secret rotation, and retired
-flat auth paths. 48 sections print `PASS` /
+abuse, security.txt, webhook management, client secret rotation, live role and
+ability drift (scoped PATs, admin-issued tokens, machine-token revocation),
+credential lifecycle edges (reset broker vs role change, deactivation, ability
+reorder), and retired flat auth paths. 50 sections print `PASS` /
 `FAIL` / `WARN` lines and the script exits non-zero on any failure.
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed

@@ -70,8 +70,8 @@ final class TeamFilterQueryTest extends TestCase
      * @param string $term   the raw search term
      * @param string $stored the escaped pattern expected in the bindings
      */
-    #[DataProvider('wildcardProvider')]
     #[Test]
+    #[DataProvider('wildcardProvider')]
     public function it_escapes_like_wildcards_in_the_search_term(string $term, string $stored): void
     {
         // Act

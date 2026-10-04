@@ -57,7 +57,7 @@ final class TeamPolicyTest extends TestCase
     #[Test]
     public function it_allows_admins_and_managers_to_list_and_view_teams(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
@@ -66,7 +66,7 @@ final class TeamPolicyTest extends TestCase
         /** @var Team $team */
         $team = Team::factory()->create();
 
-        /* Act & Assert */
+        // Act + Assert
 
         $this->actingAs($admin)->getJson('/api/teams')->assertOk();
         $this->actingAs($admin)->getJson("/api/teams/{$team->id}")->assertOk();
@@ -81,14 +81,14 @@ final class TeamPolicyTest extends TestCase
     #[Test]
     public function it_denies_regular_users(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create();
         /** @var Team $team */
         $team = Team::factory()->create();
 
-        /* Act & Assert */
+        // Act + Assert
 
         $this->actingAs($user)->getJson('/api/teams')->assertForbidden();
         $this->actingAs($user)->getJson("/api/teams/{$team->id}")->assertForbidden();
@@ -100,14 +100,14 @@ final class TeamPolicyTest extends TestCase
     #[Test]
     public function it_denies_service_accounts(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $serviceUser */
         $serviceUser = User::factory()->serviceAccount()->service()->create();
         /** @var Team $team */
         $team = Team::factory()->create();
 
-        /* Act & Assert */
+        // Act + Assert
 
         $this->actingAs($serviceUser)->getJson('/api/teams')->assertForbidden();
         $this->actingAs($serviceUser)->getJson("/api/teams/{$team->id}")->assertForbidden();
@@ -119,14 +119,14 @@ final class TeamPolicyTest extends TestCase
     #[Test]
     public function it_allows_admins_to_write_teams(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
         /** @var Team $team */
         $team = Team::factory()->create(['name' => 'Engineering']);
 
-        /* Act & Assert */
+        // Act + Assert
 
         $this->actingAs($admin)->postJson('/api/teams', ['name' => 'Platform'])->assertCreated();
         $this->actingAs($admin)->patchJson("/api/teams/{$team->id}", ['name' => 'Engineering Two'])->assertOk();
@@ -142,14 +142,14 @@ final class TeamPolicyTest extends TestCase
     #[Test]
     public function it_denies_managers_the_write_endpoints(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $manager */
         $manager = User::factory()->manager()->create();
         /** @var Team $team */
         $team = Team::factory()->create(['name' => 'Engineering']);
 
-        /* Act & Assert */
+        // Act + Assert
 
         $this->actingAs($manager)->postJson('/api/teams', ['name' => 'Platform'])->assertForbidden();
         $this->actingAs($manager)->patchJson("/api/teams/{$team->id}", ['name' => 'Platform'])->assertForbidden();

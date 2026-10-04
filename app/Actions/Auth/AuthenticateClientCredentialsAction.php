@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\DataTransferObjects\Auth\ClientCredentialsData;
+use App\Enums\ClientIneligibilityReason;
+use App\Exceptions\Auth\ClientCredentialRefusedException;
 use App\Models\ApiClient;
 use App\Models\User;
 use App\Support\AuthTimingHash;
@@ -72,15 +74,40 @@ final class AuthenticateClientCredentialsAction
 
         $user = $client->getRelationValue('user');
 
-        if (
-            ! $user instanceof User
-            || $user->getKey() === null
-            || $user->trashed()
-            || $user->isSuspended()
-        ) {
-            throw ValidationException::withMessages([
-                'client_id' => ['Invalid Credentials'],
-            ]);
+        /*
+         * Only a machine identity may hold a client-credential grant: an
+         * API Client whose linked User is a human account would mint a
+         * token with no interactive owner. The service-account check
+         * belongs to the same credential surface as suspension.
+         */
+        /*
+         * Everything below this line happens *after* the secret verified, so a
+         * refusal here is policy declining a credential that proved out rather than
+         * a credential that failed. The caller records that distinction, and the
+         * generic `client_id` message is preserved so the HTTP response is unchanged
+         * and the cause stays invisible to the caller.
+         */
+        if (! $user instanceof User || $user->getKey() === null || $user->trashed()) {
+            throw new ClientCredentialRefusedException(
+                reason: ClientIneligibilityReason::MissingOwner,
+                client: $client,
+            );
+        }
+
+        if ($user->isSuspended()) {
+            throw new ClientCredentialRefusedException(
+                reason: ClientIneligibilityReason::SuspendedOwner,
+                client: $client,
+                owner: $user,
+            );
+        }
+
+        if (! $user->isServiceAccount()) {
+            throw new ClientCredentialRefusedException(
+                reason: ClientIneligibilityReason::HumanOwned,
+                client: $client,
+                owner: $user,
+            );
         }
 
         return $client;

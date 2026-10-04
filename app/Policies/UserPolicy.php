@@ -85,6 +85,14 @@ final class UserPolicy
      */
     public function view(User $user, User $model): bool
     {
+        /*
+         * Service accounts are machine identities managed through the API
+         * client surface, not the User directory.
+         */
+        if ($model->isServiceAccount()) {
+            return false;
+        }
+
         if (! $user->can('users.list')) {
             return false;
         }
@@ -113,6 +121,14 @@ final class UserPolicy
      */
     public function update(User $user, User $model): bool
     {
+        /*
+         * Service accounts are managed through the API client surface; their
+         * name and abilities change there, never through this endpoint.
+         */
+        if ($model->isServiceAccount()) {
+            return false;
+        }
+
         if (! $user->can('users.update')) {
             return false;
         }

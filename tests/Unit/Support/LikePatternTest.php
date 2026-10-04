@@ -28,9 +28,6 @@ final class LikePatternTest extends UnitTestCase
      * Escape wildcards and wrap the term.
      */
     #[Test]
-    /**
-     * Escape wildcards and wrap the term.
-     */
     #[DataProvider('containsProvider')]
     public function it_escapes_wildcards_and_wraps_the_term(string $term, string $expected): void
     {

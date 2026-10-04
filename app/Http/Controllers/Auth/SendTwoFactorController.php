@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\IssueTwoFactorChallengeAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\SendTwoFactorRequest;
@@ -92,6 +93,7 @@ final class SendTwoFactorController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::TwoFactorIssued,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $request->ip(),

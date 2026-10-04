@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Clients;
 
 use App\Actions\ApiClients\RotateApiClientSecretAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Clients\RotateClientSecretRequest;
@@ -62,6 +63,7 @@ final class RotateClientSecretController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::ClientSecretRotated,
+            outcome: AuditOutcome::Succeeded,
             userId: $actor->id,
             email: $actor->email,
             ipAddress: $request->ip(),

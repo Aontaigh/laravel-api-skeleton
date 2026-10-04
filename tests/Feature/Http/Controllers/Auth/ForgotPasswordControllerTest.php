@@ -9,6 +9,7 @@ use App\Http\Requests\Auth\ForgotPasswordRequest;
 use App\Models\User;
 use App\Notifications\Auth\ResetPasswordNotification;
 use App\Support\ApiResponse;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Notification;
@@ -54,6 +55,8 @@ final class ForgotPasswordControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(RolesAndPermissionsSeeder::class);
 
         Notification::fake();
     }
@@ -107,6 +110,37 @@ final class ForgotPasswordControllerTest extends TestCase
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->postJson('/api/auth/forgot-password', [
             'email' => 'nobody@example.com',
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('status', 'success');
+        $response->assertJsonPath('message', 'If the Account Exists, a Reset Link Has Been Sent');
+
+        Notification::assertNothingSent();
+    }
+
+    /**
+     * Return the generic envelope without mailing a service account.
+     *
+     * A service account reset would never reach a person, and completing
+     * one would revoke its live client tokens; the response must stay
+     * identical to the unknown-address case.
+     */
+    #[Test]
+    public function it_returns_the_generic_response_for_a_service_account(): void
+    {
+        // Arrange
+
+        /** @var User $serviceUser the API Client's backing account */
+        $serviceUser = User::factory()->serviceAccount()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/forgot-password', [
+            'email' => $serviceUser->email,
         ]);
 
         // Assert
@@ -181,6 +215,104 @@ final class ForgotPasswordControllerTest extends TestCase
      */
 
     /**
+     * Record a `Succeeded` outcome when the reset link is delivered.
+     */
+    #[Test]
+    public function it_records_a_succeeded_outcome_when_the_reset_link_is_delivered(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        // Act
+
+        $this->postJson('/api/auth/forgot-password', ['email' => $user->email]);
+
+        // Assert
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => 'Password Reset Requested',
+            'outcome' => 'succeeded',
+            'user_id' => $user->id,
+            'email' => $user->email,
+        ]);
+    }
+
+    /**
+     * Record a `Refused` outcome without mailing a service account.
+     *
+     * The skip is a deliberate policy decision, not a delivery failure: the
+     * row distinguishes `Refused` from `Failed` so an investigator can tell
+     * the two apart, and the response stays generic either way.
+     */
+    #[Test]
+    public function it_records_a_refused_outcome_for_a_service_account_without_mailing(): void
+    {
+        // Arrange
+
+        /** @var User $serviceUser the API Client's backing account */
+        $serviceUser = User::factory()->serviceAccount()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/forgot-password', [
+            'email' => $serviceUser->email,
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('message', 'If the Account Exists, a Reset Link Has Been Sent');
+
+        Notification::assertNothingSent();
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => 'Password Reset Requested',
+            'outcome' => 'refused',
+            'user_id' => $serviceUser->id,
+            'email' => $serviceUser->email,
+        ]);
+    }
+
+    /**
+     * Record a `Failed` outcome when mail delivery throws behind the
+     * generic response.
+     */
+    #[Test]
+    public function it_records_a_failed_outcome_when_delivery_fails(): void
+    {
+        // Arrange
+
+        Password::shouldReceive('sendResetLink')
+            ->once()
+            ->andThrow(new RuntimeException('Mail Transport Unavailable'));
+
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/forgot-password', [
+            'email' => $user->email,
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('message', 'If the Account Exists, a Reset Link Has Been Sent');
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => 'Password Reset Requested',
+            'outcome' => 'failed',
+            'user_id' => $user->id,
+            'email' => $user->email,
+        ]);
+    }
+
+    /**
      * Record the request in the auth audit log for known and unknown addresses.
      */
     #[Test]
@@ -200,12 +332,14 @@ final class ForgotPasswordControllerTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => 'Password Reset Requested',
+            'outcome' => 'succeeded',
             'user_id' => $user->id,
             'email' => $user->email,
         ]);
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => 'Password Reset Requested',
+            'outcome' => 'succeeded',
             'user_id' => null,
             'email' => 'nobody@example.com',
         ]);
@@ -252,8 +386,8 @@ final class ForgotPasswordControllerTest extends TestCase
      *
      * @param array<string, string> $payload the malformed request body
      */
-    #[DataProvider('invalidEmailProvider')]
     #[Test]
+    #[DataProvider('invalidEmailProvider')]
     public function it_rejects_an_invalid_email_field(array $payload): void
     {
         // Act

@@ -356,13 +356,7 @@ final class UserShowControllerTest extends TestCase
     /**
      * Authorise show according to the Role matrix.
      */
-    /**
-     * Authorise show according to the Role matrix.
-     */
     #[Test]
-    /**
-     * Authorise show according to the Role matrix.
-     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_show_according_to_the_role_matrix(string $role, bool $canView): void
     {

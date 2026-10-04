@@ -53,9 +53,6 @@ final class RoleFilterQueryTest extends UnitTestCase
      * Escape LIKE wildcards in the search term.
      */
     #[Test]
-    /**
-     * Escape LIKE wildcards in the search term.
-     */
     #[DataProvider('searchTermProvider')]
     public function it_escapes_like_wildcards_in_the_search_term(string $term, string $expectedPattern): void
     {

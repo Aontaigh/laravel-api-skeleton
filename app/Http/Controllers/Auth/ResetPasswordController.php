@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\ResetUserPasswordAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\PasswordChangeSource;
 use App\Events\AuthEventOccurred;
@@ -70,6 +71,44 @@ final class ResetPasswordController
         ];
 
         /*
+         |--------------------------------------------------------------------------
+         | Service Account Guard
+         |--------------------------------------------------------------------------
+         |
+         | A service account cannot hold a password reset: its password is a
+         | random value nobody knows and it has no bearer session to protect,
+         | so completing a reset here would only revoke its live client
+         | tokens. The link is never mailed to one, so the same generic
+         | rejection an invalid token answers is returned without touching
+         | the broker - no new oracle is introduced.
+         |
+         */
+
+        $attempted = User::query()->where('email', $credentials['email'])->first();
+
+        if ($attempted?->isServiceAccount() === true) {
+            /*
+             * A deliberate policy refusal, not a failure: machine identities
+             * have no reset surface, so the audit row reads `refused` -
+             * `failed` would misreport a decision as an error.
+             */
+            event(new AuthEventOccurred(new RecordAuthAuditData(
+                event: AuthAuditEvent::PasswordResetFailed,
+                outcome: AuditOutcome::Refused,
+                userId: $attempted->id,
+                email: $credentials['email'],
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
+            )));
+
+            return ApiResponse::error(
+                message: 'The Reset Token Is Invalid Or Has Expired',
+                statusCode: 422,
+            );
+        }
+
+        /*
         |--------------------------------------------------------------------------
         | Action
         |--------------------------------------------------------------------------
@@ -92,6 +131,7 @@ final class ResetPasswordController
 
             event(new AuthEventOccurred(new RecordAuthAuditData(
                 event: AuthAuditEvent::PasswordResetFailed,
+                outcome: AuditOutcome::Failed,
                 userId: $attempted?->id,
                 email: $credentials['email'],
                 ipAddress: $request->ip(),
@@ -112,6 +152,7 @@ final class ResetPasswordController
 
             event(new AuthEventOccurred(new RecordAuthAuditData(
                 event: AuthAuditEvent::PasswordReset,
+                outcome: AuditOutcome::Succeeded,
                 userId: $user->id,
                 email: $credentials['email'],
                 ipAddress: $request->ip(),

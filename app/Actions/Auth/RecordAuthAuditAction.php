@@ -54,6 +54,8 @@ final class RecordAuthAuditAction
             'user_id' => $data->userId,
             'actor_user_id' => $data->actorUserId,
             'event' => $data->event,
+            'outcome' => $data->outcome,
+            'client_ineligibility_reason' => $data->clientIneligibilityReason,
             'email' => $data->email,
             'ip_address' => $data->ipAddress,
             'user_agent' => $this->normalizedUserAgent($data->userAgent),

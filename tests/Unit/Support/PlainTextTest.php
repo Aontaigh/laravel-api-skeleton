@@ -26,9 +26,6 @@ final class PlainTextTest extends UnitTestCase
      * Strip markup from plain text values.
      */
     #[Test]
-    /**
-     * Strip markup from plain text values.
-     */
     #[DataProvider('hostileNameProvider')]
     public function it_strips_markup_from_plain_text_values(string $input, string $expected): void
     {

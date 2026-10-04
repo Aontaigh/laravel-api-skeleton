@@ -11,6 +11,7 @@ use App\Actions\Auth\RecordAuthAuditAction;
 use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\LoginCredentialsData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\MfaMethod;
 use App\Http\Controllers\Auth\LoginController;
@@ -75,6 +76,19 @@ final class LoginControllerTest extends TestCase
         parent::setUp();
 
         $this->seed(RolesAndPermissionsSeeder::class);
+    }
+
+    /**
+     * Resolve the web session guard for remember-me cookie assertions.
+     *
+     * @return SessionGuard the resolved web session guard
+     */
+    private function webGuard(): SessionGuard
+    {
+        /** @var SessionGuard $guard */
+        $guard = Auth::guard('web');
+
+        return $guard;
     }
 
     /*
@@ -164,6 +178,7 @@ final class LoginControllerTest extends TestCase
         ]);
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::Login->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'email' => 'alice@example.com',
             'remember_me' => false,
         ]);
@@ -437,10 +452,10 @@ final class LoginControllerTest extends TestCase
     }
 
     /**
-     * Reject suspended accounts with the same generic message as invalid credentials.
+     * Reject suspended accounts with a named 403 once the password proves out.
      */
     #[Test]
-    public function it_rejects_suspended_accounts_with_a_generic_message(): void
+    public function it_rejects_suspended_accounts_with_a_named_response(): void
     {
         // Arrange
 
@@ -459,8 +474,97 @@ final class LoginControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiValidationErrors($response, ['email']);
-        $response->assertJsonPath('meta.errors.email.0', 'Invalid Credentials');
+        $response->assertForbidden()->assertJsonPath('message', 'Account Suspended');
+
+        /*
+         * The account state is a deliberate administrative decision, so the
+         * refusal - not a failure - is what the audit row records.
+         */
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::LoginFailed->value,
+            'outcome' => AuditOutcome::Refused->value,
+        ]);
+    }
+
+    /**
+     * Name the principal on a suspended-account refusal.
+     *
+     * The password has verified and the User is known here, so the audit row
+     * records the id of the account the event concerns. Without it the row is
+     * unjoinable by principal, which is the one thing a forensic reader needs:
+     * an operator asking "who was refused, and why" cannot answer from a row
+     * carrying only an email.
+     */
+    #[Test]
+    public function it_records_the_principal_on_a_suspended_account_refusal(): void
+    {
+        // Arrange
+
+        $user = User::factory()->user()->suspended()->create([
+            'email' => 'suspended@example.com',
+            'password' => Hash::make('Xq7#mK2$vL9pTzW4'),
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'suspended@example.com',
+            'password' => 'Xq7#mK2$vL9pTzW4',
+        ]);
+
+        // Assert
+
+        $response->assertForbidden();
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::LoginFailed->value,
+            'outcome' => AuditOutcome::Refused->value,
+            'user_id' => $user->id,
+        ]);
+    }
+
+    /**
+     * Sign in an existing long password after the creation cap is lowered.
+     *
+     * `PASSWORD_MAX_LENGTH` caps passwords at *creation* time. Applying it to
+     * the verification input would mean that lowering the config value locks
+     * out every account whose stored password is longer than the new cap -
+     * the credential is valid but the form refuses to check it, and the user
+     * has no way to recover short of an admin reset. Verification is bounded
+     * by the fixed 72-byte hasher boundary instead.
+     */
+    #[Test]
+    public function it_signs_in_an_existing_longer_password_when_the_creation_cap_is_lowered(): void
+    {
+        // Arrange
+
+        config(['api.password_max_length' => 32]);
+
+        $existingPassword = 'Str0ng&VeryLongPassphrase#2026Extra';
+
+        $this->assertGreaterThan(
+            32,
+            strlen($existingPassword),
+            'The fixture password must exceed the lowered cap for this test to mean anything',
+        );
+
+        User::factory()->user()->create([
+            'email' => 'long-password@example.com',
+            'password' => Hash::make($existingPassword),
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/login', [
+            'email' => 'long-password@example.com',
+            'password' => $existingPassword,
+        ]);
+
+        // Assert
+
+        $response->assertOk();
     }
 
     /**
@@ -487,10 +591,42 @@ final class LoginControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiValidationErrors($response, ['email']);
-        $response->assertJsonPath('meta.errors.email.0', 'Invalid Credentials');
+        $response->assertForbidden()->assertJsonPath('message', 'Account Suspended');
         $response->assertJsonMissingPath('data.two_factor_required');
         $response->assertJsonMissingPath('data.two_factor_token');
+    }
+
+    /**
+     * A standard sign-in establishes a browser session, not only a token.
+     *
+     * The SPA authenticates with the session cookie rather than a bearer token,
+     * so a login that leaves the web guard unauthenticated shows the user as a
+     * guest on every screen. Only a bearer caller has no session to log into,
+     * which is what the regenerate flag distinguishes.
+     */
+    #[Test]
+    public function it_establishes_a_session_on_a_standard_login(): void
+    {
+        // Arrange
+
+        $user = User::factory()->create([
+            'email' => 'alice@example.com',
+            'password' => Hash::make('SecretPass12'),
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->withHeader('Origin', 'http://localhost')
+            ->postJson('/api/auth/login', [
+                'email' => 'alice@example.com',
+                'password' => 'SecretPass12',
+            ]);
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertAuthenticatedAs($user);
     }
 
     /**
@@ -592,57 +728,5 @@ final class LoginControllerTest extends TestCase
                 ['device_name'],
             ],
         ];
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Private
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Resolve the web session guard for remember-me cookie assertions.
-     *
-     * @return SessionGuard the resolved web session guard
-     */
-    private function webGuard(): SessionGuard
-    {
-        /** @var SessionGuard $guard */
-        $guard = Auth::guard('web');
-
-        return $guard;
-    }
-
-    /**
-     * A standard sign-in establishes a browser session, not only a token.
-     *
-     * The SPA authenticates with the session cookie rather than a bearer token,
-     * so a login that leaves the web guard unauthenticated shows the user as a
-     * guest on every screen. Only a bearer caller has no session to log into,
-     * which is what the regenerate flag distinguishes.
-     */
-    #[Test]
-    public function it_establishes_a_session_on_a_standard_login(): void
-    {
-        // Arrange
-
-        $user = User::factory()->create([
-            'email' => 'alice@example.com',
-            'password' => Hash::make('SecretPass12'),
-        ]);
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->withHeader('Origin', 'http://localhost')
-            ->postJson('/api/auth/login', [
-                'email' => 'alice@example.com',
-                'password' => 'SecretPass12',
-            ]);
-
-        // Assert
-
-        $response->assertOk();
-        $this->assertAuthenticatedAs($user);
     }
 }

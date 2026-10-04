@@ -215,6 +215,29 @@ final class UserPolicyTest extends TestCase
     }
 
     /**
+     * Deny showing or editing a service account through the User surface.
+     *
+     * Machine identities are managed through the API client endpoints; the
+     * User show and update endpoints must not touch them.
+     */
+    #[Test]
+    public function it_denies_view_and_update_on_a_service_account(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var User $serviceAccount */
+        $serviceAccount = User::factory()->serviceAccount()->service()->create();
+
+        // Act + Assert
+
+        $this->assertFalse($this->policy->view($admin, $serviceAccount));
+        $this->assertFalse($this->policy->update($admin, $serviceAccount));
+    }
+
+    /**
      * A team-less viewer sees only their own team-less account, not every one.
      */
     #[Test]

@@ -137,4 +137,29 @@ final class PermissionAbilityCatalog
 
         return array_values(array_unique($normalized));
     }
+
+    /**
+     * Normalise and validate Token abilities for an API client.
+     *
+     * A machine identity must be scoped: the unrestricted wildcard would hand
+     * every current and future permission to one non-interactive caller, so
+     * client create and update refuse `['*']` outright and accept only
+     * registered permission names. Human-side tokens keep `['*']` semantics -
+     * login sessions and self-service `POST /api/tokens` are documented as
+     * unrestricted, and authorisation runs through Gate + Spatie policies
+     * rather than `tokenCan`.
+     *
+     * @param  list<string> $requested the abilities from the validated request
+     * @return list<string> the abilities safe to pass to Sanctum
+     *
+     * @throws InvalidTokenAbilitiesException when the list contains the wildcard
+     */
+    public function normalizeApiClientTokenAbilities(array $requested): array
+    {
+        if (in_array(self::WILDCARD_ABILITY, $requested, true)) {
+            throw new InvalidTokenAbilitiesException($requested);
+        }
+
+        return $this->normalizeTokenAbilities($requested);
+    }
 }

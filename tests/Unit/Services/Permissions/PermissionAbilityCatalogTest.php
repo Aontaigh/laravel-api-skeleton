@@ -129,6 +129,54 @@ final class PermissionAbilityCatalogTest extends UnitTestCase
     }
 
     /**
+     * Refuse the wildcard for an API client.
+     *
+     * A machine identity must be scoped: the unrestricted wildcard would hand
+     * every current and future permission to one non-interactive caller.
+     */
+    #[Test]
+    public function it_refuses_the_wildcard_for_an_api_client(): void
+    {
+        // Assert
+
+        $this->expectException(InvalidTokenAbilitiesException::class);
+
+        // Act
+
+        $this->catalog()->normalizeApiClientTokenAbilities(['*']);
+    }
+
+    /**
+     * Refuse a wildcard mixed with permissions for an API client.
+     */
+    #[Test]
+    public function it_refuses_a_mixed_wildcard_for_an_api_client(): void
+    {
+        // Assert
+
+        $this->expectException(InvalidTokenAbilitiesException::class);
+
+        // Act
+
+        $this->catalog()->normalizeApiClientTokenAbilities(['*', 'users.list']);
+    }
+
+    /**
+     * Accept registered permission names for an API client.
+     */
+    #[Test]
+    public function it_accepts_registered_names_for_an_api_client(): void
+    {
+        // Act
+
+        $abilities = $this->catalog()->normalizeApiClientTokenAbilities(['users.list', 'users.list']);
+
+        // Assert
+
+        $this->assertSame(['users.list'], $abilities);
+    }
+
+    /**
      * Normalize registered permission names.
      */
     #[Test]

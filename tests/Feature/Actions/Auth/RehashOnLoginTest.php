@@ -10,7 +10,6 @@ use App\Models\User;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -100,11 +99,9 @@ final class RehashOnLoginTest extends TestCase
     }
 
     /**
-     * Refuse a suspended User before any rehash, leaving the stored hash untouched.
-     *
-     * The suspension guard runs ahead of rehash-on-login so a stale-hash User who
-     * is also suspended can never log in to have their hash upgraded: guarding the
-     * write first is what makes the timing side-channel safe.
+     * Leave a suspended User's stored hash untouched: the Action returns the
+     * suspended User without rehashing, and the controller answers the named
+     * 403.
      */
     #[Test]
     public function it_does_not_rehash_a_suspended_user_even_with_a_stale_hash(): void
@@ -120,20 +117,21 @@ final class RehashOnLoginTest extends TestCase
 
         $user->forceFill(['password' => $staleHash])->saveQuietly();
 
-        // Act + Assert
+        // Act
 
-        try {
-            app(AuthenticateUserAction::class)->execute(new LoginCredentialsData(
-                email: $user->email,
-                password: $password,
-            ));
-            $this->fail('Expected ValidationException was not thrown');
-        } catch (ValidationException) {
-            /** @var string $unchanged */
-            $unchanged = $user->refresh()->getRawOriginal('password');
+        $authenticated = app(AuthenticateUserAction::class)->execute(new LoginCredentialsData(
+            email: $user->email,
+            password: $password,
+        ));
 
-            $this->assertSame($staleHash, $unchanged);
-        }
+        // Assert
+
+        $this->assertTrue($authenticated->is($user));
+
+        /** @var string $unchanged */
+        $unchanged = $user->refresh()->getRawOriginal('password');
+
+        $this->assertSame($staleHash, $unchanged);
     }
 
     /**

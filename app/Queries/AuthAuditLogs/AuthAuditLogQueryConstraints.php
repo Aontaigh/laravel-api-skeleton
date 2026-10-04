@@ -43,6 +43,7 @@ final class AuthAuditLogQueryConstraints
         'user_id',
         'actor_user_id',
         'event',
+        'outcome',
         'email',
         'ip_address',
         'user_agent',

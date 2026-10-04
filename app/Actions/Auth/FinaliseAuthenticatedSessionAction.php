@@ -10,6 +10,7 @@ use App\DataTransferObjects\Auth\FinaliseAuthenticatedSessionData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Sessions\RegisterWebSessionData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Middleware\EnsureSessionVersionMatches;
@@ -94,6 +95,7 @@ final class FinaliseAuthenticatedSessionAction
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::Login,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $data->ipAddress,

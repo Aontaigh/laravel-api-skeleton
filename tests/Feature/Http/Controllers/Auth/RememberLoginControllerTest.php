@@ -7,6 +7,7 @@ namespace Tests\Feature\Http\Controllers\Auth;
 use App\Actions\Auth\RecordAuthAuditAction;
 use App\Actions\Auth\RestoreUserFromRememberAction;
 use App\Actions\Tokens\CreatePersonalAccessTokenAction;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Http\Controllers\Auth\RememberLoginController;
 use App\Http\Requests\Auth\RememberLoginRequest;
@@ -135,6 +136,12 @@ final class RememberLoginControllerTest extends TestCase
 
     /**
      * Reject remember-me restoration without a valid session or cookie.
+     *
+     * The generic answer is unchanged, but the attempt is audited as
+     * `failed`: a remember-me restoration that finds no cookie is an
+     * authentication attempt like any other, and leaving it unrecorded means
+     * the audit trail shows only successful remember-me events. No principal is
+     * known on this path, so `user_id` stays null.
      */
     #[Test]
     public function it_rejects_remember_me_restoration_without_a_valid_session(): void
@@ -147,6 +154,13 @@ final class RememberLoginControllerTest extends TestCase
         // Assert
 
         $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::RememberMeLogin->value,
+            'outcome' => AuditOutcome::Failed->value,
+            'user_id' => null,
+            'remember_me' => true,
+        ]);
     }
 
     /**
@@ -169,10 +183,57 @@ final class RememberLoginControllerTest extends TestCase
         // Assert
 
         $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
-        $this->assertDatabaseMissing('auth_audit_logs', [
+
+        /*
+         * The generic answer still withholds *whether* the cookie resolved,
+         * but the audit trail is an internal record and names the principal.
+         * A suspension blocked at the remember-me door is a policy refusal, so
+         * the outcome is `refused` rather than `failed` - matching how the
+         * password sign-in path classifies the same account state.
+         */
+        $this->assertDatabaseHas('auth_audit_logs', [
             'user_id' => $user->id,
             'event' => AuthAuditEvent::RememberMeLogin->value,
+            'outcome' => AuditOutcome::Refused->value,
+            'remember_me' => true,
         ]);
+
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'tokenable_id' => $user->id,
+        ]);
+    }
+
+    /**
+     * Refuse a service account at the remember-me door with an audited outcome.
+     *
+     * A machine identity has no interactive surface, so restoring a remember-me
+     * session for one is the same policy refusal as a password sign-in, and it
+     * is recorded as such rather than left untracked.
+     */
+    #[Test]
+    public function it_refuses_a_service_account_at_the_remember_me_door(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->serviceAccount()->create();
+        Auth::guard('web')->login($user, true);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/login/remember');
+
+        // Assert
+
+        $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'user_id' => $user->id,
+            'event' => AuthAuditEvent::RememberMeLogin->value,
+            'outcome' => AuditOutcome::Refused->value,
+        ]);
+
         $this->assertDatabaseMissing('personal_access_tokens', [
             'tokenable_id' => $user->id,
         ]);

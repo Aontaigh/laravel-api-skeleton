@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Actions\Auth;
 
 use App\DataTransferObjects\Auth\LoginCredentialsData;
+use App\Exceptions\Auth\ServiceAccountAuthenticationException;
 use App\Models\User;
 use App\Support\AuthTimingHash;
 use Closure;
@@ -43,6 +44,9 @@ final class AuthenticateUserAction
      * Uses a single generic validation message so callers cannot distinguish
      * missing accounts from wrong passwords. Runs a dummy password check when
      * the email is unknown so response timing does not reveal account existence.
+     * A suspended account still returns here after a successful password check
+     * so the controller can answer `403 Account Suspended` without collapsing
+     * that case into the enumeration-safe 422.
      *
      * @example
      * app(AuthenticateUserAction::class)->execute($credentials);
@@ -50,7 +54,7 @@ final class AuthenticateUserAction
      * @param  LoginCredentialsData $credentials the login payload
      * @return User                 the authenticated User
      *
-     * @throws ValidationException when credentials are invalid
+     * @throws ValidationException when credentials are invalid or the account is a service account
      */
     public function execute(LoginCredentialsData $credentials): User
     {
@@ -70,20 +74,33 @@ final class AuthenticateUserAction
             ]);
         }
 
-        if ($user->isSuspended() || $user->isServiceAccount()) {
-            throw ValidationException::withMessages([
-                'email' => ['Invalid Credentials'],
-            ]);
+        /*
+         * A service account is a machine identity owned by an API client. It
+         * authenticates only through the client-credentials exchange, so a
+         * password sign-in is refused with the same generic message as a
+         * wrong password to avoid disclosing that the account exists.
+         */
+        if ($user->isServiceAccount()) {
+            throw ServiceAccountAuthenticationException::generic();
         }
 
         /*
-         * Upgrade an out-of-date hash to the configured driver and work factors.
-         * Placed after the suspension and service-account guards so only a
-         * credential that would actually authenticate triggers the write: the
-         * rehash on a suspended or service account would mutate a record the
-         * caller can never use, and leak by timing that such an account exists.
+         * A suspended account is returned rather than thrown: the controller
+         * answers a named 403 `Account Suspended` because the caller proved
+         * the password, so naming the state is the friendlier and clearer
+         * signal - the same answer the active.account middleware gives
+         * mid-session. A suspended MFA-enrolled account is refused before a
+         * two-factor challenge is opened.
+         *
+         * Upgrade an out-of-date hash to the configured driver and work
+         * factors, skipping the write for a suspended account: the record
+         * cannot be used by this caller, so mutating it (and paying the
+         * Argon2id cost) buys nothing.
          */
-        if (config()->boolean('hashing.rehash_on_login') && Hash::needsRehash($user->password)) {
+        if (! $user->isSuspended()
+            && config()->boolean('hashing.rehash_on_login')
+            && Hash::needsRehash($user->password)
+        ) {
             $user->password = $credentials->password;
             $user->save();
         }

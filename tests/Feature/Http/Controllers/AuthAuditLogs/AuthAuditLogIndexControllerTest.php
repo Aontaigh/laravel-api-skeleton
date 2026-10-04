@@ -262,7 +262,7 @@ final class AuthAuditLogIndexControllerTest extends TestCase
     #[Test]
     public function it_respects_permission_aware_email_allow_list_on_user_include(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
@@ -270,14 +270,14 @@ final class AuthAuditLogIndexControllerTest extends TestCase
         $subject = User::factory()->user()->create(['email' => 'audit@example.com']);
         AuthAuditLog::factory()->for($subject)->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($admin)->getJson(
             '/api/audit-logs?include=user&fields[users]=id,name,email',
         );
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonPath('data.0.user.email', 'audit@example.com');

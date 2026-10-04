@@ -8,6 +8,7 @@ use App\Actions\Auth\LogoutUserAction;
 use App\Actions\Users\SuspendUserAction;
 use App\Http\Controllers\Users\SuspendUserController;
 use App\Http\Requests\Users\SuspendUserRequest;
+use App\Models\ApiClient;
 use App\Models\User;
 use App\Policies\UserPolicy;
 use App\Support\ApiResponse;
@@ -99,6 +100,40 @@ final class SuspendUserControllerTest extends TestCase
             'user_id' => $target->id,
             'actor_user_id' => $admin->id,
         ]);
+    }
+
+    /**
+     * Refuse to suspend a service account.
+     *
+     * Suspension is a people control: a machine identity is paused through its
+     * API Client (`PATCH /api/clients/{client}` with `is_active: false`).
+     */
+    #[Test]
+    public function it_refuses_to_suspend_a_service_account(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var User $serviceUser the API Client's backing account */
+        $serviceUser = User::query()->findOrFail(ApiClient::factory()->create()->user_id);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->postJson("/api/users/{$serviceUser->id}/suspend");
+
+        // Assert
+
+        /*
+         * The scoped `{user}` binding excludes machine identities from the
+         * users namespace, so a backing account's ID answers exactly like an
+         * unknown ID.
+         */
+        $response->assertNotFound();
+
+        $this->assertNull($serviceUser->fresh()?->suspended_at);
     }
 
     /**

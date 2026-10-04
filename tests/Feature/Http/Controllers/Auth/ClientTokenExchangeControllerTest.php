@@ -11,7 +11,9 @@ use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\ClientCredentialsData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
+use App\Enums\ClientIneligibilityReason;
 use App\Http\Controllers\Auth\ClientTokenExchangeController;
 use App\Http\Requests\Auth\ClientTokenExchangeRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
@@ -269,7 +271,7 @@ final class ClientTokenExchangeControllerTest extends TestCase
     #[Test]
     public function it_rejects_soft_deleted_service_users(): void
     {
-        /* Arrange */
+        // Arrange
 
         $plainSecret = 'SoftDeletedSecret12';
         $client = ApiClient::factory()->create([
@@ -277,7 +279,7 @@ final class ClientTokenExchangeControllerTest extends TestCase
         ]);
         $client->user->delete();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->postJson('/api/oauth/token', [
@@ -286,7 +288,7 @@ final class ClientTokenExchangeControllerTest extends TestCase
             'client_secret' => $plainSecret,
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertUnprocessable();
         $response->assertJsonPath('meta.errors.client_id', ['Invalid Credentials']);
@@ -295,6 +297,84 @@ final class ClientTokenExchangeControllerTest extends TestCase
     /**
      * Reject inactive clients with the same generic message as a wrong secret.
      */
+    /**
+     * Audit a verified credential refused by policy as `refused`, with its reason.
+     *
+     * The action raised one `ValidationException` for every cause, so the controller
+     * recorded each rejection as `failed`. A suspended service account and a mistyped
+     * secret then produced audit rows differing only in their event name, and an
+     * incident responder could not tell a deliberate policy decline from a credential
+     * attack. Proved red first: the row carried `failed` with no reason.
+     */
+    #[Test]
+    public function it_audits_a_suspended_owner_refusal_as_refused_with_its_reason(): void
+    {
+        // Arrange
+
+        $plainSecret = 'RefusedSecret12';
+        $client = ApiClient::factory()->create(['client_secret' => Hash::make($plainSecret)]);
+        $client->user->forceFill(['suspended_at' => now()])->save();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/oauth/token', [
+            'grant_type' => 'client_credentials',
+            'client_id' => $client->client_id,
+            'client_secret' => $plainSecret,
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('meta.errors.client_id', ['Invalid Credentials']);
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::ClientTokenExchangeFailed->value,
+            'outcome' => AuditOutcome::Refused->value,
+            'client_ineligibility_reason' => ClientIneligibilityReason::SuspendedOwner->value,
+            'user_id' => $client->user_id,
+            'api_client_id' => $client->id,
+        ]);
+    }
+
+    /**
+     * Attribute no principal when the secret does not verify.
+     *
+     * Each of these fails before the credential proves out, so naming a principal
+     * would turn the audit log into an account-enumeration oracle: an attacker learns
+     * which client IDs and owners exist by reading outcomes back. The external
+     * response is identical either way, so the audit log must be too.
+     */
+    #[Test]
+    public function it_attributes_no_principal_when_the_secret_does_not_verify(): void
+    {
+        // Arrange
+
+        $client = ApiClient::factory()->create(['client_secret' => Hash::make('TheRealSecret12')]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/oauth/token', [
+            'grant_type' => 'client_credentials',
+            'client_id' => $client->client_id,
+            'client_secret' => 'not-the-right-secret',
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'event' => AuthAuditEvent::ClientTokenExchangeFailed->value,
+            'outcome' => AuditOutcome::Failed->value,
+            'client_ineligibility_reason' => null,
+            'user_id' => null,
+            'api_client_id' => null,
+        ]);
+    }
+
     #[Test]
     public function it_rejects_inactive_clients(): void
     {

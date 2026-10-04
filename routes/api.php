@@ -198,7 +198,7 @@ Route::middleware(['auth:sanctum', 'active.account', 'session.version', 'session
     */
 
     Route::withoutMiddleware([\App\Http\Middleware\EnsureEmailIsVerified::class])->group(function (): void {
-        Route::post('/logout', \App\Http\Controllers\Auth\LogoutController::class)
+        Route::post('/auth/logout', \App\Http\Controllers\Auth\LogoutController::class)
             ->name('auth.logout');
 
         Route::get('/me', \App\Http\Controllers\Users\MeShowController::class)

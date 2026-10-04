@@ -23,13 +23,19 @@ final class RotateApiClientSecretAction
     /**
      * Replace the client secret with a one-time plaintext value.
      *
-     * The active flag is left alone on purpose: rotation must never silently
-     * resume a deactivated client, and must never silently break one either -
-     * operators pause with `PATCH … {"is_active": false}` and resume
-     * explicitly. Live bearer tokens issued under the old secret stay valid
-     * until natural expiry or deactivation (OAuth2 client-credentials
-     * semantics); if the secret itself was compromised, deactivate the client
-     * to kill every token, rotate, then re-enable.
+     * Live bearer tokens issued under the old secret stay valid after
+     * rotation - this is deliberate, reviewed design, not an oversight, so
+     * do not "fix" it here: revoking on rotate would break the OAuth2
+     * client-credentials convention every mainstream provider follows
+     * (Google, Microsoft, GitHub all leave issued tokens to ride their
+     * expiry) and turn every routine rotation into an integration outage.
+     * The rotation itself is audited; the compromise runbook is deactivate
+     * the client (which kills every token), rotate, then re-enable.
+     *
+     * The active flag is left alone on purpose too: rotation must never
+     * silently resume a deactivated client, and must never silently break
+     * one either - operators pause with `PATCH … {"is_active": false}` and
+     * resume explicitly.
      *
      * @example
      * $result = app(RotateApiClientSecretAction::class)->execute($client);

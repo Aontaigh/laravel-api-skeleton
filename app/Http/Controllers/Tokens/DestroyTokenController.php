@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Tokens;
 
 use App\Actions\Tokens\RevokePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Tokens\DestroyTokenRequest;
@@ -60,6 +61,7 @@ final class DestroyTokenController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::TokenRevoked,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             personalAccessTokenId: $token->id,

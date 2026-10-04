@@ -110,6 +110,38 @@ final class StoreClientControllerTest extends TestCase
         $this->assertTrue($serviceUser->hasRole('Service'));
     }
 
+    /**
+     * Reject the wildcard ability for an API client.
+     *
+     * A machine identity must be scoped: the unrestricted wildcard would hand
+     * every current and future permission to one non-interactive caller.
+     * Human-side tokens keep `['*']` semantics by design.
+     */
+    #[Test]
+    public function it_rejects_the_wildcard_ability(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->postJson('/api/clients', [
+            'name' => 'Billing Sync',
+            'abilities' => ['*'],
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('meta.invalid_abilities', ['*']);
+
+        $this->assertDatabaseCount('api_clients', 0);
+        $this->assertDatabaseMissing('users', ['is_service_account' => true]);
+    }
+
     /*
      * Authentication Tests
      * --------------------

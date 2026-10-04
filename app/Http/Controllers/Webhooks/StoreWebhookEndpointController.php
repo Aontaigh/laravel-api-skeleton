@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Webhooks;
 use App\Actions\Webhooks\CreateWebhookEndpointAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Webhooks\CreateWebhookEndpointData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Webhooks\StoreWebhookEndpointRequest;
@@ -75,6 +76,7 @@ final class StoreWebhookEndpointController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::WebhookEndpointCreated,
+            outcome: AuditOutcome::Succeeded,
             userId: $actor->id,
             email: $actor->email,
             ipAddress: $request->ip(),

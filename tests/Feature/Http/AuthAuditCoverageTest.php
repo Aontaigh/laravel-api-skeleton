@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http;
 
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\RoleName;
 use App\Http\Controllers\Clients\DestroyClientController;
@@ -61,6 +62,7 @@ use Tests\TestCase;
 #[CoversClass(DestroyWebhookEndpointController::class)]
 #[CoversClass(RotateWebhookEndpointSecretController::class)]
 #[CoversClass(AuthAuditEvent::class)]
+#[CoversClass(AuditOutcome::class)]
 final class AuthAuditCoverageTest extends TestCase
 {
     /*
@@ -129,6 +131,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::PasswordChanged->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $user->id,
         ]);
     }
@@ -166,6 +169,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::UserRoleChanged->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $member->id,
         ]);
     }
@@ -192,6 +196,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::UserSuspended->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $member->id,
         ]);
     }
@@ -219,6 +224,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::UserUnsuspended->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $member->id,
         ]);
     }
@@ -253,6 +259,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::SessionRevoked->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $member->id,
         ]);
     }
@@ -284,6 +291,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::TokenCreated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $member->id,
         ]);
     }
@@ -313,6 +321,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::TokenCreated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $member->id,
         ]);
     }
@@ -338,6 +347,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::TokenRevoked->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $member->id,
         ]);
     }
@@ -369,6 +379,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::ApiClientCreated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }
@@ -401,6 +412,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::ApiClientUpdated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }
@@ -433,6 +445,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::ApiClientDeleted->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }
@@ -467,6 +480,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::ClientSecretRotated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }
@@ -499,6 +513,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::WebhookEndpointCreated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }
@@ -525,6 +540,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::WebhookEndpointUpdated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }
@@ -551,6 +567,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::WebhookSecretRotated->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }
@@ -577,6 +594,7 @@ final class AuthAuditCoverageTest extends TestCase
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::WebhookEndpointDeleted->value,
+            'outcome' => AuditOutcome::Succeeded->value,
             'user_id' => $admin->id,
         ]);
     }

@@ -75,9 +75,6 @@ final class ApiSecurityProbeTest extends TestCase
      * Survive SQL-injection-shaped search terms without error.
      */
     #[Test]
-    /**
-     * Survive SQL-injection-shaped search terms without error.
-     */
     #[DataProvider('sqlInjectionSearchProvider')]
     public function it_survives_sql_injection_shaped_search_terms_without_error(string $endpoint): void
     {

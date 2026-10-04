@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Users;
 use App\Actions\Users\UpdatePasswordAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Users\UpdatePasswordData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\PasswordChangeSource;
 use App\Events\AuthEventOccurred;
@@ -15,6 +16,7 @@ use App\Models\User;
 use App\Notifications\Auth\PasswordChangedNotification;
 use App\Services\UserAgent\Contracts\UserAgentParser;
 use App\Support\ApiResponse;
+use App\Support\PresentingToken;
 use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
@@ -53,6 +55,14 @@ final class UpdateMePasswordController
         |--------------------------------------------------------------------------
         */
 
+        /*
+         * Capture the presenting credential before the Action invalidates
+         * tokens: the audit row identifies which token performed the change,
+         * and a cookie-session caller (TransientToken) carries none.
+         */
+        $presentingToken = $request->user()?->currentAccessToken();
+        $presentingTokenId = PresentingToken::isPersonalAccessToken($presentingToken) ? $presentingToken?->id : null;
+
         $input = $request->safe();
 
         $data = new UpdatePasswordData(
@@ -73,8 +83,10 @@ final class UpdateMePasswordController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::PasswordChanged,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
+            personalAccessTokenId: $presentingTokenId,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
             requestId: RequestId::current($request),

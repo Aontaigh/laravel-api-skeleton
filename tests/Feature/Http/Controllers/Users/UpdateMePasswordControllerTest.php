@@ -82,14 +82,14 @@ final class UpdateMePasswordControllerTest extends TestCase
     #[Test]
     public function it_changes_the_callers_own_password(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create([
             'password' => Hash::make('current-password'),
         ]);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->patchJson('/api/me/password', [
@@ -98,7 +98,7 @@ final class UpdateMePasswordControllerTest extends TestCase
             'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonPath('message', 'Password Updated Successfully');
@@ -115,14 +115,14 @@ final class UpdateMePasswordControllerTest extends TestCase
     #[Test]
     public function it_rejects_a_wrong_current_password(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create([
             'password' => Hash::make('correct-password'),
         ]);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->patchJson('/api/me/password', [
@@ -131,7 +131,7 @@ final class UpdateMePasswordControllerTest extends TestCase
             'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertUnprocessable();
         $this->assertApiValidationErrors($response, ['current_password']);
@@ -143,14 +143,14 @@ final class UpdateMePasswordControllerTest extends TestCase
     #[Test]
     public function it_rejects_a_new_password_that_does_not_meet_strength_requirements(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create([
             'password' => Hash::make('current-password'),
         ]);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->patchJson('/api/me/password', [
@@ -159,7 +159,7 @@ final class UpdateMePasswordControllerTest extends TestCase
             'password_confirmation' => 'short',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertUnprocessable();
         $this->assertApiValidationErrors($response, ['password']);
@@ -176,7 +176,7 @@ final class UpdateMePasswordControllerTest extends TestCase
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->patchJson('/api/me/password', [
@@ -185,7 +185,7 @@ final class UpdateMePasswordControllerTest extends TestCase
             'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertUnauthorized();
     }
@@ -196,14 +196,14 @@ final class UpdateMePasswordControllerTest extends TestCase
     #[Test]
     public function it_denies_service_accounts_from_self_service_password_changes(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $serviceUser */
         $serviceUser = User::factory()->serviceAccount()->service()->create([
             'password' => Hash::make('secret'),
         ]);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($serviceUser)->patchJson('/api/me/password', [
@@ -212,7 +212,7 @@ final class UpdateMePasswordControllerTest extends TestCase
             'password_confirmation' => 'Xq7#mK2$vL9pTzW4',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertForbidden();
     }

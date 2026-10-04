@@ -9,6 +9,14 @@ namespace App\Support\Auth;
  *
  * Long passwords are rejected at validation so Argon2id cannot be abused for
  * CPU exhaustion on login and other `current_password` checks.
+ *
+ * This is a *creation-time* cap: it belongs on registration, password reset,
+ * and self-service password change, where the app is choosing a new
+ * credential. It must never reach a verification input (sign-in, or a
+ * `current_password` check), because lowering the configured value would then
+ * lock out every account already holding a longer stored password - the
+ * credential would be valid while the form refused to check it. Verification
+ * paths use `PasswordByteLength`, a fixed hasher boundary that never moves.
  */
 final class PasswordMaxLength
 {
@@ -21,11 +29,6 @@ final class PasswordMaxLength
     /**
      * Title Case validation copy for `max` rule failures.
      *
-     * Wording keeps the exact request field name (`php-validation-responses`
-     * forbids pretty labels) and pairs with the MAX_LENGTH bound above, so the
-     * limit and the copy the client sees cannot drift apart.
-    /**
-     * Title Case validation copy for `max` rule failures.
      * Wording keeps the exact request field name (`php-validation-responses`
      * forbids pretty labels) and pairs with the MAX_LENGTH bound above, so the
      * limit and the copy the client sees cannot drift apart.

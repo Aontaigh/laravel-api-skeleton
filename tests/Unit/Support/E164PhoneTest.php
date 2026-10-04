@@ -29,7 +29,7 @@ final class E164PhoneTest extends UnitTestCase
      * @param bool        $expected whether the value should pass
      */
     #[Test]
-    #[DataProvider('canonicalPhoneCases')]
+    #[DataProvider('canonicalPhoneCasesProvider')]
     public function it_reports_whether_the_input_is_canonical_e164(?string $input, bool $expected): void
     {
         // Act + Assert
@@ -44,7 +44,7 @@ final class E164PhoneTest extends UnitTestCase
      * @param string|null $expected the canonical form, or null when not parseable
      */
     #[Test]
-    #[DataProvider('normalizablePhoneCases')]
+    #[DataProvider('normalizablePhoneCasesProvider')]
     public function it_normalizes_parseable_phone_numbers(?string $input, ?string $expected): void
     {
         // Act + Assert
@@ -63,7 +63,7 @@ final class E164PhoneTest extends UnitTestCase
      *
      * @return array<string, array{0: ?string, 1: ?string}> the case name mapped to [input, expected]
      */
-    public static function normalizablePhoneCases(): array
+    public static function normalizablePhoneCasesProvider(): array
     {
         return [
             'irish mobile' => ['+353851046420', '+353851046420'],
@@ -79,7 +79,7 @@ final class E164PhoneTest extends UnitTestCase
      *
      * @return array<string, array{0: ?string, 1: bool}> the case name mapped to [input, expected]
      */
-    public static function canonicalPhoneCases(): array
+    public static function canonicalPhoneCasesProvider(): array
     {
         return [
             'irish mobile' => ['+353851046420', true],

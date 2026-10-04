@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Tests\Feature\Http\Controllers\AuthAuditLogs;
 
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Http\Controllers\AuthAuditLogs\AuthAuditLogShowController;
 use App\Http\Requests\AuthAuditLogs\AuthAuditLogShowRequest;
@@ -175,6 +176,47 @@ final class AuthAuditLogShowControllerTest extends TestCase
         $payload = $response->json('data');
 
         $this->assertSame(['id', 'event'], array_keys($payload));
+    }
+
+    /**
+     * Serialise the outcome on the audit log row and honour sparse fieldsets
+     * for it.
+     *
+     * The full payload carries `outcome` as its enum value, and selecting it
+     * through `fields[auth_audit_logs]=` narrows the payload to `id` plus
+     * `outcome` only - a field outside the allow-list can never leak in.
+     */
+    #[Test]
+    public function it_serialises_the_outcome_and_honours_sparse_fieldsets_for_it(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $log = AuthAuditLog::factory()->create(['outcome' => AuditOutcome::Failed]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson("/api/audit-logs/{$log->id}");
+
+        /** @var TestResponse<JsonResponse> $sparse */
+        $sparse = $this->actingAs($admin)->getJson(
+            "/api/audit-logs/{$log->id}?fields[auth_audit_logs]=id,outcome",
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.outcome', 'failed');
+
+        $sparse->assertOk();
+
+        /** @var array<string, mixed> $sparsePayload */
+        $sparsePayload = $sparse->json('data');
+
+        $this->assertSame(['id', 'outcome'], array_keys($sparsePayload));
+        $this->assertSame('failed', $sparsePayload['outcome']);
     }
 
     /*

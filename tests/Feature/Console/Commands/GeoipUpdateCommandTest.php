@@ -36,6 +36,36 @@ final class GeoipUpdateCommandTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
+    | Setup / Teardown
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Build a tar.gz whose archive contains the given MMDB contents.
+     *
+     * @param  string $databaseContents the raw MMDB bytes to pack
+     * @return string the archive path
+     */
+    private function makeGeoLiteArchive(string $databaseContents): string
+    {
+        $directory = sys_get_temp_dir().'/geoip-fixture-'.bin2hex(random_bytes(4));
+        File::ensureDirectoryExists($directory.'/GeoLite2-City_20260101');
+        File::put($directory.'/GeoLite2-City_20260101/GeoLite2-City.mmdb', $databaseContents);
+
+        $archive = sys_get_temp_dir().'/GeoLite2-City-'.bin2hex(random_bytes(4)).'.tar.gz';
+
+        $phar = new PharData(substr($archive, 0, -3));
+        $phar->buildFromDirectory($directory);
+        $phar->compress(Phar::GZ);
+
+        File::deleteDirectory($directory);
+        File::delete(substr($archive, 0, -3));
+
+        return $archive;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
     | Tests
     |--------------------------------------------------------------------------
     */
@@ -265,35 +295,5 @@ final class GeoipUpdateCommandTest extends TestCase
 
         config(['geoip.account_id' => '123456', 'geoip.license_key' => 'test-license']);
         $this->assertTrue($event->filtersPass($this->app));
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Private
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Build a tar.gz whose archive contains the given MMDB contents.
-     *
-     * @param  string $databaseContents the raw MMDB bytes to pack
-     * @return string the archive path
-     */
-    private function makeGeoLiteArchive(string $databaseContents): string
-    {
-        $directory = sys_get_temp_dir().'/geoip-fixture-'.bin2hex(random_bytes(4));
-        File::ensureDirectoryExists($directory.'/GeoLite2-City_20260101');
-        File::put($directory.'/GeoLite2-City_20260101/GeoLite2-City.mmdb', $databaseContents);
-
-        $archive = sys_get_temp_dir().'/GeoLite2-City-'.bin2hex(random_bytes(4)).'.tar.gz';
-
-        $phar = new PharData(substr($archive, 0, -3));
-        $phar->buildFromDirectory($directory);
-        $phar->compress(Phar::GZ);
-
-        File::deleteDirectory($directory);
-        File::delete(substr($archive, 0, -3));
-
-        return $archive;
     }
 }

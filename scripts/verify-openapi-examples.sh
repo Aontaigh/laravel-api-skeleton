@@ -153,7 +153,7 @@ check AuditLogsIndexSuccess "$(openapi_example AuditLogsIndexSuccess)" \
 
 AUDIT_LOG_ID="$(artisan tinker --execute="echo App\\Models\\AuthAuditLog::query()->where('event','Login')->where('email','admin@example.com')->orderBy('id')->value('id');" 2>/dev/null | tail -1)"
 check AuthAuditLogShowSuccess "$(openapi_example AuthAuditLogShowSuccess)" \
-  "$(api GET "/audit-logs/${AUDIT_LOG_ID}?fields%5Bauth_audit_logs%5D=id,event,email,user_id,api_client_id,remember_me,created_at")"
+  "$(api GET "/audit-logs/${AUDIT_LOG_ID}?fields%5Bauth_audit_logs%5D=id,event,outcome,email,user_id,api_client_id,remember_me,created_at")"
 
 check UserUpdateSuccess "$(openapi_example UserUpdateSuccess)" \
   "$(api PATCH '/users/2' "$ADMIN_TOKEN" '{"name":"Manager User"}')"

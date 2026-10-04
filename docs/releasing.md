@@ -42,7 +42,7 @@ The `/health` endpoint reports the app version from `config('app.version')`. Tha
 value defaults to the **`version` field in `composer.json`** - not a hard-coded
 fallback in `config/app.php`. Keep these in sync on every release:
 
-| File | What to update |
+| File | What to Update |
 | --- | --- |
 | [`composer.json`](../composer.json) | `"version": "X.Y.Z"` - **source of truth** |
 | [`docs/openapi.yaml`](../docs/openapi.yaml) | `info.version`, the `HealthSuccess` example, and the `HealthData.version` schema example |
@@ -88,8 +88,8 @@ Local (Sail when host PHP is not 8.5):
 bash scripts/verify-openapi-examples.sh
 ```
 
-`composer ci` runs Pint, Larastan, PHPUnit with the 90% coverage gate, app version
-sync (`composer verify:version`), and `composer audit`. OpenAPI example verification
+`composer ci` runs Pint, Larastan, Semgrep, PHPUnit with the 90% coverage gate,
+app version sync (`composer verify:version`), and `composer audit`. OpenAPI example verification
 is a **separate** CI job - run it locally before tagging when API or docs changed.
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
@@ -144,9 +144,9 @@ Draft notes from the `## [X.Y.Z]` changelog section. GitHub release notes are **
 copy of `CHANGELOG.md` - they follow a separate layout so they render cleanly on the
 [Releases](https://github.com/Aontaigh/laravel-api-skeleton/releases) page.
 
-### GitHub release format
+### GitHub Release Format
 
-| Rule | `CHANGELOG.md` | GitHub release |
+| Rule | `CHANGELOG.md` | GitHub Release |
 | --- | --- | --- |
 | Version heading | `## [1.14.0] - 2026-09-11` | **Omit** - the tag title (`v1.14.0`) is the heading |
 | Section headings | `### Added` (plain) | `### ✅ Added` (emoji + Title Case) |

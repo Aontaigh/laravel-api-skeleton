@@ -29,6 +29,14 @@ final class UserFilterQuery
      */
     public function apply(Builder $query, UserFilters $filters): void
     {
+        /*
+         * The directory lists people, not machine identities: API Client
+         * backing accounts carry `is_service_account` and are managed through
+         * `/api/clients`, so they never answer a Users listing even when the
+         * viewer holds `users.list-all` and is not Team-scoped below.
+         */
+        $query->where('users.is_service_account', false);
+
         if (! $filters->listsAllTeams) {
             $query->where('users.team_id', $filters->viewer->team_id);
         }

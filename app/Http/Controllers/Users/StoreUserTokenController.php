@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Users;
 use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Users\StoreUserTokenRequest;
@@ -69,6 +70,7 @@ final class StoreUserTokenController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::TokenCreated,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             actorUserId: $actor instanceof User && $actor->id !== $user->id ? $actor->id : null,
             email: $user->email,

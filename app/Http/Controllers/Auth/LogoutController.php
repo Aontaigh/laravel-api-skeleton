@@ -6,11 +6,13 @@ namespace App\Http\Controllers\Auth;
 
 use App\Actions\Auth\LogoutUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\LogoutRequest;
 use App\Models\User;
 use App\Support\ApiResponse;
+use App\Support\PresentingToken;
 use App\Support\RequestId;
 use Illuminate\Http\JsonResponse;
 
@@ -18,7 +20,7 @@ use Illuminate\Http\JsonResponse;
  * Ends the authenticated User's session and revokes every issued token.
  *
  * @example
- * POST /api/logout
+ * POST /api/auth/logout
  */
 final class LogoutController
 {
@@ -48,10 +50,20 @@ final class LogoutController
         /** @var User $user */
         $user = $request->user();
 
+        /*
+         * Capture the presenting credential before the action revokes it: the
+         * audit row identifies which token performed the logout, and a
+         * cookie-session caller (TransientToken) carries none.
+         */
+        $presentingToken = $user->currentAccessToken();
+        $presentingTokenId = PresentingToken::isPersonalAccessToken($presentingToken) ? $presentingToken->id : null;
+
         $auditData = new RecordAuthAuditData(
             event: AuthAuditEvent::Logout,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
+            personalAccessTokenId: $presentingTokenId,
             ipAddress: $request->ip(),
             userAgent: $request->userAgent(),
             requestId: RequestId::current($request),

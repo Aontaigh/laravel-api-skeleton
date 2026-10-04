@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Auth;
 
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Auth\ForgotPasswordRequest;
@@ -63,16 +64,34 @@ final class ForgotPasswordController
         |
         */
 
-        try {
-            Password::sendResetLink(['email' => $email]);
-        } catch (Throwable $deliveryFailure) {
-            report($deliveryFailure);
-        }
-
         $user = User::query()->where('email', $email)->first();
+
+        /*
+         * Service accounts are machine identities with undeliverable
+         * `clients.internal` addresses and passwords nobody knows: a reset
+         * would never reach a person, and completing one would revoke every
+         * live client token. The broker is skipped for service accounts and
+         * the response stays identical either way - the audit row records
+         * `Refused`, not `Failed`, so an investigator can tell a deliberate
+         * skip apart from a delivery outage.
+         */
+        if ($user?->isServiceAccount() === true) {
+            $outcome = AuditOutcome::Refused;
+        } else {
+            try {
+                Password::sendResetLink(['email' => $email]);
+
+                $outcome = AuditOutcome::Succeeded;
+            } catch (Throwable $deliveryFailure) {
+                report($deliveryFailure);
+
+                $outcome = AuditOutcome::Failed;
+            }
+        }
 
         event(new AuthEventOccurred(new RecordAuthAuditData(
             event: AuthAuditEvent::PasswordResetRequested,
+            outcome: $outcome,
             userId: $user?->id,
             email: $email,
             ipAddress: $request->ip(),

@@ -7,6 +7,7 @@ namespace Tests\Feature\Actions\Users;
 use App\Actions\Users\SoftDeleteUserAction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Password;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -86,6 +87,34 @@ final class SoftDeleteUserActionTest extends TestCase
             'remember_token' => null,
             'session_version' => 1,
         ]);
+    }
+
+    /**
+     * Revoke the outstanding reset token before the delete stamps `deleted_at`.
+     *
+     * A soft-deleted User cannot sign in to start a password reset, so a
+     * pre-deletion link must not stay consumable.
+     */
+    #[Test]
+    public function it_revokes_the_outstanding_reset_token_before_deleting(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        Password::createToken($user);
+
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+
+        // Act
+
+        app(SoftDeleteUserAction::class)->execute($user);
+
+        // Assert
+
+        $this->assertSoftDeleted('users', ['id' => $user->id]);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
     }
 
     /*

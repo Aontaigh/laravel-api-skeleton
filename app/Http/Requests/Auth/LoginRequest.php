@@ -6,8 +6,8 @@ namespace App\Http\Requests\Auth;
 
 use App\Http\Requests\ApiFormRequest;
 use App\Http\Requests\Concerns\PreparesAuthCredentials;
+use App\Rules\PasswordByteLength;
 use App\Support\Auth\EmailMaxLength;
-use App\Support\Auth\PasswordMaxLength;
 
 /**
  * Validates and authorises password-based login.
@@ -47,13 +47,20 @@ final class LoginRequest extends ApiFormRequest
     /**
      * Get the validation rules that apply to the request.
      *
-     * @return array<string, array<int, string>> the login rules
+     * `password` is a verification input, not a creation input, so the
+     * configurable `PASSWORD_MAX_LENGTH` cap is deliberately absent: lowering
+     * that config would otherwise lock out every account holding a longer
+     * stored password, refusing to check a credential that is in fact valid.
+     * `PasswordByteLength` supplies the fixed 72-byte hasher boundary, which
+     * is what actually protects Argon2id from a CPU-exhaustion payload.
+     *
+     * @return array<string, array<int, mixed>> the login rules
      */
     public function rules(): array
     {
         return [
             'email' => ['required', 'string', 'email', EmailMaxLength::rule()],
-            'password' => ['required', 'string', PasswordMaxLength::rule()],
+            'password' => ['bail', 'required', 'string', new PasswordByteLength],
             'remember' => ['sometimes', 'boolean'],
             'device_name' => ['sometimes', 'string', 'max:255'],
         ];
@@ -74,7 +81,6 @@ final class LoginRequest extends ApiFormRequest
     {
         return [
             'email.max' => EmailMaxLength::MESSAGE,
-            'password.max' => PasswordMaxLength::MESSAGE,
         ];
     }
     /*

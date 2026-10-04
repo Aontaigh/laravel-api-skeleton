@@ -356,13 +356,7 @@ final class UpdateUserControllerTest extends TestCase
     /**
      * Authorise update according to the Role matrix.
      */
-    /**
-     * Authorise update according to the Role matrix.
-     */
     #[Test]
-    /**
-     * Authorise update according to the Role matrix.
-     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_update_according_to_the_role_matrix(string $role, bool $canUpdate): void
     {
@@ -473,6 +467,50 @@ final class UpdateUserControllerTest extends TestCase
     }
 
     /**
+     * A role round-trip must still leave the user holding exactly the requested
+     * role, even when they already hold it.
+     *
+     * `syncRoles` is what makes the endpoint a *set* rather than an *add*: the
+     * sibling test proves the previous role is dropped. Guarding that call
+     * behind `hasRole` skips it on a round-trip, so a user who somehow holds
+     * two roles keeps the unwanted one and the response claims a state the
+     * database does not hold. Multi-role is reachable - `CreateApiClientAction`
+     * and `CreateUserAction` both use `assignRole`, which adds without removing.
+     */
+    #[Test]
+    public function it_narrows_a_multi_role_user_on_a_role_round_trip(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create();
+
+        /** @var User $multiRole */
+        $multiRole = User::factory()->for($this->team)->user()->create();
+        $multiRole->assignRole(RoleName::Manager->value);
+
+        $this->assertTrue($multiRole->hasRole(RoleName::Manager));
+        $this->assertTrue($multiRole->hasRole(RoleName::User));
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson(
+            "/api/users/{$multiRole->id}",
+            ['role' => RoleName::Manager->value],
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertTrue($multiRole->refresh()->hasRole(RoleName::Manager));
+        $this->assertFalse(
+            $multiRole->hasRole(RoleName::User),
+            'A Role Round-Trip Must Leave Exactly The Requested Role, Not The Union',
+        );
+    }
+
+    /**
      * Demote an Admin while another Admin remains.
      */
     #[Test]
@@ -579,9 +617,10 @@ final class UpdateUserControllerTest extends TestCase
     }
 
     /**
-     * Reject a role change on a service account with `403 Forbidden`: the
-     * `assignRole` Policy ability refuses role writes on service identities,
-     * whose role is fixed by their API Client registration.
+     * Answer `404 Not Found` for a role change on a service account: the
+     * scoped `{user}` binding excludes machine identities from the users
+     * namespace entirely, so a backing account's ID resolves exactly like an
+     * unknown ID. Machine identities are managed through their API Client.
      */
     #[Test]
     public function it_rejects_a_role_change_on_a_service_account(): void
@@ -604,7 +643,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
+        $response->assertNotFound();
         $this->assertTrue($serviceUser->refresh()->hasRole(RoleName::Service));
     }
 

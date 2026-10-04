@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace App\DataTransferObjects\Auth;
 
 use App\DataTransferObjects\GeoIp\GeoIpLocation;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
+use App\Enums\ClientIneligibilityReason;
 
 /**
  * Payload for recording an authentication audit event.
@@ -22,6 +24,7 @@ final readonly class RecordAuthAuditData
      * Create a new RecordAuthAuditData value object.
      *
      * @param AuthAuditEvent $event                 the authentication event type
+     * @param AuditOutcome   $outcome               the activity outcome: succeeded, failed, or refused
      * @param int|null       $userId                the affected User ID when known (session owner, suspended account)
      * @param int|null       $actorUserId           the authenticated actor performing a privileged action when they differ
      * @param string|null    $email                 the email address attempted or used
@@ -36,6 +39,8 @@ final readonly class RecordAuthAuditData
      */
     public function __construct(
         public AuthAuditEvent $event,
+        public ?AuditOutcome $outcome = null,
+        public ?ClientIneligibilityReason $clientIneligibilityReason = null,
         public ?int $userId = null,
         public ?int $actorUserId = null,
         public ?string $email = null,
@@ -62,9 +67,11 @@ final readonly class RecordAuthAuditData
      * (`ipAddress` captured at dispatch) and hands it to the persistence
      * Action through this copy, so the Action never touches `request()`.
      *
-     * `actorUserId` is read with `?? null` because a queued job serialised
-     * before the property existed restores without it - unserialisation does not
-     * apply the constructor default, so a bare read would throw.
+     * `actorUserId`, `outcome` and `clientIneligibilityReason` are read with `?? null`
+     * because a queued job
+     * serialised before either property existed restores without it -
+     * unserialisation does not apply the constructor default, so a bare read
+     * would throw and fail that job, and every job queued behind it.
      *
      * @param  GeoIpLocation|null $location the resolved city and country, or null
      * @return self               the copy carrying the resolved location
@@ -73,6 +80,8 @@ final readonly class RecordAuthAuditData
     {
         return new self(
             event: $this->event,
+            outcome: $this->outcome ?? null,
+            clientIneligibilityReason: $this->clientIneligibilityReason ?? null,
             userId: $this->userId,
             actorUserId: $this->actorUserId ?? null,
             email: $this->email,

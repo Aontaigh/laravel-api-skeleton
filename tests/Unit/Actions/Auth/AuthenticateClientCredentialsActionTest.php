@@ -6,6 +6,8 @@ namespace Tests\Unit\Actions\Auth;
 
 use App\Actions\Auth\AuthenticateClientCredentialsAction;
 use App\DataTransferObjects\Auth\ClientCredentialsData;
+use App\Enums\ClientIneligibilityReason;
+use App\Exceptions\Auth\ClientCredentialRefusedException;
 use App\Models\ApiClient;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
@@ -29,6 +31,10 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
 
     /**
      * Attach a persisted service User relation for credential-exchange unit tests.
+     *
+     * @param  ApiClient     $client    the API Client receiving the linked User
+     * @param  callable|null $configure optional callback to mutate the User before attach
+     * @return User          the attached service User
      */
     private function attachServiceUser(ApiClient $client, ?callable $configure = null): User
     {
@@ -179,12 +185,57 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
                 clientId: 'client-three',
                 clientSecret: $plainSecret,
             ));
-            $this->fail('Expected ValidationException was not thrown');
-        } catch (ValidationException $exception) {
-            $this->assertSame(
-                ['Invalid Credentials'],
-                $exception->errors()['client_id'],
-            );
+            $this->fail('Expected ClientCredentialRefusedException was not thrown');
+        } catch (ClientCredentialRefusedException $refusal) {
+            /*
+             * The reason is what the caller audits, so it is asserted rather than
+             * left implied by the exception type alone.
+             */
+            $this->assertSame(ClientIneligibilityReason::MissingOwner, $refusal->reason);
+        }
+    }
+
+    /**
+     * Reject a client whose linked User is a human account with the same generic message.
+     *
+     * The client-credential grant is a machine identity surface: an API
+     * Client backed by a person would mint tokens no human could revoke
+     * through the normal session endpoints.
+     */
+    #[Test]
+    public function it_rejects_a_client_linked_to_a_human_account(): void
+    {
+        // Arrange
+
+        $plainSecret = 'KnownClientSecret1';
+        $client = new ApiClient([
+            'client_id' => 'client-five',
+            'client_secret' => Hash::make($plainSecret),
+            'is_active' => true,
+        ]);
+        $client->id = 5;
+        $this->attachServiceUser($client, static function (User $serviceUser): void {
+            $serviceUser->is_service_account = false;
+        });
+
+        $action = new AuthenticateClientCredentialsAction(
+            static fn (string $clientId): ?ApiClient => $clientId === 'client-five' ? $client : null,
+        );
+
+        // Act + Assert
+
+        try {
+            $action->execute(new ClientCredentialsData(
+                clientId: 'client-five',
+                clientSecret: $plainSecret,
+            ));
+            $this->fail('Expected ClientCredentialRefusedException was not thrown');
+        } catch (ClientCredentialRefusedException $refusal) {
+            /*
+             * The reason is what the caller audits, so it is asserted rather than
+             * left implied by the exception type alone.
+             */
+            $this->assertSame(ClientIneligibilityReason::HumanOwned, $refusal->reason);
         }
     }
 
@@ -217,12 +268,13 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
                 clientId: 'client-four',
                 clientSecret: $plainSecret,
             ));
-            $this->fail('Expected ValidationException was not thrown');
-        } catch (ValidationException $exception) {
-            $this->assertSame(
-                ['Invalid Credentials'],
-                $exception->errors()['client_id'],
-            );
+            $this->fail('Expected ClientCredentialRefusedException was not thrown');
+        } catch (ClientCredentialRefusedException $refusal) {
+            /*
+             * The reason is what the caller audits, so it is asserted rather than
+             * left implied by the exception type alone.
+             */
+            $this->assertSame(ClientIneligibilityReason::MissingOwner, $refusal->reason);
         }
     }
 
@@ -255,12 +307,13 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
                 clientId: 'client-five',
                 clientSecret: $plainSecret,
             ));
-            $this->fail('Expected ValidationException was not thrown');
-        } catch (ValidationException $exception) {
-            $this->assertSame(
-                ['Invalid Credentials'],
-                $exception->errors()['client_id'],
-            );
+            $this->fail('Expected ClientCredentialRefusedException was not thrown');
+        } catch (ClientCredentialRefusedException $refusal) {
+            /*
+             * The reason is what the caller audits, so it is asserted rather than
+             * left implied by the exception type alone.
+             */
+            $this->assertSame(ClientIneligibilityReason::SuspendedOwner, $refusal->reason);
         }
     }
 }

@@ -8,6 +8,7 @@ use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\ClientCredentialsData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Models\ApiClient;
 use Laravel\Sanctum\NewAccessToken;
@@ -78,6 +79,7 @@ final class ExchangeClientCredentialsAction
 
         $this->audit->execute(new RecordAuthAuditData(
             event: AuthAuditEvent::ClientTokenExchange,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $ipAddress,

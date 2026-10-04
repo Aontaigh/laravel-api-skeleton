@@ -204,8 +204,8 @@ final class SystemStatusControllerTest extends TestCase
      * @param array<string, string> $statuses        the per-component current statuses
      * @param string                $expectedOverall the rollup the map must produce
      */
-    #[DataProvider('worstStatusProvider')]
     #[Test]
+    #[DataProvider('worstStatusProvider')]
     public function it_reports_the_worst_component_status_as_the_overall_status(array $statuses, string $expectedOverall): void
     {
         // Arrange
@@ -327,8 +327,8 @@ final class SystemStatusControllerTest extends TestCase
     /**
      * Reject a `days` value outside the 1-90 window.
      */
-    #[DataProvider('invalidDaysProvider')]
     #[Test]
+    #[DataProvider('invalidDaysProvider')]
     public function it_rejects_a_days_value_outside_the_allowed_window(string $days): void
     {
         // Act

@@ -7,12 +7,15 @@ namespace App\Http\Controllers\Auth;
 use App\Actions\Auth\ExchangeClientCredentialsAction;
 use App\DataTransferObjects\Auth\ClientCredentialsData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
+use App\Exceptions\Auth\ClientCredentialRefusedException;
 use App\Http\Requests\Auth\ClientTokenExchangeRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Support\ApiResponse;
 use App\Support\RequestId;
+use App\Support\TokenTtl;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\ValidationException;
 
@@ -67,9 +70,33 @@ final class ClientTokenExchangeController
                 userAgent: $request->userAgent(),
                 requestId: RequestId::current($request),
             );
+        } catch (ClientCredentialRefusedException $refusal) {
+            /*
+             * The secret verified and the application then declined, so this is a
+             * refusal and not an authentication failure. The principal is attributed
+             * because it is known - attributing it only where the credential proved
+             * out is what keeps the wrong-secret path below from becoming an
+             * account-enumeration oracle.
+             */
+            AuthEventOccurred::dispatch(new RecordAuthAuditData(
+                event: AuthAuditEvent::ClientTokenExchangeFailed,
+                outcome: AuditOutcome::Refused,
+                clientIneligibilityReason: $refusal->reason,
+                userId: $refusal->owner?->id,
+                email: $refusal->owner?->email,
+                apiClientId: $refusal->client?->id,
+                ipAddress: $request->ip(),
+                userAgent: $request->userAgent(),
+                requestId: RequestId::current($request),
+            ));
+
+            throw ValidationException::withMessages([
+                'client_id' => ['Invalid Credentials'],
+            ]);
         } catch (ValidationException $exception) {
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::ClientTokenExchangeFailed,
+                outcome: AuditOutcome::Failed,
                 ipAddress: $request->ip(),
                 userAgent: $request->userAgent(),
                 requestId: RequestId::current($request),
@@ -86,8 +113,13 @@ final class ClientTokenExchangeController
         |--------------------------------------------------------------------------
         */
 
-        $days = config()->integer('api.client_token_expiration_days');
-        $expiresIn = $days > 0 ? $days * 24 * 60 * 60 : null;
+        /*
+         * The TTL is read from the minted token's own `expires_at` rather
+         * than recomputed from configuration: the field is what Sanctum
+         * enforces at guard time, so the reported lifetime can never drift
+         * from what the caller actually holds.
+         */
+        $expiresIn = TokenTtl::secondsFor($newToken->accessToken->expires_at, now());
 
         return ApiResponse::success(
             data: [

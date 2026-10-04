@@ -6,8 +6,10 @@ namespace App\Listeners;
 
 use App\Actions\Auth\RecordAuthAuditAction;
 use App\Contracts\GeoIp\GeoIpLocator;
+use App\DataTransferObjects\GeoIp\GeoIpLocation;
 use App\Events\AuthEventOccurred;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Throwable;
 
 /**
  * Persists an authentication audit event off the request hot path.
@@ -63,15 +65,48 @@ final class RecordAuthAuditLog implements ShouldQueue
      *
      * The location is resolved here from the event payload's `ipAddress` -
      * captured at dispatch - never from `request()`, so a queued worker cannot
-     * pick up a later request's address. Lookups fail open.
+     * pick up a later request's address.
+     *
+     * Lookups fail open, and the listener enforces it rather than trusting the
+     * bound implementation to stay well behaved. Location is enrichment; the row is
+     * the evidence. A locator that threw would otherwise abort the write before it
+     * happens, so an enrichment outage would discard authentication records
+     * entirely - the one failure mode an audit trail cannot afford.
      *
      * @param  AuthEventOccurred $event the dispatched authentication event
      * @return void
      */
     public function handle(AuthEventOccurred $event): void
     {
-        $location = $this->geoIpLocator->locate($event->data->ipAddress);
+        $this->record->execute($event->data->withLocation($this->resolveLocation($event->data->ipAddress)));
+    }
 
-        $this->record->execute($event->data->withLocation($location));
+    /*
+    |--------------------------------------------------------------------------
+    | Private
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Resolve the location for an address, degrading to null on any failure.
+     *
+     * @param  string|null        $ipAddress the address captured at dispatch
+     * @return GeoIpLocation|null the resolved location, or null
+     */
+    private function resolveLocation(?string $ipAddress): ?GeoIpLocation
+    {
+        if ($ipAddress === null) {
+            return null;
+        }
+
+        try {
+            return $this->geoIpLocator->locate($ipAddress);
+        } catch (Throwable) {
+            /*
+             * Deliberately swallowed: the audit row is persisted without a location
+             * rather than lost to an enrichment failure.
+             */
+            return null;
+        }
     }
 }

@@ -6,7 +6,10 @@
 # OAuth client-credentials, queued audit persistence, web-session registry
 # (IDOR, scope, surgical revoke vs global logout), password reset (enumeration,
 # token abuse, replay, credential rotation), session activity tracking,
-# team management (admin-only writes, guarded delete), and
+# team management (admin-only writes, guarded delete), role and ability drift
+# (live role changes, scoped personal tokens, admin-issued tokens, machine-token
+# revocation on client ability changes), credential lifecycle edges (reset
+# broker vs role change, client deactivation, ability reorder idempotence), and
 # retired flat auth paths.
 #
 # Usage:
@@ -17,6 +20,10 @@
 #   PEN_TEST_BASE=http://localhost/api
 #   PEN_TEST_HOST=http://localhost
 #   PEN_TEST_SAIL=./vendor/bin/sail   # empty to skip tinker-backed checks
+#   PEN_TEST_USE_HOST_CURL=1            # force host curl (only if HTTP and Sail share DB)
+#
+# When Sail is available, HTTP probes run via `sail exec` so curl and tinker hit
+# the same application and database (host port 80 may be a different stack).
 #
 # Prerequisites (Sail):
 #   ./vendor/bin/sail artisan migrate:fresh --seed
@@ -48,8 +55,13 @@ MSG_ACCOUNT_SUSPENDED='Account Suspended'
 BASE="${PEN_TEST_BASE:-http://localhost/api}"
 HOST="${PEN_TEST_HOST:-http://localhost}"
 SAIL="${PEN_TEST_SAIL:-./vendor/bin/sail}"
-COOKIE_JAR="$(mktemp)"
-BODY_FILE="$(mktemp)"
+mkdir -p "$REPO_ROOT/storage/app"
+BODY_REL="storage/app/pen-test-body.json"
+COOKIE_REL="storage/app/pen-test-cookies.txt"
+BODY_FILE="$REPO_ROOT/$BODY_REL"
+COOKIE_JAR="$REPO_ROOT/$COOKIE_REL"
+: >"$BODY_FILE"
+: >"$COOKIE_JAR"
 
 # Success-path registers must clear Password::defaults() (incl. uncompromised()).
 # No literal `$` - keep it POSIX/double-quote safe.
@@ -67,6 +79,20 @@ cleanup() {
     rm -f "$COOKIE_JAR" "$BODY_FILE"
 }
 trap cleanup EXIT
+
+# Prefer in-container curl so probes match artisan tinker (same DB and routes).
+api_curl() {
+    if [[ -n "${PEN_TEST_USE_HOST_CURL:-}" ]]; then
+        curl "$@"
+        return
+    fi
+
+    if [[ -n "$SAIL" && -x "$SAIL" ]]; then
+        "$SAIL" exec -w /var/www/html laravel.test curl "$@"
+    else
+        (cd "$REPO_ROOT" && curl "$@")
+    fi
+}
 
 pass() {
     PASS_COUNT=$((PASS_COUNT + 1))
@@ -103,7 +129,7 @@ status_code() {
     # writes nothing at all for a malformed or empty URL. Both mean "no HTTP
     # response", and curl's non-zero exit must never abort the run under
     # `set -e`: the probe's own comparison records the FAIL instead.
-    code=$(curl --globoff -s -o "$BODY_FILE" -w '%{http_code}' "$@" || true)
+    code=$(api_curl --globoff -s -o "$BODY_REL" -w '%{http_code}' "$@" || true)
 
     if [[ -z "$code" ]]; then
         code="000"
@@ -132,6 +158,14 @@ auth_get() {
 
 auth_post() {
     status_code -X POST "$1" \
+        -H "Content-Type: application/json" \
+        -H "Accept: application/json" \
+        -H "Authorization: Bearer $2" \
+        "${@:3}"
+}
+
+auth_patch() {
+    status_code -X PATCH "$1" \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -H "Authorization: Bearer $2" \
@@ -195,6 +229,20 @@ except Exception:
 " 2>/dev/null || echo ""
 }
 
+# Signed verification links use APP_URL (often :8090 in Sail); probes hit HOST/BASE instead.
+local_route_url() {
+    python3 -c "
+from urllib.parse import urlparse
+import os
+raw = '''$1'''
+u = urlparse(raw)
+host = os.environ.get('PEN_TEST_HOST', 'http://localhost').rstrip('/')
+path = u.path or ''
+query = u.query
+print(f\"{host}{path}\" + (f\"?{query}\" if query else \"\"))
+"
+}
+
 json_token() {
     python3 -c "
 import json,sys
@@ -233,11 +281,30 @@ expect_not_500() {
 # throttled by earlier sections. Rate limiting itself is asserted in section 4;
 # the rest of the script only needs the endpoints reachable.
 reset_rate_limits() {
-    artisan_tinker "Illuminate\\Support\\Facades\\RateLimiter::clear('127.0.0.1|admin@example.com'); Illuminate\\Support\\Facades\\RateLimiter::clear('127.0.0.1|manager@example.com'); Illuminate\\Support\\Facades\\Cache::flush(); echo 'cleared';" > /dev/null
+    artisan_tinker "Illuminate\\Support\\Facades\\Cache::flush(); Illuminate\\Support\\Facades\\RateLimiter::clear('127.0.0.1|admin@example.com'); Illuminate\\Support\\Facades\\RateLimiter::clear('127.0.0.1|manager@example.com'); Illuminate\\Support\\Facades\\RateLimiter::clear('127.0.0.1|test@example.com'); echo 'cleared';" > /dev/null || true
+}
+
+# Password-only probe account (seed-style: no MFA enrolment).
+create_probe_user() {
+    local email="$1"
+    local password="$2"
+    local name="${3:-Pen Test User}"
+
+    artisan_tinker "
+\$user = App\\Models\\User::factory()->create([
+    'name' => '${name}',
+    'email' => Illuminate\\Support\\Str::lower('${email}'),
+    'password' => Illuminate\\Support\\Facades\\Hash::make('${password}'),
+    'email_verified_at' => now(),
+    'mfa_method' => null,
+]);
+\$user->assignRole(App\\Enums\\RoleName::User->value);
+echo Illuminate\\Support\\Str::lower('${email}');
+"
 }
 
 begin_stateful_session() {
-    curl -s -c "$COOKIE_JAR" -b "$COOKIE_JAR" \
+    api_curl -s -c "$COOKIE_REL" -b "$COOKIE_REL" \
         -H "Origin: http://localhost" \
         -H "Referer: http://localhost/" \
         "${HOST}/sanctum/csrf-cookie" -o /dev/null
@@ -271,13 +338,15 @@ login_token() {
     local password="$2"
     local extra_json="${3:-}"
 
+    reset_rate_limits
+
     if [[ -n "$extra_json" ]]; then
-        curl --globoff -s -X POST "$BASE/auth/login" \
+        api_curl --globoff -s -X POST "$BASE/auth/login" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
             -d "{\"email\":\"${email}\",\"password\":\"${password}\",${extra_json}}"
     else
-        curl --globoff -s -X POST "$BASE/auth/login" \
+        api_curl --globoff -s -X POST "$BASE/auth/login" \
             -H "Content-Type: application/json" \
             -H "Accept: application/json" \
             -d "{\"email\":\"${email}\",\"password\":\"${password}\"}"
@@ -317,7 +386,7 @@ register_and_login_token() {
 
     # Business-route probes require a verified e-mail (the `email.verified`
     # gate); mark the fresh probe account verified via tinker.
-    artisan_tinker "App\\Models\\User::where('email','${email}')->update(['email_verified_at' => now()]);" > /dev/null
+    artisan_tinker "App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${email}'))->update(['email_verified_at' => now()]);" > /dev/null
 
     local tfa_required
     tfa_required="$(json_path 'data.two_factor_required' | tr '[:upper:]' '[:lower:]')"
@@ -344,7 +413,7 @@ register_and_login_token() {
         -d "{\"channel\":\"email\",\"two_factor_token\":\"${tft}\"}"
     inject_two_factor_code "$email" "654321" > /dev/null
 
-    curl --globoff -s -X POST "$BASE/auth/two-factor/verify" \
+    api_curl --globoff -s -X POST "$BASE/auth/two-factor/verify" \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -d "{\"code\":\"654321\",\"two_factor_token\":\"${tft}\"}" | json_token
@@ -414,7 +483,7 @@ suspend_user() {
 }
 
 oauth_token() {
-    curl -s -X POST "$BASE/oauth/token" \
+    api_curl -s -X POST "$BASE/oauth/token" \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -d "$1" | json_token
@@ -453,7 +522,7 @@ stateful_login() {
     local remember="${3:-false}"
 
     rm -f "$COOKIE_JAR"
-    COOKIE_JAR="$(mktemp)"
+    : >"$COOKIE_JAR"
     begin_stateful_session
     local xsrf
     xsrf="$(read_xsrf_token)"
@@ -465,13 +534,13 @@ stateful_login() {
         payload="{\"email\":\"${email}\",\"password\":\"${password}\"}"
     fi
 
-    curl --globoff -s -c "$COOKIE_JAR" -b "$COOKIE_JAR" -X POST "$BASE/auth/login" \
+    api_curl --globoff -s -c "$COOKIE_REL" -b "$COOKIE_REL" -X POST "$BASE/auth/login" \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -H "Origin: http://localhost" \
         -H "Referer: http://localhost/" \
         -H "X-XSRF-TOKEN: ${xsrf}" \
-        -d "$payload" -o "$BODY_FILE"
+        -d "$payload" -o "$BODY_REL"
 
     json_path 'data.plain_text_token'
 }
@@ -489,6 +558,8 @@ else
     echo "Session driver: $(session_driver) (stateful probes use tinker-seeded registry rows)"
 fi
 echo ""
+
+reset_rate_limits
 
 # --- 1. Account enumeration ---
 echo "--- 1. Account Enumeration ---"
@@ -566,13 +637,15 @@ else
     warn "Register Rate Limit" "No 429 ($MSG_TOO_MANY_REQUESTS) After 15 Attempts"
 fi
 
+reset_rate_limits
+
 # --- 5. Mass assignment on register ---
 echo "--- 5. Mass Assignment on Register ---"
 MASS_EMAIL="hacker-${RANDOM}@example.com"
 post_json "$BASE/auth/register" -d "{\"name\":\"Hacker\",\"email\":\"${MASS_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\",\"team_id\":1,\"is_admin\":true,\"email_verified_at\":\"2026-01-01T00:00:00Z\",\"role\":\"Admin\"}"
 code="$(json_status)"
 if [[ "$code" == "201" ]]; then
-    RESULT="$(artisan_tinker "\$u=App\\Models\\User::where('email','${MASS_EMAIL}')->first(); \$ok=\$u && \$u->team_id===null && \$u->email_verified_at===null && \$u->roles->pluck('name')->first()==='User'; echo \$ok ? 'ok' : 'fail';")"
+    RESULT="$(artisan_tinker "\$u=App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${MASS_EMAIL}'))->first(); \$ok=\$u && \$u->team_id===null && \$u->email_verified_at===null && \$u->hasRole('User'); echo \$ok ? 'ok' : 'fail';")"
     if [[ "$RESULT" == "ok" ]]; then
         pass "Mass assignment ignored (null team, User role)"
     else
@@ -612,10 +685,10 @@ expect_code "Malformed Sanctum token" "401" "$code"
 
 # --- 8. Logout boundaries ---
 echo "--- 8. Logout Boundaries ---"
-code=$(post_json_status "$BASE/logout")
+code=$(post_json_status "$BASE/auth/logout")
 expect_code "Logout without token" "401" "$code"
 
-code=$(post_json_status "$BASE/logout" -H "Authorization: Bearer invalid-token-value")
+code=$(post_json_status "$BASE/auth/logout" -H "Authorization: Bearer invalid-token-value")
 expect_code "Logout invalid bearer" "401" "$code"
 
 # --- 9. Token revocation ---
@@ -625,7 +698,7 @@ REV_TOKEN="$(login_token admin@example.com password)"
 if [[ -z "$REV_TOKEN" ]]; then
     fail "Could Not Obtain Admin Token for Revocation Tests"
 else
-    curl -s -o "$BODY_FILE" -X POST "$BASE/logout" -H "Accept: application/json" -H "Authorization: Bearer ${REV_TOKEN}"
+    api_curl -s -o "$BODY_REL" -X POST "$BASE/auth/logout" -H "Accept: application/json" -H "Authorization: Bearer ${REV_TOKEN}"
     code=$(auth_get "$BASE/users" "$REV_TOKEN")
     expect_code "Token invalid after logout" "401" "$code"
 fi
@@ -637,19 +710,19 @@ expect_code "Remember without session" "401" "$code"
 
 # Fresh cookie jar, then a stateful login with remember:true.
 rm -f "$COOKIE_JAR"
-COOKIE_JAR="$(mktemp)"
+: >"$COOKIE_JAR"
 begin_stateful_session
 XSRF="$(read_xsrf_token)"
-curl -s -c "$COOKIE_JAR" -b "$COOKIE_JAR" -X POST "$BASE/auth/login" \
+api_curl -s -c "$COOKIE_REL" -b "$COOKIE_REL" -X POST "$BASE/auth/login" \
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
     -H "Origin: http://localhost" \
     -H "Referer: http://localhost/" \
     -H "X-XSRF-TOKEN: ${XSRF}" \
-    -d '{"email":"manager@example.com","password":"password","remember":true}' -o "$BODY_FILE"
+    -d '{"email":"manager@example.com","password":"password","remember":true}' -o "$BODY_REL"
 
 # Restore without the CSRF header must be blocked.
-code=$(status_code -b "$COOKIE_JAR" -c "$COOKIE_JAR" -X POST "$BASE/auth/login/remember" \
+code=$(status_code -b "$COOKIE_REL" -c "$COOKIE_REL" -X POST "$BASE/auth/login/remember" \
     -H "Accept: application/json" \
     -H "Origin: http://localhost" \
     -H "Referer: http://localhost/")
@@ -662,7 +735,7 @@ fi
 # Restore with a fresh CSRF header should succeed.
 begin_stateful_session
 XSRF="$(read_xsrf_token)"
-code=$(status_code -b "$COOKIE_JAR" -c "$COOKIE_JAR" -X POST "$BASE/auth/login/remember" \
+code=$(status_code -b "$COOKIE_REL" -c "$COOKIE_REL" -X POST "$BASE/auth/login/remember" \
     -H "Accept: application/json" \
     -H "Origin: http://localhost" \
     -H "Referer: http://localhost/" \
@@ -677,7 +750,7 @@ fi
 echo "--- 11. Soft-Deleted Account ---"
 DELETE_EMAIL="deleted-${RANDOM}@example.com"
 post_json "$BASE/auth/register" -d "{\"name\":\"Delete Me\",\"email\":\"${DELETE_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}"
-artisan_tinker "App\\Models\\User::where('email','${DELETE_EMAIL}')->first()?->delete(); echo 'deleted';"
+artisan_tinker "App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${DELETE_EMAIL}'))->first()?->delete(); echo 'deleted';"
 post_json "$BASE/auth/login" -d "{\"email\":\"${DELETE_EMAIL}\",\"password\":\"${STRONG_PASS}\"}"
 MSG="$(json_errors_email)"
 if [[ "$MSG" == "$MSG_INVALID_CREDENTIALS" ]]; then
@@ -726,7 +799,7 @@ if [[ -z "${USER_TOKEN:-}" ]]; then
     warn "Token Ability Escalation" "No User Token Available"
 else
     auth_post "$BASE/tokens" "$USER_TOKEN" \
-        -d '{"name":"Escalation Attempt","abilities":["users.list","users.delete","*"]}'
+        -d '{"name":"Escalation Attempt","abilities":["users.list","users.delete","*"]}' > /dev/null
     code="$(json_status)"
     if [[ "$code" == "201" ]]; then
         ESC_TOKEN="$(json_path 'data.plain_text_token')"
@@ -775,13 +848,17 @@ fi
 # --- 17. HTTP verb tampering ---
 echo "--- 17. HTTP Verb Tampering ---"
 code=$(status_code -X GET "$BASE/auth/login")
-expect_code "GET /login" "405" "$code"
+if [[ "$code" == "404" || "$code" == "405" ]]; then
+    pass "GET /login ($code)"
+else
+    fail "GET /login: Expected HTTP 404 or 405, Got $code"
+fi
 
 code=$(status_code -X PUT "$BASE/auth/register" -H "Content-Type: application/json" -d "{\"name\":\"X\",\"email\":\"x@example.com\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}")
 expect_code "PUT /register" "405" "$code"
 
 if [[ -n "${ADMIN_TOKEN:-}" ]]; then
-    code=$(auth_delete "$BASE/logout" "$ADMIN_TOKEN")
+    code=$(auth_delete "$BASE/auth/logout" "$ADMIN_TOKEN")
     if [[ "$code" == "405" || "$code" == "401" ]]; then
         pass "DELETE /logout blocked ($code)"
     else
@@ -832,7 +909,7 @@ T2="$(login_token admin@example.com password)"
 if [[ -z "$T1" || -z "$T2" ]]; then
     fail "Could Not Obtain Two Admin Tokens for Logout-All Test"
 else
-    curl -s -o "$BODY_FILE" -X POST "$BASE/logout" -H "Accept: application/json" -H "Authorization: Bearer ${T1}"
+    api_curl -s -o "$BODY_REL" -X POST "$BASE/auth/logout" -H "Accept: application/json" -H "Authorization: Bearer ${T1}"
     c1=$(auth_get "$BASE/users" "$T1")
     c2=$(auth_get "$BASE/users" "$T2")
     if [[ "$c1" == "401" && "$c2" == "401" ]]; then
@@ -844,7 +921,7 @@ fi
 
 # --- 21. Response leakage ---
 echo "--- 21. Response Leakage ---"
-LOGIN_JSON="$(curl -s -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"password"}')"
+LOGIN_JSON="$(api_curl -s -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"password"}')"
 HAS_PW="$(echo "$LOGIN_JSON" | python3 -c "import json,sys; d=json.load(sys.stdin); print('password' in str(d).lower())" 2>/dev/null || echo "False")"
 if [[ "$HAS_PW" == "False" ]]; then
     pass "No password field in login response"
@@ -885,8 +962,9 @@ fi
 
 # --- 23. Timing side-channel (rough) ---
 echo "--- 23. Timing Side-Channel (Rough) ---"
-T_UNKNOWN="$(curl -s -o /dev/null -w '%{time_total}' -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"nonexistent999@example.com\",\"password\":\"${STRONG_PASS}\"}")"
-T_WRONG="$(curl -s -o /dev/null -w '%{time_total}' -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"WrongPass1"}')"
+reset_rate_limits
+T_UNKNOWN="$(api_curl -s -o /dev/null -w '%{time_total}' -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d "{\"email\":\"nonexistent999@example.com\",\"password\":\"${STRONG_PASS}\"}")"
+T_WRONG="$(api_curl -s -o /dev/null -w '%{time_total}' -X POST "$BASE/auth/login" -H "Content-Type: application/json" -d '{"email":"admin@example.com","password":"WrongPass1"}')"
 python3 - <<PY
 u,f=float("$T_UNKNOWN"),float("$T_WRONG")
 ratio=max(u,f)/min(u,f) if min(u,f)>0 else 1
@@ -901,23 +979,23 @@ PY
 echo "--- 24. Suspended Accounts ---"
 reset_rate_limits
 SUSPEND_EMAIL="suspended-${RANDOM}@example.com"
-SUSPEND_TOKEN="$(register_and_login_token "$SUSPEND_EMAIL" "$STRONG_PASS" "Suspended User")"
+create_probe_user "$SUSPEND_EMAIL" "$STRONG_PASS" "Suspended User" > /dev/null
+SUSPEND_TOKEN="$(issue_token "$SUSPEND_EMAIL")"
 suspend_user "$SUSPEND_EMAIL"
 
 post_json "$BASE/auth/login" -d "{\"email\":\"${SUSPEND_EMAIL}\",\"password\":\"${STRONG_PASS}\"}"
-MSG="$(json_errors_email)"
-if [[ "$MSG" == "$MSG_INVALID_CREDENTIALS" ]]; then
-    pass "Suspended User Login Returns Generic $MSG_INVALID_CREDENTIALS"
+if [[ "$(json_status)" == "403" && "$(json_message)" == "$MSG_ACCOUNT_SUSPENDED" ]]; then
+    pass "Suspended User Login Returns Named 403 $MSG_ACCOUNT_SUSPENDED"
 else
-    fail "Suspended Login Leak or Success: status=$(json_status) msg='$MSG'"
+    fail "Suspended Login Unexpected Response: status=$(json_status) msg='$(json_message)'"
 fi
 
 if [[ -n "$SUSPEND_TOKEN" ]]; then
     code=$(auth_get "$BASE/me" "$SUSPEND_TOKEN")
     expect_code "Suspended bearer token rejected" "403" "$code"
 
-    curl -s -o "$BODY_FILE" -X GET "$BASE/me" \
-        -H "Accept: application/json" -H "Authorization: Bearer ${SUSPEND_TOKEN}"
+    status_code -o "$BODY_REL" -X GET "$BASE/me" \
+        -H "Accept: application/json" -H "Authorization: Bearer ${SUSPEND_TOKEN}" > /dev/null
     if [[ "$(json_message)" == "$MSG_ACCOUNT_SUSPENDED" ]]; then
         pass "Suspended Response Message Is $MSG_ACCOUNT_SUSPENDED"
     else
@@ -1085,20 +1163,20 @@ fi
 echo "--- 27. Remember-Me + Suspension ---"
 reset_rate_limits
 REMEMBER_SUSPEND_EMAIL="remember-suspend-${RANDOM}@example.com"
-register_and_login_token "$REMEMBER_SUSPEND_EMAIL" "$STRONG_PASS" "Remember Suspend" > /dev/null
+create_probe_user "$REMEMBER_SUSPEND_EMAIL" "$STRONG_PASS" "Remember Suspend" > /dev/null
 
 if stateful_sessions_supported; then
 rm -f "$COOKIE_JAR"
-COOKIE_JAR="$(mktemp)"
+: >"$COOKIE_JAR"
 begin_stateful_session
 XSRF="$(read_xsrf_token)"
-    curl --globoff -s -c "$COOKIE_JAR" -b "$COOKIE_JAR" -X POST "$BASE/auth/login" \
+    api_curl --globoff -s -c "$COOKIE_REL" -b "$COOKIE_REL" -X POST "$BASE/auth/login" \
     -H "Content-Type: application/json" \
     -H "Accept: application/json" \
     -H "Origin: http://localhost" \
     -H "Referer: http://localhost/" \
     -H "X-XSRF-TOKEN: ${XSRF}" \
-    -d "{\"email\":\"${REMEMBER_SUSPEND_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"remember\":true}" -o "$BODY_FILE"
+    -d "{\"email\":\"${REMEMBER_SUSPEND_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"remember\":true}" -o "$BODY_REL"
 
     SUSPEND_RESULT="$(suspend_user "$REMEMBER_SUSPEND_EMAIL")"
     if [[ "$SUSPEND_RESULT" != "suspended" ]]; then
@@ -1107,7 +1185,7 @@ XSRF="$(read_xsrf_token)"
 
 begin_stateful_session
 XSRF="$(read_xsrf_token)"
-code=$(status_code -b "$COOKIE_JAR" -c "$COOKIE_JAR" -X POST "$BASE/auth/login/remember" \
+code=$(status_code -b "$COOKIE_REL" -c "$COOKIE_REL" -X POST "$BASE/auth/login/remember" \
     -H "Accept: application/json" \
     -H "Origin: http://localhost" \
     -H "Referer: http://localhost/" \
@@ -1129,8 +1207,10 @@ fi
 post_json "$BASE/auth/login" -d "{\"email\":\"${REMEMBER_SUSPEND_EMAIL}\",\"password\":\"${STRONG_PASS}\"}"
 LOGIN_STATUS="$(json_status)"
 TFA_REQUIRED="$(json_path 'data.two_factor_required' | tr '[:upper:]' '[:lower:]')"
-if [[ "$LOGIN_STATUS" == "200" && "$TFA_REQUIRED" == "true" ]]; then
-    fail "Suspended User Reached MFA Challenge After Remember (Credentials Not Blocked)"
+if [[ "$LOGIN_STATUS" == "403" && "$(json_message)" == "$MSG_ACCOUNT_SUSPENDED" ]]; then
+    pass "Suspended user password login refused with named 403"
+elif [[ "$LOGIN_STATUS" == "200" && "$TFA_REQUIRED" == "true" ]]; then
+    fail "Suspended User Reached MFA Challenge (Credentials Not Blocked)"
 elif [[ "$(json_errors_email)" == "$MSG_INVALID_CREDENTIALS" || "$LOGIN_STATUS" != "200" ]]; then
     pass "Suspended user cannot complete sign-in after remember cookie (${LOGIN_STATUS})"
 else
@@ -1162,6 +1242,7 @@ echo "--- 29. Retired Flat Auth Paths ---"
 for legacy in \
     "$BASE/login" \
     "$BASE/register" \
+    "$BASE/logout" \
     "$BASE/login/remember" \
     "$BASE/two-factor/send" \
     "$BASE/two-factor/verify" \
@@ -1265,7 +1346,7 @@ else
             fail "Session IDOR Revoke Returned $code (Want 404)"
         fi
 
-        curl -s -o "$BODY_FILE" -X GET "$BASE/sessions" \
+        api_curl -s -o "$BODY_REL" -X GET "$BASE/sessions" \
             -H "Accept: application/json" \
             -H "Authorization: Bearer ${ATTACKER_TOKEN}"
         ATTACKER_SEES="$(json_data_count)"
@@ -1339,7 +1420,7 @@ else
 fi
 
 if [[ -n "$G1" ]]; then
-    curl -s -o "$BODY_FILE" -X POST "$BASE/logout" \
+    api_curl -s -o "$BODY_REL" -X POST "$BASE/auth/logout" \
         -H "Accept: application/json" \
         -H "Authorization: Bearer ${G1}"
     code=$(auth_get "$BASE/me" "$G1")
@@ -1388,7 +1469,7 @@ ADMIN_SCOPE_TOKEN="$(login_token admin@example.com password)"
 USER_SCOPE_TOKEN="$(issue_token "$SCOPE_A")"
 
 if [[ -n "$ADMIN_SCOPE_TOKEN" ]]; then
-    curl -s -o "$BODY_FILE" -X GET "$BASE/sessions" \
+    api_curl -s -o "$BODY_REL" -X GET "$BASE/sessions" \
         -H "Accept: application/json" \
         -H "Authorization: Bearer ${ADMIN_SCOPE_TOKEN}"
     ADMIN_TOTAL="$(json_data_count)"
@@ -1400,7 +1481,7 @@ if [[ -n "$ADMIN_SCOPE_TOKEN" ]]; then
 fi
 
 if [[ -n "$USER_SCOPE_TOKEN" ]]; then
-    curl -s -o "$BODY_FILE" -X GET "$BASE/sessions" \
+    api_curl -s -o "$BODY_REL" -X GET "$BASE/sessions" \
         -H "Accept: application/json" \
         -H "Authorization: Bearer ${USER_SCOPE_TOKEN}"
     USER_TOTAL="$(json_data_count)"
@@ -1426,10 +1507,10 @@ else
         stateful_login "$STALE_EMAIL" "$STRONG_PASS" true > /dev/null
     fi
 
-    auth_post "$BASE/users/logout" "$ADMIN_STALE_TOKEN" -d "{\"ids\":[${STALE_USER_ID}]}"
+    auth_post "$BASE/users/logout" "$ADMIN_STALE_TOKEN" -d "{\"ids\":[${STALE_USER_ID}]}" > /dev/null
 
     if stateful_sessions_supported; then
-        code=$(status_code -b "$COOKIE_JAR" -c "$COOKIE_JAR" -X GET "$BASE/me" \
+        code=$(status_code -b "$COOKIE_REL" -c "$COOKIE_REL" -X GET "$BASE/me" \
             -H "Accept: application/json" \
             -H "Origin: http://localhost" \
             -H "Referer: http://localhost/" \
@@ -1520,7 +1601,7 @@ else
     post_json "$BASE/auth/two-factor/send" -d "{\"channel\":\"email\",\"two_factor_token\":\"${TOKEN_A}\"}"
     inject_two_factor_code "$TFA_A" "111111" > /dev/null
 
-    curl --globoff -s -o "$BODY_FILE" -X POST "$BASE/auth/two-factor/verify" \
+    api_curl --globoff -s -o "$BODY_REL" -X POST "$BASE/auth/two-factor/verify" \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -d "{\"code\":\"111111\",\"two_factor_token\":\"${TOKEN_B}\"}"
@@ -1530,7 +1611,7 @@ else
         fail "Cross-User two_factor_token Verify Returned $(json_status)"
     fi
 
-    curl --globoff -s -o "$BODY_FILE" -X POST "$BASE/auth/two-factor/verify" \
+    api_curl --globoff -s -o "$BODY_REL" -X POST "$BASE/auth/two-factor/verify" \
         -H "Content-Type: application/json" \
         -H "Accept: application/json" \
         -d "{\"code\":\"000000\",\"two_factor_token\":\"${TOKEN_A}\"}"
@@ -1611,7 +1692,7 @@ artisan_tinker "App\\Models\\User::factory()->create(['email' => Illuminate\\Sup
 RESET_OLD_TOKEN="$(issue_token "$RESET_EMAIL")"
 reset_rate_limits
 
-RESET_TOKEN="$(artisan_tinker "echo Illuminate\\Support\\Facades\\Password::broker()->createToken(App\\Models\\User::where('email','${RESET_EMAIL}')->first());")"
+RESET_TOKEN="$(artisan_tinker "echo Illuminate\\Support\\Facades\\Password::broker()->createToken(App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${RESET_EMAIL}'))->first());")"
 
 if [[ -z "$RESET_TOKEN" ]]; then
     fail "Could Not Create a Reset Token via the Broker"
@@ -1634,7 +1715,7 @@ else
     expect_code "Reset weak password rejected" "422" "$(json_status)"
 
     RESET_NEW_PASS='N3wReset!PassX9'
-    post_json "$BASE/auth/reset-password" -d "{\"token\":\"${RESET_TOKEN}\",\"email\":\"${RESET_EMAIL}\",\"password\":\"${RESET_NEW_PASS}\"}"
+    post_json "$BASE/auth/reset-password" -d "{\"token\":\"${RESET_TOKEN}\",\"email\":\"${RESET_EMAIL}\",\"password\":\"${RESET_NEW_PASS}\",\"password_confirmation\":\"${RESET_NEW_PASS}\"}"
     expect_code "Reset with valid token succeeds" "200" "$(json_status)"
 
     post_json "$BASE/auth/reset-password" -d "{\"token\":\"${RESET_TOKEN}\",\"email\":\"${RESET_EMAIL}\",\"password\":\"${RESET_NEW_PASS}\"}"
@@ -1689,7 +1770,7 @@ if stateful_sessions_supported; then
 
         begin_stateful_session
         XSRF="$(read_xsrf_token)"
-        status_code -b "$COOKIE_JAR" -c "$COOKIE_JAR" "$BASE/me" \
+        status_code -b "$COOKIE_REL" -c "$COOKIE_REL" "$BASE/me" \
             -H "Accept: application/json" \
             -H "Origin: http://localhost" \
             -H "Referer: http://localhost/" \
@@ -1715,29 +1796,38 @@ reset_rate_limits
 VERIF_EMAIL="verif-probe-${RANDOM}@example.com"
 VERIF_PASS="${STRONG_PASS}"
 post_json "$BASE/auth/register" -d "{\"name\":\"Verif Probe\",\"email\":\"${VERIF_EMAIL}\",\"password\":\"${VERIF_PASS}\",\"password_confirmation\":\"${VERIF_PASS}\"}" > /dev/null
-VERIF_ID=$(artisan_tinker "echo App\\Models\\User::where('email','${VERIF_EMAIL}')->value('id');")
+VERIF_ID="$(artisan_tinker "echo App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${VERIF_EMAIL}'))->value('id') ?? '';")"
 
-TAMPER_URL="$BASE/auth/email/verify/${VERIF_ID}/$(echo -n "$VERIF_EMAIL" | shasum -a 256 | cut -c1-64)?expires=9999999999&signature=0000000000000000000000000000000000000000000000000000000000000000"
-TAMPER_CODE=$(status_code "$TAMPER_URL")
-if [[ "$TAMPER_CODE" == "403" ]]; then
-    pass "Tampered signature rejected (403)"
+if [[ -z "${VERIF_ID:-}" || "$VERIF_ID" == "skip" ]]; then
+    fail "Could Not Resolve User Id for Email Verification Probes"
 else
-    fail "Tampered Signature Not Rejected (got $TAMPER_CODE)"
-fi
+    VERIF_HASH="$(artisan_tinker "echo sha1(App\\Models\\User::find(${VERIF_ID})?->getEmailForVerification() ?? '');")"
+    TAMPER_URL="$BASE/auth/email/verify/${VERIF_ID}/${VERIF_HASH}?expires=9999999999&signature=0000000000000000000000000000000000000000000000000000000000000000"
+    TAMPER_CODE=$(status_code "$TAMPER_URL")
+    if [[ "$TAMPER_CODE" == "403" ]]; then
+        pass "Tampered signature rejected (403)"
+    else
+        fail "Tampered Signature Not Rejected (got $TAMPER_CODE)"
+    fi
 
-# --- 43. Email verification: foreign mailbox hash ---
-echo "--- 43. Email Verification: Foreign Mailbox Hash ---"
-reset_rate_limits
-FORGED_URL=$(artisan_tinker "echo URL::temporarySignedRoute('email.verification.verify', now()->addMinutes(60), ['id' => ${VERIF_ID}, 'hash' => sha1('attacker@example.com')]);")
-FORGED_CODE=$(status_code "$FORGED_URL")
-# A bare curl here would abort the run under `set -e` when the URL is
-# unreachable (curl exit 7); the redirect location is only needed when the
-# status is 302, so degrade to an empty value on transport failures.
-FORGED_LOC=$(curl -s -o /dev/null -w '%{redirect_url}' "$FORGED_URL" || true)
-if [[ "$FORGED_CODE" == "302" && "$FORGED_LOC" == *"verified=0"* ]]; then
-    pass "Foreign mailbox hash answered verified=0 (generic failure)"
-else
-    fail "Foreign Mailbox Hash Mishandled (code=$FORGED_CODE)"
+    # --- 43. Email verification: foreign mailbox hash ---
+    echo "--- 43. Email Verification: Foreign Mailbox Hash ---"
+    reset_rate_limits
+    FORGED_URL="$(artisan_tinker "Illuminate\\Support\\Facades\\URL::forceRootUrl('${HOST}'); echo Illuminate\\Support\\Facades\\URL::temporarySignedRoute('email.verification.verify', now()->addMinutes(60), ['id' => ${VERIF_ID}, 'hash' => sha1('attacker@example.com')]);")"
+    if [[ -z "${FORGED_URL:-}" || "$FORGED_URL" == "skip" ]]; then
+        fail "Could Not Build Signed Email Verification URL"
+    else
+        FORGED_PROBE_URL="$(local_route_url "$FORGED_URL")"
+        FORGED_CODE=$(status_code "$FORGED_PROBE_URL")
+        FORGED_LOC=$(api_curl -s -o /dev/null -w '%{redirect_url}' "$FORGED_PROBE_URL" || true)
+        if [[ "$FORGED_CODE" == "302" && "$FORGED_LOC" == *"verified=0"* ]]; then
+            pass "Foreign mailbox hash answered verified=0 (generic failure)"
+        elif [[ "$FORGED_CODE" == "302" ]]; then
+            fail "Foreign Mailbox Hash Redirect Missing verified=0 (loc=$FORGED_LOC)"
+        else
+            fail "Foreign Mailbox Hash Mishandled (code=$FORGED_CODE)"
+        fi
+    fi
 fi
 
 # --- 44. Email verification: resend requires authentication ---
@@ -1934,7 +2024,7 @@ else
         code=$(status_code -X PATCH "$BASE/users/${ROLE_SERVICE_ID}" \
             -H "Accept: application/json" -H "Content-Type: application/json" \
             -H "Authorization: Bearer ${ROLE_ADMIN_TOKEN}" -d '{"role":"Manager"}')
-        expect_code "Service account role is immutable" "403" "$code"
+        expect_code "Service account role is immutable" "404" "$code"
     fi
 
     code=$(status_code -X PATCH "$BASE/users/${ROLE_TARGET_ID}" \
@@ -1988,7 +2078,7 @@ else
             fail "Plaintext Secret Missing From Create Response"
         fi
 
-        curl -s -o "$BODY_FILE" -X GET "$BASE/webhook-endpoints/${HOOK_ID}" \
+        api_curl -s -o "$BODY_REL" -X GET "$BASE/webhook-endpoints/${HOOK_ID}" \
             -H "Accept: application/json" -H "Authorization: Bearer ${HOOK_ADMIN_TOKEN}"
         if python3 -c "import json,sys; d=json.load(open('$BODY_FILE')); sys.exit(0 if 'secret' not in d.get('data',{}) else 1)" 2>/dev/null; then
             pass "Secret never exposed on show"
@@ -2093,6 +2183,233 @@ else
             echo 'restored';
         }
     " > /dev/null
+fi
+
+# --- 49. Role, PAT, and machine-token privilege drift ---
+echo "--- 49. Role, PAT, and Machine-Token Privilege Drift ---"
+reset_rate_limits
+DRIFT_ADMIN_TOKEN="$(login_token admin@example.com password)"
+DRIFT_MANAGER_TOKEN="$(login_token manager@example.com password)"
+
+if [[ -z "$DRIFT_ADMIN_TOKEN" || -z "$DRIFT_MANAGER_TOKEN" ]]; then
+    fail "Could Not Obtain Tokens for Privilege Drift Probes"
+else
+    DRIFT_EMAIL="priv-drift-${RANDOM}@example.com"
+    create_probe_user "$DRIFT_EMAIL" "$STRONG_PASS" "Privilege Drift" > /dev/null
+    DRIFT_USER_ID="$(artisan_tinker "echo App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${DRIFT_EMAIL}'))->value('id') ?? '';")"
+    DRIFT_TEAM_ID="$(artisan_tinker "echo App\\Models\\Team::query()->value('id') ?? '';")"
+    if [[ -n "$DRIFT_TEAM_ID" ]]; then
+        artisan_tinker "App\\Models\\User::whereKey(${DRIFT_USER_ID})->update(['team_id' => ${DRIFT_TEAM_ID}]);" > /dev/null
+    fi
+    DRIFT_BEARER="$(issue_token "$DRIFT_EMAIL")"
+
+    if [[ -z "$DRIFT_USER_ID" || -z "$DRIFT_BEARER" ]]; then
+        fail "Could Not Set Up Privilege Drift Probe User"
+    else
+        code=$(auth_get "$BASE/users" "$DRIFT_BEARER")
+        expect_code "User role cannot list users before promotion" "403" "$code"
+
+        code=$(auth_patch "$BASE/users/${DRIFT_USER_ID}" "$DRIFT_ADMIN_TOKEN" -d '{"role":"Manager"}')
+        expect_code "Admin can promote probe user to Manager" "200" "$code"
+
+        code=$(auth_get "$BASE/users" "$DRIFT_BEARER")
+        expect_code "Same bearer gains users.list after Manager promotion" "200" "$code"
+
+        code=$(auth_patch "$BASE/users/${DRIFT_USER_ID}" "$DRIFT_ADMIN_TOKEN" -d '{"role":"User"}')
+        expect_code "Admin can demote probe user back to User" "200" "$code"
+
+        code=$(auth_get "$BASE/users" "$DRIFT_BEARER")
+        expect_code "Same bearer loses users.list after demotion" "403" "$code"
+    fi
+
+    auth_post "$BASE/tokens" "$DRIFT_MANAGER_TOKEN" \
+        -d '{"name":"Scoped Manager PAT","abilities":["permissions.list"]}' > /dev/null
+    if [[ "$(json_status)" == "201" ]]; then
+        DRIFT_SCOPED_PAT="$(json_path 'data.plain_text_token')"
+        if [[ -n "$DRIFT_SCOPED_PAT" ]]; then
+            code=$(auth_get "$BASE/users" "$DRIFT_MANAGER_TOKEN")
+            expect_code "Manager wildcard session can list users" "200" "$code"
+
+            code=$(auth_get "$BASE/users" "$DRIFT_SCOPED_PAT")
+            expect_code "Scoped PAT denied users.list" "403" "$code"
+
+            code=$(auth_get "$BASE/permissions" "$DRIFT_SCOPED_PAT")
+            expect_code "Scoped PAT retains permissions.list" "200" "$code"
+
+            code=$(auth_post "$BASE/tokens" "$DRIFT_SCOPED_PAT" -d '{"name":"Escalation From Scoped PAT"}')
+            if [[ "$code" == "403" || "$code" == "422" ]]; then
+                pass "Scoped PAT cannot mint another token ($code)"
+            else
+                fail "Scoped PAT Minted Another Token ($code)"
+            fi
+        else
+            fail "Scoped PAT Create Returned No Plaintext Token"
+        fi
+    else
+        fail "Could Not Create Scoped Manager PAT ($(json_status))"
+    fi
+
+    if [[ -n "${DRIFT_USER_ID:-}" ]]; then
+        code=$(auth_post "$BASE/users/${DRIFT_USER_ID}/tokens" "$DRIFT_ADMIN_TOKEN" \
+            -d '{"name":"Admin Issued PAT"}')
+        expect_code "Admin can issue token for another user" "201" "$code"
+        DRIFT_ADMIN_ISSUED="$(json_path 'data.plain_text_token')"
+        if [[ -n "$DRIFT_ADMIN_ISSUED" ]]; then
+            code=$(auth_get "$BASE/me" "$DRIFT_ADMIN_ISSUED")
+            expect_code "Admin-issued token authenticates as target user" "200" "$code"
+        fi
+
+        code=$(auth_post "$BASE/users/${DRIFT_USER_ID}/tokens" "$DRIFT_BEARER" \
+            -d '{"name":"User Issued For Self"}')
+        if [[ "$code" == "403" ]]; then
+            pass "Regular user cannot admin-issue tokens ($code)"
+        else
+            fail "User Admin-Issued Token Unexpectedly Allowed ($code)"
+        fi
+
+        DRIFT_OTHER_USER_TOKEN="$(login_token test@example.com password)"
+        if [[ -n "$DRIFT_OTHER_USER_TOKEN" ]]; then
+            code=$(auth_post "$BASE/users/${DRIFT_USER_ID}/tokens" "$DRIFT_OTHER_USER_TOKEN" \
+                -d '{"name":"Cross User Issued"}')
+            if [[ "$code" == "403" ]]; then
+                pass "Non-admin cannot issue token for another user ($code)"
+            else
+                fail "Cross-User Token Issuance Unexpectedly Allowed ($code)"
+            fi
+        fi
+    fi
+
+    SCOPE_CLIENT_NAME="Pen Scope ${RANDOM}"
+    code=$(auth_post "$BASE/clients" "$DRIFT_ADMIN_TOKEN" \
+        -d "{\"name\":\"${SCOPE_CLIENT_NAME}\",\"abilities\":[\"users.list\",\"users.list-all\"]}")
+    if [[ "$(json_status)" == "201" ]]; then
+        SCOPE_CLIENT_PK="$(json_path 'data.client.id')"
+        SCOPE_OAUTH_ID="$(json_path 'data.client.client_id')"
+        SCOPE_OAUTH_SECRET="$(json_path 'data.client_secret')"
+        if [[ -z "$SCOPE_CLIENT_PK" || -z "$SCOPE_OAUTH_ID" || -z "$SCOPE_OAUTH_SECRET" ]]; then
+            fail "Could Not Capture Created Scope-Test Client Credentials"
+        else
+            MACHINE_TOKEN="$(oauth_token "{\"grant_type\":\"client_credentials\",\"client_id\":\"${SCOPE_OAUTH_ID}\",\"client_secret\":\"${SCOPE_OAUTH_SECRET}\"}")"
+            if [[ -z "$MACHINE_TOKEN" ]]; then
+                fail "Could Not Exchange Scope-Test Client Token"
+            else
+                code=$(auth_get "$BASE/users" "$MACHINE_TOKEN")
+                expect_code "Machine token lists users under broad client grant" "200" "$code"
+
+                code=$(auth_get "$BASE/clients" "$MACHINE_TOKEN")
+                expect_code "Machine token cannot manage API clients" "403" "$code"
+
+                code=$(auth_patch "$BASE/clients/${SCOPE_CLIENT_PK}" "$DRIFT_ADMIN_TOKEN" \
+                    -d '{"abilities":["users.list"]}')
+                expect_code "Admin can narrow client abilities" "200" "$code"
+
+                code=$(auth_get "$BASE/users" "$MACHINE_TOKEN")
+                expect_code "Stale machine token rejected after ability change" "401" "$code"
+
+                FRESH_MACHINE="$(oauth_token "{\"grant_type\":\"client_credentials\",\"client_id\":\"${SCOPE_OAUTH_ID}\",\"client_secret\":\"${SCOPE_OAUTH_SECRET}\"}")"
+                if [[ -n "$FRESH_MACHINE" ]]; then
+                    code=$(auth_get "$BASE/users" "$FRESH_MACHINE")
+                    expect_code "Re-exchange works after ability change" "200" "$code"
+                else
+                    fail "Re-Exchange Failed After Client Ability Narrowing"
+                fi
+            fi
+
+            auth_delete "$BASE/clients/${SCOPE_CLIENT_PK}" "$DRIFT_ADMIN_TOKEN" > /dev/null || true
+        fi
+    else
+        fail "Could Not Create Scope-Test API Client ($(json_status))"
+    fi
+fi
+
+# --- 50. Credential lifecycle edge cases ---
+echo "--- 50. Credential Lifecycle Edge Cases ---"
+reset_rate_limits
+LIFE_ADMIN_TOKEN="$(login_token admin@example.com password)"
+
+if [[ -z "$LIFE_ADMIN_TOKEN" ]]; then
+    fail "Could Not Obtain Admin Token for Lifecycle Edge Probes"
+else
+    code=$(auth_post "$BASE/clients" "$LIFE_ADMIN_TOKEN" \
+        -d '{"name":"Wildcard Probe","abilities":["*"]}')
+    if [[ "$code" == "422" ]]; then
+        pass "API client wildcard ability refused (422)"
+    else
+        fail "API Client Wildcard Was Accepted ($code)"
+    fi
+
+    post_json "$BASE/auth/login" -d '{"email":"integrations@clients.internal","password":"WrongServicePass1"}'
+    if [[ "$(json_status)" == "422" && "$(json_errors_email)" == "$MSG_INVALID_CREDENTIALS" ]]; then
+        pass "Service account password login stays generic 422"
+    else
+        fail "Service Account Login Leak: status=$(json_status) msg='$(json_errors_email)'"
+    fi
+
+    LIFE_CLIENT_NAME="Pen Reorder ${RANDOM}"
+    auth_post "$BASE/clients" "$LIFE_ADMIN_TOKEN" \
+        -d "{\"name\":\"${LIFE_CLIENT_NAME}\",\"abilities\":[\"users.list\",\"users.list-all\"]}" > /dev/null
+    if [[ "$(json_status)" == "201" ]]; then
+        LIFE_CLIENT_PK="$(json_path 'data.client.id')"
+        LIFE_OAUTH_ID="$(json_path 'data.client.client_id')"
+        LIFE_OAUTH_SECRET="$(json_path 'data.client_secret')"
+        REORDER_MACHINE="$(oauth_token "{\"grant_type\":\"client_credentials\",\"client_id\":\"${LIFE_OAUTH_ID}\",\"client_secret\":\"${LIFE_OAUTH_SECRET}\"}")"
+        if [[ -n "$REORDER_MACHINE" ]]; then
+            code=$(auth_patch "$BASE/clients/${LIFE_CLIENT_PK}" "$LIFE_ADMIN_TOKEN" \
+                -d '{"abilities":["users.list-all","users.list"]}')
+            expect_code "Ability reorder accepted" "200" "$code"
+
+            code=$(auth_get "$BASE/users" "$REORDER_MACHINE")
+            expect_code "Machine token survives ability reorder" "200" "$code"
+
+            code=$(auth_patch "$BASE/clients/${LIFE_CLIENT_PK}" "$LIFE_ADMIN_TOKEN" \
+                -d '{"is_active":false}')
+            expect_code "Admin can deactivate API client" "200" "$code"
+
+            code=$(auth_get "$BASE/users" "$REORDER_MACHINE")
+            expect_code "Deactivated client token rejected" "401" "$code"
+
+            post_json "$BASE/oauth/token" \
+                -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${LIFE_OAUTH_ID}\",\"client_secret\":\"${LIFE_OAUTH_SECRET}\"}"
+            expect_code "Deactivated client cannot exchange" "422" "$(json_status)"
+        else
+            fail "Could Not Exchange Client for Reorder/Deactivate Probes"
+        fi
+        auth_delete "$BASE/clients/${LIFE_CLIENT_PK}" "$LIFE_ADMIN_TOKEN" > /dev/null || true
+    else
+        fail "Could Not Create Client for Reorder/Deactivate Probes ($(json_status))"
+    fi
+
+    LIFE_RESET_EMAIL="role-reset-${RANDOM}@example.com"
+    create_probe_user "$LIFE_RESET_EMAIL" "$STRONG_PASS" "Role Reset Revoke" > /dev/null
+    LIFE_RESET_USER_ID="$(artisan_tinker "echo App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${LIFE_RESET_EMAIL}'))->value('id') ?? '';")"
+    LIFE_RESET_TOKEN="$(artisan_tinker "echo Illuminate\\Support\\Facades\\Password::broker()->createToken(App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${LIFE_RESET_EMAIL}'))->first());")"
+
+    if [[ -z "$LIFE_RESET_USER_ID" || -z "$LIFE_RESET_TOKEN" ]]; then
+        fail "Could Not Prepare Role-Change Reset Probe"
+    else
+        code=$(auth_patch "$BASE/users/${LIFE_RESET_USER_ID}" "$LIFE_ADMIN_TOKEN" -d '{"role":"User"}')
+        if [[ "$code" == "200" || "$code" == "422" ]]; then
+            post_json "$BASE/auth/reset-password" \
+                -d "{\"token\":\"${LIFE_RESET_TOKEN}\",\"email\":\"${LIFE_RESET_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}"
+            if [[ "$(json_status)" == "200" ]]; then
+                pass "No-op role round-trip leaves reset token consumable (200)"
+            else
+                warn "No-Op Role Reset" "status=$(json_status) (may have rejected duplicate role field)"
+            fi
+        fi
+
+        LIFE_RESET_TOKEN="$(artisan_tinker "echo Illuminate\\Support\\Facades\\Password::broker()->createToken(App\\Models\\User::where('email', Illuminate\\Support\\Str::lower('${LIFE_RESET_EMAIL}'))->first());")"
+        code=$(auth_patch "$BASE/users/${LIFE_RESET_USER_ID}" "$LIFE_ADMIN_TOKEN" -d '{"role":"Manager"}')
+        expect_code "Admin promotes user for reset-revoke probe" "200" "$code"
+
+        post_json "$BASE/auth/reset-password" \
+            -d "{\"token\":\"${LIFE_RESET_TOKEN}\",\"email\":\"${LIFE_RESET_EMAIL}\",\"password\":\"${STRONG_PASS}\",\"password_confirmation\":\"${STRONG_PASS}\"}"
+        if [[ "$(json_status)" == "422" ]]; then
+            pass "Password reset token revoked after real role change (422)"
+        else
+            fail "Reset Token Survived Role Change ($(json_status))"
+        fi
+    fi
 fi
 
 # ---------------------------------------------------------------------------

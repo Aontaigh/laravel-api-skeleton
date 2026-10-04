@@ -46,6 +46,7 @@ final class ApiTwoFactorAuthRateLimitingTest extends TestCase
     /**
      * Start a pending challenge and return its opaque token without a session cookie.
      *
+     * @param  User   $user the MFA-enrolled User signing in
      * @return string the opaque pending challenge token
      */
     private function beginStatelessTwoFactorChallenge(User $user): string

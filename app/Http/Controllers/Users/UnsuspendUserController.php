@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Users;
 
 use App\Actions\Users\UnsuspendUserAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Enums\WebhookEvent;
 use App\Events\AuthEventOccurred;
@@ -65,6 +66,7 @@ final class UnsuspendUserController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::UserUnsuspended,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             actorUserId: $actor instanceof User ? $actor->id : null,
             email: $user->email,

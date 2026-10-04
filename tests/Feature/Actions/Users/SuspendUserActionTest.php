@@ -9,6 +9,7 @@ use App\Actions\Users\SuspendUserAction;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Password;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -96,5 +97,30 @@ final class SuspendUserActionTest extends TestCase
         $this->assertDatabaseMissing(config()->string('session.table'), [
             'user_id' => $user->id,
         ]);
+    }
+
+    /**
+     * Revoke the outstanding reset token when suspending so a pre-suspension link cannot regain access.
+     */
+    #[Test]
+    public function it_revokes_the_outstanding_reset_token_when_suspending(): void
+    {
+        // Arrange
+
+        /** @var User $user */
+        $user = User::factory()->create();
+
+        Password::createToken($user);
+
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+
+        // Act
+
+        app(SuspendUserAction::class)->execute($user);
+
+        // Assert
+
+        $this->assertNotNull($user->fresh()?->suspended_at);
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
     }
 }

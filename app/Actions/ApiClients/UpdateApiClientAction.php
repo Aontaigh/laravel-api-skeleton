@@ -45,22 +45,40 @@ final class UpdateApiClientAction
     public function execute(ApiClient $client, UpdateApiClientData $data): ApiClient
     {
         $attributes = [];
+        $previousAbilities = $client->abilities;
 
         if ($data->name !== null) {
             $attributes['name'] = $data->name;
         }
 
         if ($data->abilities !== null) {
-            $attributes['abilities'] = $this->abilityCatalog->normalizeTokenAbilities($data->abilities);
+            /*
+             * Machine identities must be scoped: the wildcard is refused for
+             * API clients (human-side tokens keep `['*']` semantics by design).
+             */
+            $attributes['abilities'] = $this->abilityCatalog->normalizeApiClientTokenAbilities($data->abilities);
         }
 
         if ($data->isActive !== null) {
             $attributes['is_active'] = $data->isActive;
         }
 
-        DB::transaction(function () use ($client, $attributes): void {
+        DB::transaction(function () use ($client, $attributes, $previousAbilities): void {
             if ($attributes !== []) {
                 $client->forceFill($attributes)->save();
+            }
+
+            /*
+             * Any abilities change must end the live access of outstanding
+             * tokens: a token carries the abilities it was minted with, so a
+             * narrowing would keep exercising powers just removed, and a
+             * broadening would sit inert - the new grant unreachable until
+             * the stale token's expiry. Revoking forces the integration to
+             * re-exchange under the current scope either way; deactivation
+             * has the same effect and additionally refuses new exchanges.
+             */
+            if (isset($attributes['abilities']) && $this->abilitiesChanged($attributes['abilities'], $previousAbilities)) {
+                $client->user->tokens()->delete();
             }
 
             /*
@@ -83,5 +101,40 @@ final class UpdateApiClientAction
         });
 
         return $client->refresh();
+    }
+
+    /**
+     * Whether the new ability list differs from the previous one.
+     *
+     * Ability lists are unordered sets: a re-submission in a different order
+     * with the same values changes nothing an issued token can reach, so the
+     * comparison normalises both sides before the strict check.
+     *
+     * @param  list<string> $candidate the newly requested abilities
+     * @param  list<string> $previous  the abilities stored before the update
+     * @return bool         true when the sets differ and tokens must be revoked
+     */
+    private function abilitiesChanged(array $candidate, array $previous): bool
+    {
+        return $this->normalisedAbilitySet($candidate) !== $this->normalisedAbilitySet($previous);
+    }
+
+    /**
+     * @param  list<string> $abilities
+     * @return list<string>
+     */
+    private function normalisedAbilitySet(array $abilities): array
+    {
+        $unique = [];
+
+        foreach ($abilities as $ability) {
+            if (! in_array($ability, $unique, true)) {
+                $unique[] = $ability;
+            }
+        }
+
+        sort($unique);
+
+        return $unique;
     }
 }

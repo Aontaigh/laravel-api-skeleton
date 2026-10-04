@@ -6,6 +6,7 @@ namespace App\Actions\Auth;
 
 use App\DataTransferObjects\Auth\ForceLogoutUsersData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Models\User;
 use App\Support\RequestId;
@@ -74,6 +75,7 @@ final class ForceLogoutUsersAction
              */
             $this->audit->execute(new RecordAuthAuditData(
                 event: AuthAuditEvent::ForcedLogout,
+                outcome: AuditOutcome::Succeeded,
                 userId: $user->id,
                 actorUserId: $request->user()?->id,
                 email: $user->email,

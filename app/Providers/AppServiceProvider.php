@@ -25,6 +25,7 @@ use App\Support\Auth\PasswordMaxLength;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\Client\Factory as HttpFactory;
@@ -195,6 +196,7 @@ final class AppServiceProvider extends ServiceProvider
         $this->configureApiRateLimiting();
         $this->registerScopedTokenBinding();
         $this->registerScopedWebSessionBinding();
+        $this->registerScopedUserBinding();
     }
 
     /*
@@ -547,6 +549,38 @@ final class AppServiceProvider extends ServiceProvider
      *
      * @return void
      */
+    /**
+     * Bind `{user}` to people, not machine identities.
+     *
+     * The directory excludes service accounts, so a backing account's ID must
+     * answer `404` exactly like an unknown ID: a `403` would let a caller
+     * with the read permission distinguish "exists but is a machine" from
+     * "does not exist". Machine identities are read and managed through
+     * `/api/clients`; the policies keep their own refusals as defence in
+     * depth. The trashed branch keeps `POST /users/{user}/restore` reachable
+     * for soft-deleted people.
+     */
+    private function registerScopedUserBinding(): void
+    {
+        Route::bind('user', static function (string $value, \Illuminate\Routing\Route $route): User {
+            /** @var User|null $user */
+            $user = User::query()
+                ->when(
+                    $route->allowsTrashedBindings(),
+                    static fn (Builder $query): Builder => $query->withTrashed(),
+                )
+                ->whereKey($value)
+                ->where('is_service_account', false)
+                ->first();
+
+            if ($user === null) {
+                throw (new ModelNotFoundException)->setModel(User::class, [$value]);
+            }
+
+            return $user;
+        });
+    }
+
     private function registerScopedWebSessionBinding(): void
     {
         Route::bind('web_session', static function (string $value): WebSession {

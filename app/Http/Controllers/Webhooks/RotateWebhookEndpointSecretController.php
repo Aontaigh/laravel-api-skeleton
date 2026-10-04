@@ -6,6 +6,7 @@ namespace App\Http\Controllers\Webhooks;
 
 use App\Actions\Webhooks\RotateWebhookEndpointSecretAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\Webhooks\RotateWebhookSecretRequest;
@@ -56,6 +57,7 @@ final class RotateWebhookEndpointSecretController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::WebhookSecretRotated,
+            outcome: AuditOutcome::Succeeded,
             userId: $actor->id,
             email: $actor->email,
             ipAddress: $request->ip(),

@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 1.16.1
+  version: 2.0.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -634,7 +634,7 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
-  /logout:
+  /auth/logout:
     post:
       tags: [Authentication]
       summary: Log Out
@@ -3077,6 +3077,7 @@ components:
             user_id: 1
             actor_user_id: null
             event: Login
+            outcome: succeeded
             email: admin@example.com
             ip_address: 127.0.0.1
             user_agent: OpenAPI Verify
@@ -3108,6 +3109,7 @@ components:
           id: 23
           user_id: 1
           event: Login
+          outcome: succeeded
           email: admin@example.com
           api_client_id: null
           remember_me: false
@@ -3552,7 +3554,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 1.16.1
+          version: 2.0.0
         meta: {}
 
     HealthUnavailable:
@@ -4145,9 +4147,9 @@ components:
         example: id,event,email,created_at
       description: |
         Sparse Fieldset for Auth Audit Log Columns. Allowed: `id`, `user_id`,
-        `actor_user_id`, `event`, `email`, `ip_address`, `user_agent`,
+        `actor_user_id`, `event`, `outcome`, `email`, `ip_address`, `user_agent`,
         `location_city`, `location_country`, `personal_access_token_id`,
-        `api_client_id`, `remember_me`, `created_at`.
+        `api_client_id`, `remember_me`, `request_id`, `created_at`.
 
   schemas:
     SuccessEnvelope:
@@ -4272,7 +4274,7 @@ components:
           example: up
         version:
           type: string
-          example: 1.16.1
+          example: 2.0.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -4482,6 +4484,10 @@ components:
 
     Permission:
       type: object
+      required: [id]
+      description: |
+        A registered permission ability from the catalogue. Columns are
+        omitted when a sparse `fields[permissions]` request leaves them out.
       properties:
         id:
           type: integer
@@ -4490,6 +4496,11 @@ components:
 
     Role:
       type: object
+      required: [id]
+      description: |
+        A Spatie Role from the read-only Roles and Permissions view.
+        Columns are omitted when a sparse `fields[roles]` request leaves them
+        out.
       properties:
         id:
           type: integer
@@ -4505,6 +4516,11 @@ components:
 
     User:
       type: object
+      required: [id]
+      description: |
+        A User account. Columns are omitted when a sparse `fields[users]`
+        request leaves them out; `email` additionally requires the
+        `users.view-email` permission.
       properties:
         id:
           type: integer
@@ -4526,6 +4542,8 @@ components:
 
     PersonalAccessToken:
       type: object
+      required: [id]
+      description: The plaintext value is only returned once, at creation time.
       properties:
         id:
           type: integer
@@ -4548,6 +4566,10 @@ components:
 
     WebSession:
       type: object
+      required: [id]
+      description: |
+        A registry row for a signed-in browser session. Columns are omitted
+        when a sparse `fields[sessions]` request leaves them out.
       properties:
         id:
           type: integer
@@ -4593,6 +4615,10 @@ components:
 
     ApiClient:
       type: object
+      required: [id]
+      description: |
+        A machine Client. Columns are omitted when a sparse
+        `fields[clients]` request leaves them out.
       properties:
         id:
           type: integer
@@ -4629,6 +4655,12 @@ components:
           description: The authenticated actor who performed a privileged action, set when it differs from the affected `user_id`
         event:
           type: string
+        outcome:
+          oneOf:
+            - type: string
+              enum: [succeeded, failed, refused]
+            - type: 'null'
+          description: Outcome of the recorded activity (Microsoft Entra result model) - `succeeded` when the activity worked, `failed` when an attempt failed (bad credentials, delivery failure), `refused` when it was deliberately skipped (service-account password reset); null on rows written before the column existed
         email:
           oneOf:
             - type: string

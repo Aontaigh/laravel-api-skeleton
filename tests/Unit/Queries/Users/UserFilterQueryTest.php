@@ -82,8 +82,9 @@ final class UserFilterQueryTest extends UnitTestCase
 
         // Assert
 
-        $this->assertSame('users.team_id', $this->queryWheres($query)[0]['column']);
-        $this->assertSame([self::VIEWER_TEAM_ID], $query->getBindings());
+        $this->assertSame('users.is_service_account', $this->queryWheres($query)[0]['column']);
+        $this->assertSame('users.team_id', $this->queryWheres($query)[1]['column']);
+        $this->assertSame([false, self::VIEWER_TEAM_ID], $query->getBindings());
     }
 
     /**
@@ -116,8 +117,9 @@ final class UserFilterQueryTest extends UnitTestCase
          * rather than a bound `= ?` comparison, so this asserts the clause
          * type instead of a bindable value.
          */
-        $this->assertSame('Null', $this->queryWheres($query)[0]['type']);
-        $this->assertSame('users.team_id', $this->queryWheres($query)[0]['column']);
+        $this->assertSame('Null', $this->queryWheres($query)[1]['type']);
+        $this->assertSame('users.team_id', $this->queryWheres($query)[1]['column']);
+        $this->assertSame('users.is_service_account', $this->queryWheres($query)[0]['column']);
     }
 
     /**
@@ -139,16 +141,20 @@ final class UserFilterQueryTest extends UnitTestCase
 
         // Assert
 
-        $this->assertSame([], $query->getQuery()->wheres);
+        $wheres = $this->queryWheres($query);
+
+        /*
+         * The service-account exclusion applies to every viewer, including
+         * one who lists all Teams: it is the only remaining clause.
+         */
+        $this->assertCount(1, $wheres);
+        $this->assertSame('users.is_service_account', $wheres[0]['column']);
     }
 
     /**
      * Escape LIKE wildcards in the search term.
      */
     #[Test]
-    /**
-     * Escape LIKE wildcards in the search term.
-     */
     #[DataProvider('searchTermProvider')]
     public function it_escapes_like_wildcards_in_the_search_term(string $term, string $expectedPattern): void
     {
@@ -176,9 +182,9 @@ final class UserFilterQueryTest extends UnitTestCase
 
         // Assert
 
-        $this->assertSame([$expectedPattern, $expectedPattern], $query->getBindings());
+        $this->assertSame([false, $expectedPattern, $expectedPattern], $query->getBindings());
 
-        $searchGroup = $this->nestedQueryWheres($query, 0);
+        $searchGroup = $this->nestedQueryWheres($query, 1);
         $this->assertStringContainsString('ESCAPE', $this->clauseSql($searchGroup[0] ?? []));
     }
 

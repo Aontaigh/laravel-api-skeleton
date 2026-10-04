@@ -10,6 +10,7 @@ use App\Actions\Tokens\CreatePersonalAccessTokenAction;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
 use App\DataTransferObjects\Sessions\RegisterWebSessionData;
 use App\DataTransferObjects\Tokens\CreateTokenData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Middleware\EnsureSessionVersionMatches;
@@ -67,6 +68,8 @@ final class RememberLoginController
         $user = $restore->execute();
 
         if ($user === null) {
+            $this->recordRestorationFailure($request, AuditOutcome::Failed, userId: null);
+
             return ApiResponse::error(
                 message: 'Unauthenticated',
                 statusCode: 401,
@@ -74,6 +77,16 @@ final class RememberLoginController
         }
 
         if ($user->isServiceAccount() || $user->isSuspended()) {
+            /*
+             * Both states are a deliberate policy decision, so the attempt is
+             * recorded as a refusal rather than a credential failure - matching
+             * how the password sign-in path classifies the same accounts. The
+             * principal is named here: the audit trail is an internal record
+             * and withholding the id would make the refusal unjoinable, while
+             * the HTTP answer stays generic either way.
+             */
+            $this->recordRestorationFailure($request, AuditOutcome::Refused, userId: $user->id);
+
             return ApiResponse::error(
                 message: 'Unauthenticated',
                 statusCode: 401,
@@ -126,6 +139,7 @@ final class RememberLoginController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::RememberMeLogin,
+            outcome: AuditOutcome::Succeeded,
             userId: $user->id,
             email: $user->email,
             ipAddress: $request->ip(),
@@ -156,6 +170,37 @@ final class RememberLoginController
     | Private
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Record a remember-me restoration that did not reach a session.
+     *
+     * Every restoration attempt lands in the audit trail, not only the
+     * successful ones: a remember-me restore is an authentication attempt like
+     * any other, and an event log carrying only the successes cannot answer
+     * "was this account probing the remember cookie from outside". The
+     * `userId` is null when the cookie resolved to nothing, since no principal
+     * is known on that path.
+     *
+     * @param  RememberLoginRequest $request the authorised remember request
+     * @param  AuditOutcome         $outcome why the restoration did not proceed
+     * @param  int|null             $userId  the resolved principal, when known
+     * @return void
+     */
+    private function recordRestorationFailure(
+        RememberLoginRequest $request,
+        AuditOutcome $outcome,
+        ?int $userId,
+    ): void {
+        AuthEventOccurred::dispatch(new RecordAuthAuditData(
+            event: AuthAuditEvent::RememberMeLogin,
+            outcome: $outcome,
+            userId: $userId,
+            ipAddress: $request->ip(),
+            userAgent: $request->userAgent(),
+            requestId: RequestId::current($request),
+            rememberMe: true,
+        ));
+    }
 
     /**
      * Resolve the Sanctum token label from validated input.

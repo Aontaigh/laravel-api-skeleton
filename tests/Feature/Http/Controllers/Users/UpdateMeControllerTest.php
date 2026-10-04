@@ -75,21 +75,21 @@ final class UpdateMeControllerTest extends TestCase
     #[Test]
     public function it_updates_the_callers_own_name(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create([
             'name' => 'Original Name',
         ]);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->patchJson('/api/me', [
             'name' => 'Updated Name',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonPath('message', 'Profile Updated Successfully');
@@ -106,19 +106,19 @@ final class UpdateMeControllerTest extends TestCase
     #[Test]
     public function it_strips_markup_from_the_updated_name(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->patchJson('/api/me', [
             'name' => '<script>alert(1)</script>',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonPath('data.name', 'alert(1)');
@@ -130,12 +130,12 @@ final class UpdateMeControllerTest extends TestCase
     #[Test]
     public function it_rejects_prohibited_fields(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->patchJson('/api/me', [
@@ -145,7 +145,7 @@ final class UpdateMeControllerTest extends TestCase
             'team_id' => 99,
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertUnprocessable();
         $this->assertApiValidationErrors($response, ['email', 'password', 'team_id']);
@@ -157,17 +157,17 @@ final class UpdateMeControllerTest extends TestCase
     #[Test]
     public function it_rejects_an_empty_payload(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->patchJson('/api/me', []);
 
-        /* Assert */
+        // Assert
 
         $response->assertUnprocessable();
         $this->assertApiValidationErrors($response, ['name']);
@@ -184,14 +184,14 @@ final class UpdateMeControllerTest extends TestCase
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->patchJson('/api/me', [
             'name' => 'Anonymous Update',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertUnauthorized();
     }
@@ -202,19 +202,19 @@ final class UpdateMeControllerTest extends TestCase
     #[Test]
     public function it_denies_service_accounts_from_self_service_profile_updates(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $serviceUser */
         $serviceUser = User::factory()->serviceAccount()->service()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($serviceUser)->patchJson('/api/me', [
             'name' => 'Service User Update',
         ]);
 
-        /* Assert */
+        // Assert
 
         $response->assertForbidden();
     }

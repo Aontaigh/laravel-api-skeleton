@@ -7,13 +7,17 @@ namespace Tests\Feature\Http\Controllers\Auth;
 use App\Actions\Auth\ResetUserPasswordAction;
 use App\Actions\Sessions\InvalidateStoredSessionAction;
 use App\Actions\Sessions\RevokeOtherWebSessionsForUserAction;
+use App\Enums\AuditOutcome;
+use App\Enums\AuthAuditEvent;
 use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Requests\Auth\ResetPasswordRequest;
+use App\Models\ApiClient;
 use App\Models\User;
 use App\Models\WebSession;
 use App\Notifications\Auth\PasswordChangedNotification;
 use App\Notifications\Auth\ResetPasswordNotification;
 use App\Support\ApiResponse;
+use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Auth\Passwords\PasswordBroker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
@@ -89,6 +93,7 @@ final class ResetPasswordControllerTest extends TestCase
      * `Password::broker()` is typed as the contract; the concrete broker exposes
      * `createToken()` for tests that need a known-good token without HTTP.
      *
+     * @param  User   $user the User receiving the broker token
      * @return string the issued reset token
      */
     private function resetTokenFor(User $user): string
@@ -109,6 +114,8 @@ final class ResetPasswordControllerTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        $this->seed(RolesAndPermissionsSeeder::class);
 
         Notification::fake();
         $this->user = User::factory()->create([
@@ -178,6 +185,52 @@ final class ResetPasswordControllerTest extends TestCase
 
         Notification::assertSentTo($this->user, PasswordChangedNotification::class);
         Notification::assertNotSentTo($this->user, ResetPasswordNotification::class);
+    }
+
+    /**
+     * Refuse a reset for a service account with the generic rejection.
+     *
+     * Completing a reset would revoke every credential of the backing
+     * account, including live API client tokens; the answer matches the
+     * invalid-token response exactly, so no new oracle is created.
+     */
+    #[Test]
+    public function it_refuses_a_reset_for_a_service_account_with_the_generic_rejection(): void
+    {
+        // Arrange
+
+        $client = ApiClient::factory()->create();
+
+        /** @var User $serviceUser the API Client's backing account */
+        $serviceUser = User::query()->findOrFail($client->user_id);
+        $serviceUser->createToken('Service Bearer Token', $client->abilities);
+
+        // Act
+
+        $response = $this->postJson('/api/auth/reset-password', [
+            'token' => 'not-a-real-token',
+            'email' => $serviceUser->email,
+            'password' => 'Xq7#mK2$vL9pTzW4',
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('status', 'error');
+        $response->assertJsonPath('message', 'The Reset Token Is Invalid Or Has Expired');
+        $this->assertSame(1, $serviceUser->tokens()->count());
+        Notification::assertNothingSent();
+
+        /*
+         * The application deliberately declined the reset (machine identities
+         * have no reset surface), so the audit row records `refused` - not
+         * `failed`, which would misread a policy decision as an error.
+         */
+        $this->assertDatabaseHas('auth_audit_logs', [
+            'user_id' => $serviceUser->id,
+            'event' => AuthAuditEvent::PasswordResetFailed->value,
+            'outcome' => AuditOutcome::Refused->value,
+        ]);
     }
 
     /**

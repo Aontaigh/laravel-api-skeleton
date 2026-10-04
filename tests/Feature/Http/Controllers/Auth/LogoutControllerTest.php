@@ -86,7 +86,7 @@ final class LogoutControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->withToken($token->plainTextToken)->postJson('/api/logout');
+        $response = $this->withToken($token->plainTextToken)->postJson('/api/auth/logout');
 
         // Assert
 
@@ -136,7 +136,7 @@ final class LogoutControllerTest extends TestCase
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->withToken($firstToken->plainTextToken)
-            ->postJson('/api/logout');
+            ->postJson('/api/auth/logout');
 
         // Assert
 
@@ -176,7 +176,7 @@ final class LogoutControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->postJson('/api/logout');
+        $response = $this->postJson('/api/auth/logout');
 
         // Assert
 
@@ -192,7 +192,7 @@ final class LogoutControllerTest extends TestCase
         // Act
 
         /** @var TestResponse<JsonResponse> $response */
-        $response = $this->withToken('not-a-valid-token')->postJson('/api/logout');
+        $response = $this->withToken('not-a-valid-token')->postJson('/api/auth/logout');
 
         // Assert
 

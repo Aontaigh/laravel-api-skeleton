@@ -16,6 +16,7 @@ use App\Support\ApiResponse;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
@@ -143,6 +144,237 @@ final class UpdateClientControllerTest extends TestCase
             'id' => $client->id,
             'is_active' => false,
         ]);
+    }
+
+    /**
+     * Kill every outstanding bearer token when a client is deactivated.
+     *
+     * Regression: `is_active` is only consulted at exchange time, so without
+     * the revocation a compromised integration's already-issued token kept
+     * working until its natural expiry.
+     */
+    #[Test]
+    public function it_kills_outstanding_tokens_when_a_client_is_deactivated(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $client = ApiClient::factory()->create(['is_active' => true]);
+        $token = $client->user->createToken('service-token', $client->abilities);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson('/api/clients/'.$client->id, [
+            'is_active' => false,
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+
+        Auth::forgetGuards();
+
+        $this->withToken($token->plainTextToken)
+            ->getJson('/api/users')
+            ->assertUnauthorized();
+    }
+
+    /**
+     * Keep outstanding bearer tokens when the abilities are re-submitted in a
+     * different order with the same values.
+     *
+     * Ability lists are unordered sets: an update from
+     * `['users.list', 'users.list-all']` to `['users.list-all', 'users.list']`
+     * grants nothing new and removes nothing, so revoking every live token -
+     * which forces every integration to re-exchange - would be an outage
+     * caused by array key order.
+     */
+    #[Test]
+    public function it_keeps_tokens_when_abilities_are_reordered_without_changing(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $client = ApiClient::factory()->create([
+            'is_active' => true,
+            'abilities' => ['users.list', 'users.list-all'],
+        ]);
+        $token = $client->user->createToken('service-token', $client->abilities);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson('/api/clients/'.$client->id, [
+            'abilities' => ['users.list-all', 'users.list'],
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertDatabaseHas('personal_access_tokens', [
+            'id' => $token->accessToken->id,
+        ]);
+    }
+
+    /**
+     * Kill every outstanding bearer token when a client's abilities are
+     * broadened, so the new grant takes effect immediately.
+     *
+     * Exchange copies the client's abilities onto the token at mint time -
+     * an issued token never gains abilities, so without revocation the
+     * broadened grant would sit inert for up to the configured expiry while
+     * the token keeps its stale, narrower list. Revoking forces the
+     * integration to re-exchange under the new scope: the same contract the
+     * narrowing path enforces, for the mirrored reason.
+     */
+    #[Test]
+    public function it_kills_outstanding_tokens_when_a_client_is_broadened(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $client = ApiClient::factory()->create([
+            'is_active' => true,
+            'abilities' => ['users.list'],
+        ]);
+        $token = $client->user->createToken('service-token', $client->abilities);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson('/api/clients/'.$client->id, [
+            'abilities' => ['users.list', 'users.list-all'],
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertDatabaseMissing('personal_access_tokens', [
+            'id' => $token->accessToken->id,
+        ]);
+
+        /*
+         * The re-exchange mints a token carrying the broadened grant
+         * immediately - the whole point of revoking on broadening.
+         */
+        $exchange = $this->postJson('/api/oauth/token', [
+            'grant_type' => 'client_credentials',
+            'client_id' => $client->client_id,
+            'client_secret' => \Database\Factories\ApiClientFactory::plainTextSecret(),
+        ]);
+
+        $exchange->assertOk();
+        $this->assertSame(
+            ['users.list', 'users.list-all'],
+            $exchange->json('data.token.abilities'),
+        );
+    }
+
+    /**
+     * Kill every outstanding bearer token when a client's abilities are narrowed.
+     *
+     * Regression: tokens carry the abilities they were minted with, so
+     * narrowing the grant without revocation let an already-issued token
+     * keep exercising powers that had just been removed.
+     */
+    #[Test]
+    public function it_kills_outstanding_tokens_when_a_client_is_narrowed(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $client = ApiClient::factory()->create([
+            'is_active' => true,
+            'abilities' => ['users.list', 'users.list-all'],
+        ]);
+        $token = $client->user->createToken('service-token', $client->abilities);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson('/api/clients/'.$client->id, [
+            'abilities' => ['users.list'],
+        ]);
+
+        // Assert
+
+        $response->assertOk();
+
+        Auth::forgetGuards();
+
+        $this->withToken($token->plainTextToken)
+            ->getJson('/api/users')
+            ->assertUnauthorized();
+    }
+
+    /**
+     * Not resurrect dead tokens when a deactivated client is reactivated.
+     *
+     * Re-enabling must require a fresh token exchange against the client
+     * secret; deleting the tokens on deactivation is not undone.
+     */
+    #[Test]
+    public function it_does_not_resurrect_tokens_when_a_client_is_reactivated(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $client = ApiClient::factory()->create(['is_active' => true]);
+        $token = $client->user->createToken('service-token', $client->abilities);
+
+        $this->actingAs($admin)->patchJson('/api/clients/'.$client->id, [
+            'is_active' => false,
+        ])->assertOk();
+
+        // Act
+
+        $this->actingAs($admin)->patchJson('/api/clients/'.$client->id, [
+            'is_active' => true,
+        ])->assertOk();
+
+        // Assert
+
+        Auth::forgetGuards();
+
+        $this->withToken($token->plainTextToken)
+            ->getJson('/api/users')
+            ->assertUnauthorized();
+    }
+
+    /**
+     * Reject the wildcard ability for an API client.
+     *
+     * A machine identity must be scoped: the unrestricted wildcard would hand
+     * every current and future permission to one non-interactive caller.
+     */
+    #[Test]
+    public function it_rejects_the_wildcard_ability(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $client = ApiClient::factory()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->patchJson('/api/clients/'.$client->id, [
+            'abilities' => ['*'],
+        ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('meta.invalid_abilities', ['*']);
+
+        $this->assertSame(['users.list'], $client->refresh()->abilities);
     }
 
     /**

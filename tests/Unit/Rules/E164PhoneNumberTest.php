@@ -29,7 +29,7 @@ final class E164PhoneNumberTest extends UnitTestCase
      * @param bool   $expected whether the value should pass
      */
     #[Test]
-    #[DataProvider('phoneValidationCases')]
+    #[DataProvider('phoneValidationCasesProvider')]
     public function it_validates_canonical_e164_phone_inputs(string $input, bool $expected): void
     {
         // Arrange
@@ -87,7 +87,7 @@ final class E164PhoneNumberTest extends UnitTestCase
      *
      * @return array<string, array{0: string, 1: bool}> the case name mapped to [input, expected]
      */
-    public static function phoneValidationCases(): array
+    public static function phoneValidationCasesProvider(): array
     {
         return [
             'irish mobile' => ['+353851046420', true],

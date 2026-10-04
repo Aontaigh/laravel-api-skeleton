@@ -9,7 +9,7 @@ creates every permission below and assigns them to the seeded roles (`Admin`,
 `Manager`, `User`, `Service`). Add new permissions there first, then wire them into the relevant
 Policy or request concern.
 
-**Policy classes:** [UserPolicy](../app/Policies/UserPolicy.php),
+**Policy Classes:** [UserPolicy](../app/Policies/UserPolicy.php),
 [RolePolicy](../app/Policies/RolePolicy.php),
 [PersonalAccessTokenPolicy](../app/Policies/PersonalAccessTokenPolicy.php),
 [ApiClientPolicy](../app/Policies/ApiClientPolicy.php),
@@ -79,7 +79,7 @@ Even when `fields[users]` is omitted (default column projection), `email` is str
 from the response unless the viewer holds this permission. The check lives in
 `UserResource`, not only in the query allow-list.
 
-#### `sessions.list-all` and session telemetry
+#### `sessions.list-all` and Session Telemetry
 
 `user_id` is only exposed when the viewer holds `sessions.list-all`. `ip_address` and
 `user_agent` are always returned for the caller's own sessions; cross-user telemetry
@@ -137,7 +137,7 @@ uses the restore route.
 Admin-only restoration of a soft-deleted user via `POST /api/users/{user}/restore`. Requires
 a genuinely trashed record (the route binds with `withTrashed()`). Row scoping matches delete:
 Managers cannot restore (they hold `users.delete` but not `users.restore`). Restoration clears
-`deleted_at` but does not re-issue tokens or sessions revoked at delete time — the User must
+`deleted_at` but does not re-issue tokens or sessions revoked at delete time, so the User must
 sign in again. Service accounts and self-restore are refused.
 
 #### Teams
@@ -183,6 +183,23 @@ stays out by design, so incident response is never buried under admin noise.
 User-targeted rows carry the affected account; token and client rows carry the
 acting Admin alongside the issued credential ID where one exists.
 
+Every row also carries an `outcome` following the Microsoft Entra
+`result` / `resultReason` model, so an audit row names the principal, the
+credential, and whether the activity worked:
+
+- **`succeeded`** - the activity completed as intended (login, logout, token
+  issuance, role change, and every other success path).
+- **`failed`** - the activity was attempted and failed (bad credentials,
+  two-factor mismatch, reset-link delivery failure).
+- **`refused`** - the activity was attempted and refused before it could
+  succeed or fail. Password reset requests for **service accounts** are
+  refused: the broker is skipped because a reset would never reach a person
+  and would revoke every live client token. `Refused` is distinct from
+  `Failed` so an investigator can tell a deliberate policy skip apart from an
+  outage.
+
+Rows written before the column existed stay `null`.
+
 #### `GET /api/permissions`
 
 Read-only catalog of every Spatie permission string the application registers.
@@ -192,20 +209,43 @@ the `web` guard and validated against the same catalog
 [PermissionAbilityCatalog](../app/Services/Permissions/PermissionAbilityCatalog.php)
 enforces on token and API client create. Service accounts cannot list permissions.
 
-#### Suspended accounts
+#### Suspended Accounts
 
 `suspended_at` blocks every authenticated route via the `active.account` middleware
-(`403 Account Suspended`). Password login and OAuth client-credentials exchange
-reject suspended identities up front with the generic `Invalid Credentials`
-validation message (same as a wrong password) so callers cannot obtain a token
-that only fails on the next request. Remember-me restoration answers with a
-generic `401 Unauthenticated`.
+(403 Account Suspended). Password login answers a named `403 Account Suspended`
+(so callers cannot obtain a token that only fails on the next request; the same
+answer the middleware gives mid-session), while the OAuth client-credentials
+exchange still rejects suspended service identities up front with the generic
+`Invalid Credentials` validation message (same as a wrong password). Remember-me
+restoration answers with a generic `401 Unauthenticated`.
 
 Admins suspend and unsuspend accounts via `POST /api/users/{user}/suspend` and
 `POST /api/users/{user}/unsuspend`, both gated by `users.suspend`. An Admin
 cannot suspend their own account - that would leave no one able to lift the
-suspension. Suspending a service account disables its API clients'
-client-credentials exchange (the exchange rejects suspended identities).
+suspension. Service accounts are refused outright: suspension is a people
+control, and a machine identity is paused through its API Client
+(`PATCH /api/clients/{client}` with `is_active: false`), which also revokes its
+live bearer tokens.
+
+#### Password Recovery
+
+`POST /api/auth/forgot-password` always answers with a generic success response,
+whether or not the address belongs to a User - the response must not reveal which
+email addresses exist. The `Password Reset Requested` audit row is an **attempt**
+record: it is written even when mail delivery later fails behind that generic
+response, so it proves someone requested a reset for the address, not that an
+email arrived. Correlate it with delivery logs when investigating. The row's
+`outcome` distinguishes the paths: `succeeded` on delivery, `failed` when the
+transport threw behind the generic response, and `refused` for **service
+accounts** - the broker is skipped for machine identities, so no reset link is
+ever generated and no live client token is ever revoked by a reset. The same
+applies to `Password Reset Failed` rows: a failed token brute-force attempt is
+recorded with the attempted address.
+
+Because audit rows carry the attempted address, the trail reveals account
+existence to whoever can read it. That is by design: `audit-logs.list` is an
+Admin-role surface whose audience already holds directory-grade trust, so the
+response-level enumeration guard is not duplicated inside it.
 
 #### Service Accounts and API Clients
 
@@ -223,6 +263,21 @@ password login:
 - Admins manage clients via `GET /api/clients`, `POST /api/clients`,
   `PATCH /api/clients/{client}`, and `DELETE /api/clients/{client}`. The plaintext
   `client_secret` is returned once on create.
+- Client abilities must be scoped: the unrestricted wildcard (`['*']`) is refused
+  on create and update. A machine identity must never hold every permission. Human-side
+  tokens (login sessions and self-service `POST /api/tokens`) keep `['*']` semantics
+  by design - authorisation runs through Gate + Spatie policies, not `tokenCan`.
+- Secret rotation (`POST /api/clients/{client}/rotate-secret`) does **not** revoke
+  outstanding bearer tokens - they stay valid until natural expiry or deactivation
+  (OAuth2 client-credentials semantics).
+- Deactivation (`PATCH /api/clients/{client}` with `is_active: false`) and deletion
+  (`DELETE /api/clients/{client}`) **destroy every outstanding bearer token** on the
+  service account inside the same transaction. Re-enabling a client does not resurrect
+  deleted tokens: a fresh token exchange against the (new) secret is required.
+
+The compromise runbook for a leaked integration secret is therefore:
+**deactivate** the client (kills live tokens) → **rotate** the secret →
+**re-enable** it → have the integration exchange the new secret.
 
 After `migrate:fresh --seed`, a demo client is available:
 

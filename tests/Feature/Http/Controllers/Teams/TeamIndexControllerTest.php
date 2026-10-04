@@ -107,7 +107,7 @@ final class TeamIndexControllerTest extends TestCase
     #[Test]
     public function it_lists_teams_for_admins(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->withoutTeam()->admin()->create();
@@ -115,12 +115,12 @@ final class TeamIndexControllerTest extends TestCase
         /** @var list<int> $expectedIds */
         $expectedIds = $teams->pluck('id')->all();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($admin)->getJson('/api/teams');
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonPath('message', 'Teams Retrieved Successfully');
@@ -147,21 +147,21 @@ final class TeamIndexControllerTest extends TestCase
     #[Test]
     public function it_filters_teams_by_search_term(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->withoutTeam()->admin()->create();
         $target = Team::factory()->create(['name' => 'Zzz-Unique-Filter-Target']);
         Team::factory()->create(['name' => 'Zzz-Other-Team']);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($admin)->getJson(
             '/api/teams?filter[search]=Unique-Filter',
         );
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonCount(1, 'data');
@@ -206,19 +206,19 @@ final class TeamIndexControllerTest extends TestCase
     #[Test]
     public function it_sorts_teams_by_name_ascending(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->withoutTeam()->admin()->create();
         $second = Team::factory()->create(['name' => 'Aaa-Second']);
         $first = Team::factory()->create(['name' => 'Aaa-First']);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($admin)->getJson('/api/teams?sort=name');
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonPath('data.0.id', $first->id);
@@ -238,12 +238,12 @@ final class TeamIndexControllerTest extends TestCase
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->getJson('/api/teams');
 
-        /* Assert */
+        // Assert
 
         $response->assertUnauthorized();
     }
@@ -259,17 +259,17 @@ final class TeamIndexControllerTest extends TestCase
     #[Test]
     public function it_denies_regular_users(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->getJson('/api/teams');
 
-        /* Assert */
+        // Assert
 
         $response->assertForbidden();
     }
@@ -286,17 +286,17 @@ final class TeamIndexControllerTest extends TestCase
     #[DataProvider('invalidQueryProvider')]
     public function it_rejects_invalid_query_params(string $queryString, string $expectedErrorKey): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->withoutTeam()->admin()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($admin)->getJson("/api/teams?{$queryString}");
 
-        /* Assert */
+        // Assert
 
         $response->assertUnprocessable();
         $this->assertApiValidationErrors($response, [$expectedErrorKey]);

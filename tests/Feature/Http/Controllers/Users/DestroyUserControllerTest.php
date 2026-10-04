@@ -265,13 +265,7 @@ final class DestroyUserControllerTest extends TestCase
     /**
      * Authorise delete according to the Role matrix.
      */
-    /**
-     * Authorise delete according to the Role matrix.
-     */
     #[Test]
-    /**
-     * Authorise delete according to the Role matrix.
-     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_delete_according_to_the_role_matrix(string $role, bool $canDelete): void
     {

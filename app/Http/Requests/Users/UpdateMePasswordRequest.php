@@ -60,7 +60,14 @@ final class UpdateMePasswordRequest extends ApiFormRequest
     public function rules(): array
     {
         return [
-            'current_password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), new PasswordByteLength],
+            /*
+             * `current_password` verifies an existing credential, so the
+             * configurable creation cap is deliberately absent: lowering
+             * `PASSWORD_MAX_LENGTH` would otherwise stop a long-password
+             * holder from ever changing their password. `PasswordByteLength`
+             * keeps the fixed hasher boundary.
+             */
+            'current_password' => ['bail', 'required', 'string', new PasswordByteLength],
             'password' => ['bail', 'required', 'string', PasswordMaxLength::rule(), 'confirmed', 'different:current_password', new PasswordByteLength, Password::defaults()],
             'password_confirmation' => ['required', 'string', PasswordMaxLength::rule()],
         ];
@@ -83,7 +90,6 @@ final class UpdateMePasswordRequest extends ApiFormRequest
     public function messages(): array
     {
         return [
-            'current_password.max' => PasswordMaxLength::MESSAGE,
             'password.confirmed' => 'Passwords Do Not Match',
             'password.different' => 'New Password Must Differ From Current Password',
             'password.max' => PasswordMaxLength::MESSAGE,

@@ -69,6 +69,30 @@ jobs:
               run: composer verify:version
 
     # ---------------------------------------------------------------------
+    # Link Check (Markdown relative links and heading anchors)
+    # ---------------------------------------------------------------------
+    link-check:
+        name: Link Check
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version: 22
+                  cache: npm
+
+            - name: Install Dependencies
+              run: npm ci
+
+            - name: Check Markdown Links
+              run: composer lint:links
+
+    # ---------------------------------------------------------------------
     # Static Analysis (Larastan, PHPStan Level 10 + Strict + Deprecation)
     # ---------------------------------------------------------------------
     static-analysis:
@@ -416,7 +440,7 @@ jobs:
         name: All Quality Gates
         runs-on: ubuntu-latest
         timeout-minutes: 5
-        needs: [format, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, workflow-lint]
+        needs: [format, link-check, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, workflow-lint]
         if: always()
         steps:
             - name: Require Every Gate to Pass
@@ -429,6 +453,7 @@ jobs:
                       fi
                   }
                   check "Pint" "${{ needs.format.result }}"
+                  check "Link Check" "${{ needs.link-check.result }}"
                   check "Larastan" "${{ needs.static-analysis.result }}"
                   check "PHPUnit + Coverage" "${{ needs.tests.result }}"
                   check "Security Audit" "${{ needs.audit.result }}"

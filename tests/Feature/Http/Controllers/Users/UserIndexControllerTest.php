@@ -11,6 +11,7 @@ use App\Http\Controllers\Users\UserIndexController;
 use App\Http\Requests\Users\UserIndexRequest;
 use App\Http\Resources\TeamResource;
 use App\Http\Resources\UserResource;
+use App\Models\ApiClient;
 use App\Models\Team;
 use App\Models\User;
 use App\Policies\UserPolicy;
@@ -202,6 +203,33 @@ final class UserIndexControllerTest extends TestCase
     }
 
     /**
+     * Never list a service account in the directory.
+     *
+     * Even a `users.list-all` viewer must not see machine identities: they
+     * are managed through `/api/clients`, not the Users directory.
+     */
+    #[Test]
+    public function it_never_lists_a_service_account_in_the_directory(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->for($this->team)->admin()->create(['name' => 'Admin Viewer']);
+
+        ApiClient::factory()->create(['name' => 'Billing Sync Integration']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users');
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertNotContains('Billing Sync Integration', (array) $response->json('data.*.name'));
+    }
+
+    /**
      * Filter Users by the search term.
      */
     #[Test]
@@ -373,9 +401,6 @@ final class UserIndexControllerTest extends TestCase
      * Omit the Team key for a teamless User when Team is included.
      */
     #[Test]
-    /**
-     * Eager-load every allow-listed include.
-     */
     #[DataProvider('allowedIncludeProvider')]
     public function it_eager_loads_every_allow_listed_include(string $include): void
     {
@@ -743,13 +768,7 @@ final class UserIndexControllerTest extends TestCase
     /**
      * Deny unauthenticated requests.
      */
-    /**
-     * Deny unauthenticated requests.
-     */
     #[Test]
-    /**
-     * Authorise the index according to the Role matrix.
-     */
     #[DataProvider('roleAuthorisationProvider')]
     public function it_authorises_the_index_according_to_the_role_matrix(string $role, bool $canList): void
     {

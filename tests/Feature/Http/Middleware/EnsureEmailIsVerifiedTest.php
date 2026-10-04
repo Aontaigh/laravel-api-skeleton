@@ -22,6 +22,12 @@ use Tests\TestCase;
 #[CoversClass(\App\Http\Middleware\EnsureEmailIsVerified::class)]
 final class EnsureEmailIsVerifiedTest extends TestCase
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use RefreshDatabase;
 
     /*
@@ -107,7 +113,7 @@ final class EnsureEmailIsVerifiedTest extends TestCase
     }
 
     /**
-     * Keep `POST /logout` reachable for an unverified account.
+     * Keep `POST /auth/logout` reachable for an unverified account.
      */
     #[Test]
     public function it_exempts_logout_for_unverified_accounts(): void
@@ -118,7 +124,7 @@ final class EnsureEmailIsVerifiedTest extends TestCase
 
         // Act
 
-        $response = $this->actingAs($user)->postJson('/api/logout');
+        $response = $this->actingAs($user)->postJson('/api/auth/logout');
 
         // Assert
 

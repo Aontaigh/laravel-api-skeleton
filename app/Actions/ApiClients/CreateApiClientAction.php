@@ -52,7 +52,11 @@ final class CreateApiClientAction
      */
     public function execute(CreateApiClientData $data): CreatedApiClientResult
     {
-        $abilities = $this->abilityCatalog->normalizeTokenAbilities($data->abilities);
+        /*
+         * Machine identities must be scoped: the wildcard is refused for API
+         * clients (human-side tokens keep `['*']` semantics by design).
+         */
+        $abilities = $this->abilityCatalog->normalizeApiClientTokenAbilities($data->abilities);
         $plainSecret = Str::random(40);
         $clientId = (string) Str::uuid();
         $email = $this->generateServiceEmail($data->name);

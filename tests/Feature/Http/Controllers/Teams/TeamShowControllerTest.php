@@ -76,19 +76,19 @@ final class TeamShowControllerTest extends TestCase
     #[Test]
     public function it_returns_a_team_by_id(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
         /** @var Team $team */
         $team = Team::factory()->create(['name' => 'Engineering']);
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($admin)->getJson("/api/teams/{$team->id}");
 
-        /* Assert */
+        // Assert
 
         $response->assertOk();
         $response->assertJsonPath('message', 'Team Retrieved Successfully');
@@ -102,17 +102,17 @@ final class TeamShowControllerTest extends TestCase
     #[Test]
     public function it_returns_not_found_for_a_nonexistent_team(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $admin */
         $admin = User::factory()->admin()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($admin)->getJson('/api/teams/999999');
 
-        /* Assert */
+        // Assert
 
         $response->assertNotFound();
     }
@@ -128,17 +128,17 @@ final class TeamShowControllerTest extends TestCase
     #[Test]
     public function it_denies_unauthenticated_requests(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var Team $team */
         $team = Team::factory()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->getJson("/api/teams/{$team->id}");
 
-        /* Assert */
+        // Assert
 
         $response->assertUnauthorized();
     }
@@ -154,19 +154,19 @@ final class TeamShowControllerTest extends TestCase
     #[Test]
     public function it_denies_regular_users(): void
     {
-        /* Arrange */
+        // Arrange
 
         /** @var User $user */
         $user = User::factory()->user()->create();
         /** @var Team $team */
         $team = Team::factory()->create();
 
-        /* Act */
+        // Act
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($user)->getJson("/api/teams/{$team->id}");
 
-        /* Assert */
+        // Assert
 
         $response->assertForbidden();
     }

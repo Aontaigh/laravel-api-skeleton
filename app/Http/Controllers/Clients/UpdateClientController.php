@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Clients;
 use App\Actions\ApiClients\UpdateApiClientAction;
 use App\DataTransferObjects\ApiClients\UpdateApiClientData;
 use App\DataTransferObjects\Auth\RecordAuthAuditData;
+use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Http\Requests\ApiClients\UpdateClientRequest;
@@ -71,6 +72,7 @@ final class UpdateClientController
 
         AuthEventOccurred::dispatch(new RecordAuthAuditData(
             event: AuthAuditEvent::ApiClientUpdated,
+            outcome: AuditOutcome::Succeeded,
             userId: $actor->id,
             email: $actor->email,
             ipAddress: $request->ip(),
