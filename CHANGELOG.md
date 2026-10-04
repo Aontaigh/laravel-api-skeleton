@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-10-04
+
+### Changed
+
+- **Runner Label Pinned to the OS Major:** every job in [`.github/workflows/ci.yml`](.github/workflows/ci.yml) moved off `ubuntu-latest` to `ubuntu-26.04`. GitHub moves `ubuntu-latest` from 24.04 to 26.04 in a rollout beginning 19 October 2026 ([actions/runner-images#14748](https://github.com/actions/runner-images/issues/14748)), which annotates all ten jobs on the run page and changes the image under the pipeline with no commit to review. Pinning the major takes the choice off the moving alias
+- **Runner Label Centralised Behind a Variable:** jobs resolve `${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}`, so moving to the next OS major is a one-variable change in repository settings instead of a ten-line edit. Ten hardcoded labels risk leaving the repository split across two images, which lets the **All Quality Gates** summary green-light a pipeline that never ran as a set. The fallback keeps forks and fresh clones on a known-good label when the variable is absent, and both paths are proven green in CI
+- **Runner Label Documentation:** a **Runner Label** section in [README.md](README.md#runner-label) records the variable, the `actionlint` declaration as a temporary shim, and why the label is not the reproducibility control
+
+### Added
+
+- **Link Gate In-Flight Compare Exemption:** the Keep a Changelog footer for an untagged release is exempted in [`scripts/lint-links.sh`](scripts/lint-links.sh), because GitHub compare URLs 404 until `vX.Y.Z` exists on the remote. The entry was left pointing at `v1.16.1...v2.0.0` when `v2.0.0` shipped, so it was dead config; both in-flight compares for `v2.0.1` are now covered
+- **[`.github/actionlint.yaml`](.github/actionlint.yaml):** declares `ubuntu-26.04` under `self-hosted-runner.labels`. The pinned `actionlint` 1.7.12 only knows labels up to `ubuntu-24.04`, so without this the **Lint Workflows** job fails with `[runner-label] unknown`. Remove the declaration once actionlint ships the label
+
 ## [2.0.0] - 2026-10-04
 
 ### Breaking Changes
@@ -827,7 +840,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.1...HEAD
+[2.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.1...v2.0.0
 [1.16.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.4...v1.16.0

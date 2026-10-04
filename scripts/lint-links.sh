@@ -119,9 +119,11 @@ EXEMPT_LINK_PATTERNS=(
     # correct.
     '^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?(/|$)'
     # Keep a Changelog footer for a version section that is not tagged yet: GitHub
-    # compare URLs 404 until `vX.Y.Z` exists on the remote. Exempt only the
-    # in-flight release compare (update or remove when v2.0.0 is published).
-    'github\.com/Aontaigh/laravel-api-skeleton/compare/v1\.16\.1\.\.\.v2\.0\.0$'
+    # compare URLs 404 until `vX.Y.Z` exists on the remote. Both in-flight entries
+    # for the release being cut are exempt - the `X.Y.Z` section itself and the
+    # `Unreleased` link that points at it.
+    'github\.com/Aontaigh/laravel-api-skeleton/compare/v2\.0\.0\.\.\.v2\.0\.1$'
+    'github\.com/Aontaigh/laravel-api-skeleton/compare/v2\.0\.1\.\.\.HEAD$'
 )
 
 # ---------------------------------------------------------------------------
