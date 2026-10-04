@@ -43,7 +43,7 @@ jobs:
     # ---------------------------------------------------------------------
     format:
         name: Pint
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
@@ -73,7 +73,7 @@ jobs:
     # ---------------------------------------------------------------------
     link-check:
         name: Link Check
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
@@ -97,7 +97,7 @@ jobs:
     # ---------------------------------------------------------------------
     static-analysis:
         name: Larastan (Level 10)
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
@@ -129,7 +129,7 @@ jobs:
     # ---------------------------------------------------------------------
     tests:
         name: PHPUnit + Coverage
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 15
 
         services:
@@ -194,7 +194,7 @@ jobs:
     # ---------------------------------------------------------------------
     audit:
         name: Security Audit
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
@@ -229,7 +229,7 @@ jobs:
     # the queue itself before asserting the drained delivery listing.
     openapi-examples:
         name: OpenAPI Examples
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 15
         env:
             QUEUE_CONNECTION: redis
@@ -320,7 +320,7 @@ jobs:
     # ---------------------------------------------------------------------
     semgrep:
         name: Semgrep
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 15
         permissions:
             # upload-sarif calls GET /actions/runs/{run_id} on private repos (telemetry + metadata)
@@ -361,7 +361,7 @@ jobs:
     # ---------------------------------------------------------------------
     zizmor:
         name: Zizmor
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 15
         permissions:
             contents: read
@@ -411,7 +411,7 @@ jobs:
     # ---------------------------------------------------------------------
     workflow-lint:
         name: Lint Workflows
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 10
         steps:
             - uses: actions/checkout@v7
@@ -438,7 +438,7 @@ jobs:
     # ---------------------------------------------------------------------
     ci:
         name: All Quality Gates
-        runs-on: ubuntu-26.04
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 5
         needs: [format, link-check, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, workflow-lint]
         if: always()
