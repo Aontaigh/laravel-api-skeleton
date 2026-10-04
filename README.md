@@ -792,6 +792,26 @@ trailing `# vX` comment for Dependabot:
 zizmor --config .github/zizmor.yml .github/workflows/
 ```
 
+### Runner Label
+
+Every job resolves its runner from `${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}`, so moving
+to a new OS major is a one-variable change in repository settings rather than a per-job code
+edit. Change it under **Settings → Secrets and variables → Actions → Variables**. The
+fallback keeps forks and fresh clones on a known-good label when the variable is absent.
+
+The label is pinned deliberately. `ubuntu-latest` moves between LTS releases on a multi-week
+rollout ([actions/runner-images#14748](https://github.com/actions/runner-images/issues/14748)),
+which annotates every job on the run page and changes the image under you without a commit.
+
+Two consequences worth knowing:
+
+- A label newer than the pinned `actionlint` release fails its `[runner-label]` check, so the
+  label is declared in [`.github/actionlint.yaml`](.github/actionlint.yaml) until actionlint
+  ships it. Remove that declaration once it does.
+- The runner label is **not** a security control - a GitHub-hosted image is patched in place,
+  so there is nothing to hash-pin. Reproducibility comes from a digest-pinned
+  `container: image@sha256:...`, which is what the `unpinned-images` Zizmor audit scores.
+
 ## 🧪 Testing
 
 **Unit tests** ([tests/Unit/](tests/Unit/)) pin logic without a database:
