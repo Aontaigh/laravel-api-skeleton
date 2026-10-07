@@ -20,7 +20,7 @@ use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Feature tests for revoking a registered web session by id.
+ * Feature tests for revoking a registered web session by ID.
  */
 #[CoversClass(DestroySessionController::class)]
 #[CoversClass(DestroySessionRequest::class)]

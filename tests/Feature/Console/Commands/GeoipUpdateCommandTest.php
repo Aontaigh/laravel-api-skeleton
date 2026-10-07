@@ -76,7 +76,7 @@ final class GeoipUpdateCommandTest extends TestCase
      */
 
     /**
-     * Fail when the MaxMind account id is empty.
+     * Fail when the MaxMind account ID is empty.
      */
     #[Test]
     public function it_fails_when_the_account_id_is_missing(): void

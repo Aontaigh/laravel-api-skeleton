@@ -75,8 +75,25 @@ final class WebhookDeliveryIndexRequest extends ApiFormRequest
     public function withValidator(Validator $validator): void
     {
         $this->validateWebhookDeliveryFilterKeys($validator);
+        $this->validateCommaListFilterHints($validator);
         $this->validateFieldsKeys($validator);
         $this->validateFieldsQueryParam($validator, 'webhook_deliveries');
         $this->validateSortQueryParam($validator);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Validation failure copy for this request.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->commaListFilterMessages();
     }
 }

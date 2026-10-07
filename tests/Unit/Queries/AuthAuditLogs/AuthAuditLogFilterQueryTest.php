@@ -66,7 +66,7 @@ final class AuthAuditLogFilterQueryTest extends UnitTestCase
 
         (new AuthAuditLogFilterQuery)->apply(
             $query,
-            new AuthAuditLogFilters(event: AuthAuditEvent::LoginFailed),
+            new AuthAuditLogFilters(events: [AuthAuditEvent::LoginFailed]),
         );
 
         // Assert
@@ -78,7 +78,7 @@ final class AuthAuditLogFilterQueryTest extends UnitTestCase
     }
 
     /**
-     * Apply user and API client id constraints when those filters are present.
+     * Apply user and API client ID constraints when those filters are present.
      */
     #[Test]
     public function it_applies_user_and_api_client_id_constraints_when_present(): void
@@ -92,7 +92,7 @@ final class AuthAuditLogFilterQueryTest extends UnitTestCase
 
         (new AuthAuditLogFilterQuery)->apply(
             $query,
-            new AuthAuditLogFilters(userId: 7, apiClientId: 3),
+            new AuthAuditLogFilters(userIds: [7], apiClientIds: [3]),
         );
 
         // Assert

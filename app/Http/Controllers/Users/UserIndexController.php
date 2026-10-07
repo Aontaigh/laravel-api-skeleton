@@ -70,8 +70,8 @@ final class UserIndexController
             listsAllTeams: $request->listsAllTeams(),
             search: $request->searchTerm(),
             canViewEmails: $request->viewer()->can('users.view-email'),
-            status: $request->statusFilter(),
-            role: $request->roleFilter(),
+            statuses: $request->statusFilters(),
+            roles: $request->roleFilters(),
         );
 
         $sort = $request->indexSort(

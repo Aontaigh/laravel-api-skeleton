@@ -22,6 +22,7 @@ use Illuminate\Http\JsonResponse;
  *
  * @example
  * GET /api/audit-logs?filter[event]=Login Failed&sort=-created_at&include=user&page=1&per_page=25
+ * GET /api/audit-logs?filter[user_id]=1,2,3 - every list filter also accepts a single value
  */
 final class AuthAuditLogIndexController
 {
@@ -68,9 +69,9 @@ final class AuthAuditLogIndexController
 
         $filters = new AuthAuditLogFilters(
             search: $request->searchTerm(),
-            event: $request->eventFilter(),
-            userId: $request->userIdFilter(),
-            apiClientId: $request->apiClientIdFilter(),
+            events: $request->eventFilters(),
+            userIds: $request->userIdFilters(),
+            apiClientIds: $request->apiClientIdFilters(),
         );
 
         $sort = $request->indexSort(

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns\Users;
 
 use App\Enums\RoleName;
+use App\Http\Requests\Concerns\ParsesCommaListQueryParam;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
@@ -14,8 +15,8 @@ use App\Queries\Roles\RoleQueryConstraints;
 use App\Queries\Teams\TeamQueryConstraints;
 use App\Queries\Users\UserQueryConstraints;
 use App\Support\AllowListValidation;
+use App\Support\CommaListRule;
 use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Validation\Rule;
 
 /**
  * Shared User Index filter rules and typed accessors.
@@ -33,6 +34,7 @@ trait AppliesUserFilters
     |--------------------------------------------------------------------------
     */
 
+    use ParsesCommaListQueryParam;
     use ParsesFieldsQueryParam;
     use ParsesIncludeQueryParam;
     use ParsesSearchQueryParam;
@@ -56,31 +58,27 @@ trait AppliesUserFilters
     }
 
     /**
-     * Get the requested account status filter.
+     * Get the requested account status filters.
      *
-     * @return string|null the validated status (`active`, `suspended`, or `deleted`), or null when omitted
+     * Accepts one value or a comma-separated list of `active`, `suspended`, and `deleted`.
+     *
+     * @return list<string> the validated statuses, empty when omitted
      */
-    public function statusFilter(): ?string
+    public function statusFilters(): array
     {
-        if (! $this->safe()->filled('filter.status')) {
-            return null;
-        }
-
-        return $this->safe()->string('filter.status')->toString();
+        return $this->stringList('filter.status', UserQueryConstraints::MAX_FILTER_STATUSES);
     }
 
     /**
-     * Get the requested role name filter.
+     * Get the requested role name filters.
      *
-     * @return string|null the validated role name, or null when omitted
+     * Accepts one value or a comma-separated list of Role names.
+     *
+     * @return list<string> the validated role names, empty when omitted
      */
-    public function roleFilter(): ?string
+    public function roleFilters(): array
     {
-        if (! $this->safe()->filled('filter.role')) {
-            return null;
-        }
-
-        return $this->safe()->string('filter.role')->toString();
+        return $this->stringList('filter.role', UserQueryConstraints::MAX_FILTER_ROLES);
     }
 
     /*
@@ -157,13 +155,18 @@ trait AppliesUserFilters
             ...$this->searchFilterRules(),
             'filter.status' => [
                 'sometimes',
+                'nullable',
                 'string',
-                Rule::in(UserQueryConstraints::ALLOWED_STATUSES),
+                CommaListRule::in(UserQueryConstraints::MAX_FILTER_STATUSES, UserQueryConstraints::ALLOWED_STATUSES),
             ],
             'filter.role' => [
                 'sometimes',
+                'nullable',
                 'string',
-                Rule::enum(RoleName::class),
+                CommaListRule::in(
+                    UserQueryConstraints::MAX_FILTER_ROLES,
+                    array_map(static fn (RoleName $role): string => $role->value, RoleName::cases()),
+                ),
             ],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => [
@@ -231,6 +234,19 @@ trait AppliesUserFilters
     protected function allowedFilterKeys(): array
     {
         return ['search', 'status', 'role'];
+    }
+
+    /**
+     * The list-capable filters on this request, mapped to their maximum list size.
+     *
+     * @return array<string, int>
+     */
+    protected function commaListFilterDefinitions(): array
+    {
+        return [
+            'filter.status' => UserQueryConstraints::MAX_FILTER_STATUSES,
+            'filter.role' => UserQueryConstraints::MAX_FILTER_ROLES,
+        ];
     }
 
     /**

@@ -70,8 +70,8 @@ final class WebhookDeliveryIndexController
         $input = $request->safe();
 
         $filters = new WebhookDeliveryFilters(
-            event: $input->has('filter.event') ? $input->string('filter.event')->toString() : null,
-            status: $input->has('filter.status') ? $input->string('filter.status')->toString() : null,
+            events: $request->eventFilters(),
+            statuses: $request->statusFilters(),
         );
 
         $sort = $request->indexSort(

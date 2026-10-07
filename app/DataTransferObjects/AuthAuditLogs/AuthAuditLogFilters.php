@@ -8,6 +8,10 @@ use App\Enums\AuthAuditEvent;
 
 /**
  * Validated filters for the auth audit log index.
+ *
+ * Every filter is a list rather than a scalar: a single value is the same list of one, so the
+ * query layer never branches on which form the caller sent. Absent filters are empty lists,
+ * which keeps each `apply()` guard a single emptiness check.
  */
 final readonly class AuthAuditLogFilters
 {
@@ -20,15 +24,15 @@ final readonly class AuthAuditLogFilters
     /**
      * Create a new AuthAuditLogFilters.
      *
-     * @param string|null         $search      optional partial email match
-     * @param AuthAuditEvent|null $event       optional exact event filter
-     * @param int|null            $userId      optional user ID filter
-     * @param int|null            $apiClientId optional API client ID filter
+     * @param string|null          $search       optional partial email match, never comma-split
+     * @param list<AuthAuditEvent> $events       optional audit event filters
+     * @param list<int>            $userIds      optional User ID filters
+     * @param list<int>            $apiClientIds optional API Client ID filters
      */
     public function __construct(
         public ?string $search = null,
-        public ?AuthAuditEvent $event = null,
-        public ?int $userId = null,
-        public ?int $apiClientId = null,
+        public array $events = [],
+        public array $userIds = [],
+        public array $apiClientIds = [],
     ) {}
 }

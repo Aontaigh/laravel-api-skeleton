@@ -58,27 +58,54 @@ final class UserFilterQuery
             });
         }
 
-        if ($filters->status === 'active') {
-            $query->whereNull('users.suspended_at');
+        /*
+         * The three statuses are mutually exclusive, so a list is a plain OR of the same
+         * branches the scalar filter used, and a single value takes the identical path as
+         * before rather than a special case. `deleted` needs `withTrashed` because the default
+         * scope hides soft-deleted rows - that scope is why reaching a deleted User at all
+         * (so it can be restored) requires opting out of it.
+         */
+        if ($filters->statuses !== []) {
+            $this->applyStatusFilter($query, $filters->statuses);
         }
 
-        if ($filters->status === 'suspended') {
-            $query->whereNotNull('users.suspended_at');
-        }
-
-        if ($filters->status === 'deleted') {
-            /*
-             * Soft-deleted Users are hidden by the default scope, so the only
-             * way to reach them - and therefore to restore one - is the
-             * trashed-only scope this filter selects.
-             */
-            $query->onlyTrashed();
-        }
-
-        if ($filters->role !== null) {
+        if ($filters->roles !== []) {
             $query->whereHas('roles', function (Builder $roles) use ($filters): void {
-                $roles->where('name', $filters->role);
+                $roles->whereIn('name', $filters->roles);
             });
         }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Private
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Constrain the query to Users in any of the requested account statuses.
+     *
+     * @param  Builder<User> $query    the User query builder
+     * @param  list<string>  $statuses the validated statuses to match
+     * @return void
+     */
+    private function applyStatusFilter(Builder $query, array $statuses): void
+    {
+        if (in_array('deleted', $statuses, true)) {
+            $query->withTrashed();
+        }
+
+        $query->where(function (Builder $scoped) use ($statuses): void {
+            foreach ($statuses as $status) {
+                $scoped->orWhere(function (Builder $branch) use ($status): void {
+                    match ($status) {
+                        'active' => $branch->whereNull('users.suspended_at')->whereNull('users.deleted_at'),
+                        'suspended' => $branch->whereNotNull('users.suspended_at')->whereNull('users.deleted_at'),
+                        'deleted' => $branch->whereNotNull('users.deleted_at'),
+                        default => null,
+                    };
+                });
+            }
+        });
     }
 }

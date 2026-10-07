@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.1.0] - 2026-10-07
+
+### Added
+
+- **Multi-Value Comma-Separated List Filters:** list-capable filters on the User, Session, Auth Audit Log, and Webhook Delivery indexes accept several values on the same singular key - `filter[user_id]=1,2,3`, `filter[status]=active,suspended`, `filter[role]=Admin,Manager`, `filter[event]=...` - the form GitHub, Stripe, and Shopify document, rather than a pluralised sibling key (`filter[user_ids]`) or a nested operator object, both of which are rejected with `422`. Shared plumbing: [`CommaListParser`](app/Support/CommaListParser.php) (trim, dedupe, count cap), [`CommaListRule`](app/Support/CommaListRule.php) (per-part rule plus cap enforcement in one path), and the [`ParsesCommaListQueryParam`](app/Http/Requests/Concerns/ParsesCommaListQueryParam.php) concern (rules, literal dotted-key messages, allow-list hints, typed accessors). Every filter caps its list (3 to 50 depending on the filter's vocabulary), and a list past the cap answers `422` rather than being truncated, because a truncated list returns a partial answer that looks complete. There is deliberately no `max` on the raw string - the count cap is the only size bound, matching industry practice
+- **Testing Guide Seed-State Section:** [docs/testing.md](docs/testing.md) documents what `migrate:fresh --seed` provides (4 Users, 1 API Client, 4 Roles, empty audit/session/webhook tables), that `filter[status]` is derived from `suspended_at`/`deleted_at` rather than a column, and why filter probes must assert their own fixture preconditions before reading a response
+- **List Filter Pen-Test Probes:** section 51 of [scripts/pen-test-auth.sh](scripts/pen-test-auth.sh) probes the comma-separated filters on audit logs, users, and deliveries against a live Sail stack
+
+### Changed
+
+- **404 Message Split by Cause:** an unmatched URI (typo'd path) now answers `Route Not Found`, while a matched route whose record is missing (or that aborts with 404) keeps `Resource Not Found`, split on route nullability in [`ApiExceptionRenderer`](app/Support/ApiExceptionRenderer.php) rather than on the exception class, which is stable across framework exception-preparation ordering. `status_code` is unchanged - only the `message` copy moves for route misses - and the OpenAPI spec documents both cases with a new `RouteNotFoundError` example
+- **README Sail Port and Copy Sweep:** remapping `APP_PORT` is documented (the host port merely forwards to nginx's container port 80, so commands run in the wrong place still fail), and resource names read in Title Case
+
+### Fixed
+
+- **Stale OpenAPI Ability Catalog Example:** the `InvalidAbilitiesError.allowed.abilities` example had drifted eleven permissions behind the live catalog (sessions, teams create/delete/update, `users.assign-role`, `users.restore`, webhooks); regenerated to all 35 entries from `PermissionAbilityCatalog`, so the documented ability list matches what a `422` actually returns
+
 ## [2.0.1] - 2026-10-04
 
 ### Changed
@@ -840,7 +857,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.1.0...HEAD
+[2.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.1...v2.0.0
 [1.16.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.0...v1.16.1

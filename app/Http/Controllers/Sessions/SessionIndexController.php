@@ -69,7 +69,7 @@ final class SessionIndexController
             viewer: $request->viewer(),
             listsAllUsers: $request->listsAllUsers(),
             search: $request->searchTerm(),
-            userId: $request->userIdFilter(),
+            userIds: $request->userIdFilters(),
         );
 
         $sort = $request->indexSort(

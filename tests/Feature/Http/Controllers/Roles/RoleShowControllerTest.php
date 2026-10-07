@@ -95,7 +95,7 @@ final class RoleShowControllerTest extends TestCase
      */
 
     /**
-     * Return a Role by id.
+     * Return a Role by ID.
      */
     #[Test]
     public function it_returns_a_role_by_id(): void

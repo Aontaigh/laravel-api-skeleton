@@ -94,7 +94,7 @@ final class ForceLogoutUsersControllerTest extends TestCase
      */
 
     /**
-     * Return the standard success envelope with the logged-out User ids.
+     * Return the standard success envelope with the logged-out User IDs.
      */
     #[Test]
     public function it_returns_the_standard_success_envelope_with_logged_out_user_ids(): void
@@ -353,7 +353,7 @@ final class ForceLogoutUsersControllerTest extends TestCase
      */
 
     /**
-     * Require the ids array on force-logout requests.
+     * Require the `ids` array on force-logout requests.
      */
     #[Test]
     public function it_requires_the_ids_array(): void
@@ -400,7 +400,7 @@ final class ForceLogoutUsersControllerTest extends TestCase
     }
 
     /**
-     * Reject payloads that exceed the maximum number of User ids.
+     * Reject payloads that exceed the maximum number of User IDs.
      */
     #[Test]
     public function it_rejects_more_than_the_maximum_number_of_user_ids(): void

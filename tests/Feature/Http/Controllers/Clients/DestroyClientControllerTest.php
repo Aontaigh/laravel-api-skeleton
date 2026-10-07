@@ -161,7 +161,7 @@ final class DestroyClientControllerTest extends TestCase
      */
 
     /**
-     * Return not found for an unknown client id.
+     * Return not found for an unknown client ID.
      */
     #[Test]
     public function it_returns_not_found_for_an_unknown_client_id(): void

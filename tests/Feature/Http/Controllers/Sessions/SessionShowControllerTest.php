@@ -73,7 +73,7 @@ final class SessionShowControllerTest extends TestCase
      */
 
     /**
-     * Return the caller's own session by id.
+     * Return the caller's own session by ID.
      */
     #[Test]
     public function it_returns_the_callers_own_session(): void

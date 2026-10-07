@@ -250,7 +250,183 @@ final class WebhookDeliveryIndexControllerTest extends TestCase
         return [
             'unknown event' => ['filter[event]=user.exploded'],
             'unknown status' => ['filter[status]=quantum'],
+            'unknown event inside a list' => ['filter[event]=user.created,user.exploded'],
+            'unknown status inside a list' => ['filter[status]=failed,quantum'],
+            'pluralised sibling key' => ['filter[events]=user.created'],
+            'nested operator object' => ['filter[event][any_of]=user.created'],
         ];
+    }
+
+    /**
+     * Filter deliveries by several events in one comma-separated list.
+     */
+    #[Test]
+    public function it_filters_deliveries_by_several_events(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.created',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.suspended',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'order.paid',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson(
+            '/api/webhook-endpoints/'.$endpoint->id.'/deliveries?filter[event]=user.created,user.suspended',
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+
+        /** @var list<array{event: string}> $rows */
+        $rows = $response->json('data');
+        $events = array_map(static fn (array $row): string => $row['event'], $rows);
+
+        $this->assertContains('user.created', $events);
+        $this->assertContains('user.suspended', $events);
+        $this->assertNotContains('order.paid', $events);
+    }
+
+    /**
+     * Filter deliveries by several statuses in one comma-separated list.
+     */
+    #[Test]
+    public function it_filters_deliveries_by_several_statuses(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.created',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.created',
+            'status' => WebhookDeliveryStatus::Failed,
+        ]);
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.created',
+            'status' => WebhookDeliveryStatus::Pending,
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson(
+            '/api/webhook-endpoints/'.$endpoint->id.'/deliveries?filter[status]=delivered,failed',
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+
+        /** @var list<array{status: string}> $rows */
+        $rows = $response->json('data');
+        $statuses = array_map(static fn (array $row): string => $row['status'], $rows);
+
+        $this->assertContains('delivered', $statuses);
+        $this->assertContains('failed', $statuses);
+        $this->assertNotContains('pending', $statuses);
+    }
+
+    /**
+     * Combine an event list with a status list, each filtered on its own terms.
+     */
+    #[Test]
+    public function it_combines_an_event_list_with_a_status_list(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.created',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.created',
+            'status' => WebhookDeliveryStatus::Failed,
+        ]);
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.suspended',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson(
+            '/api/webhook-endpoints/'.$endpoint->id.'/deliveries?filter[event]=user.created,user.suspended&filter[status]=delivered',
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+    }
+
+    /**
+     * Tolerate padding, blank segments, and repeats in an event list.
+     */
+    #[Test]
+    public function it_tolerates_padding_blanks_and_repeats_in_the_event_list(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.created',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+        WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'event' => 'user.suspended',
+            'status' => WebhookDeliveryStatus::Delivered,
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson(
+            '/api/webhook-endpoints/'.$endpoint->id.'/deliveries?filter[event]=user.created,,user.suspended,user.created',
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
     }
 
     /*

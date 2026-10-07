@@ -6,12 +6,13 @@ namespace App\Http\Requests\Concerns\Webhooks;
 
 use App\Enums\WebhookDeliveryStatus;
 use App\Enums\WebhookEvent;
+use App\Http\Requests\Concerns\ParsesCommaListQueryParam;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesSortQueryParam;
 use App\Queries\Webhooks\WebhookDeliveryQueryConstraints;
 use App\Support\AllowListValidation;
+use App\Support\CommaListRule;
 use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Validation\Rule;
 
 /**
  * Shared webhook delivery index filter rules and typed accessors.
@@ -26,6 +27,7 @@ trait AppliesWebhookDeliveryFilters
     |--------------------------------------------------------------------------
     */
 
+    use ParsesCommaListQueryParam;
     use ParsesFieldsQueryParam;
     use ParsesSortQueryParam;
 
@@ -45,6 +47,30 @@ trait AppliesWebhookDeliveryFilters
         return $this->fieldsFor('webhook_deliveries');
     }
 
+    /**
+     * Get the validated webhook event filters.
+     *
+     * Accepts one value or a comma-separated list of event identifiers.
+     *
+     * @return list<string> the events to match, empty when omitted
+     */
+    public function eventFilters(): array
+    {
+        return $this->stringList('filter.event', WebhookDeliveryQueryConstraints::MAX_FILTER_EVENTS);
+    }
+
+    /**
+     * Get the validated delivery status filters.
+     *
+     * Accepts one value or a comma-separated list of delivery statuses.
+     *
+     * @return list<string> the statuses to match, empty when omitted
+     */
+    public function statusFilters(): array
+    {
+        return $this->stringList('filter.status', WebhookDeliveryQueryConstraints::MAX_FILTER_STATUSES);
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Validation Rules
@@ -60,8 +86,21 @@ trait AppliesWebhookDeliveryFilters
     {
         return [
             'filter' => ['sometimes', 'array'],
-            'filter.event' => ['sometimes', 'string', Rule::in([...WebhookEvent::values(), WebhookEvent::PING])],
-            'filter.status' => ['sometimes', 'string', Rule::in(WebhookDeliveryStatus::values())],
+            'filter.event' => [
+                'sometimes',
+                'nullable',
+                'string',
+                CommaListRule::in(
+                    WebhookDeliveryQueryConstraints::MAX_FILTER_EVENTS,
+                    [...WebhookEvent::values(), WebhookEvent::PING],
+                ),
+            ],
+            'filter.status' => [
+                'sometimes',
+                'nullable',
+                'string',
+                CommaListRule::in(WebhookDeliveryQueryConstraints::MAX_FILTER_STATUSES, WebhookDeliveryStatus::values()),
+            ],
             'fields' => ['sometimes', 'array'],
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => [
@@ -126,6 +165,19 @@ trait AppliesWebhookDeliveryFilters
     protected function allowedFilterKeys(): array
     {
         return ['event', 'status'];
+    }
+
+    /**
+     * The list-capable filters on this request, mapped to their maximum list size.
+     *
+     * @return array<string, int>
+     */
+    protected function commaListFilterDefinitions(): array
+    {
+        return [
+            'filter.event' => WebhookDeliveryQueryConstraints::MAX_FILTER_EVENTS,
+            'filter.status' => WebhookDeliveryQueryConstraints::MAX_FILTER_STATUSES,
+        ];
     }
 
     /**

@@ -490,7 +490,7 @@ final class LoginControllerTest extends TestCase
      * Name the principal on a suspended-account refusal.
      *
      * The password has verified and the User is known here, so the audit row
-     * records the id of the account the event concerns. Without it the row is
+     * records the ID of the account the event concerns. Without it the row is
      * unjoinable by principal, which is the one thing a forensic reader needs:
      * an operator asking "who was refused, and why" cannot answer from a row
      * carrying only an email.

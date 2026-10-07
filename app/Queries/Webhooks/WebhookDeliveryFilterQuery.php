@@ -32,12 +32,12 @@ final class WebhookDeliveryFilterQuery
     {
         $query->where('webhook_endpoint_id', $endpoint->id);
 
-        if ($filters->event !== null) {
-            $query->where('event', $filters->event);
+        if ($filters->events !== []) {
+            $query->whereIn('event', $filters->events);
         }
 
-        if ($filters->status !== null) {
-            $query->where('status', $filters->status);
+        if ($filters->statuses !== []) {
+            $query->whereIn('status', $filters->statuses);
         }
     }
 }

@@ -92,7 +92,7 @@ final class AuthAuditLogShowControllerTest extends TestCase
      */
 
     /**
-     * Return an auth audit log row by id.
+     * Return an auth audit log row by ID.
      */
     #[Test]
     public function it_returns_an_auth_audit_log_by_id(): void

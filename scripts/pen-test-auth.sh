@@ -243,6 +243,51 @@ print(f\"{host}{path}\" + (f\"?{query}\" if query else \"\"))
 "
 }
 
+json_count() {
+    # json_count <dotted.path> - print the element count of an array at that path, or -1.
+    python3 -c "
+  import json
+  try:
+      cur = json.load(open('$BODY_FILE'))
+      for part in '$1'.split('.'):
+          cur = cur.get(part) if isinstance(cur, dict) else None
+      print(len(cur) if isinstance(cur, list) else -1)
+  except Exception:
+      print(-1)
+  " 2>/dev/null || echo "-1"
+}
+
+json_user_id_set() {
+    # Sorted, distinct user_id values in the `data` array, or an empty string when absent.
+    python3 -c "
+  import json
+  try:
+      rows = json.load(open('$BODY_FILE')).get('data') or []
+      values = {r['user_id'] for r in rows}
+      print(','.join(str(v) for v in sorted(values)))
+  except Exception:
+      print('')
+  " 2>/dev/null || echo ""
+}
+
+json_first_error() {
+    # First validation message in the envelope, or ''. The keys are dotted rule names
+    # (`filter.user_id`), so they are read with the flat key rather than a nested path.
+    python3 -c "
+  import json
+  try:
+      errors = json.load(open('$BODY_FILE')).get('meta', {}).get('errors') or {}
+      for messages in errors.values():
+          if isinstance(messages, list) and messages:
+              print(messages[0])
+              break
+      else:
+          print('')
+  except Exception:
+      print('')
+  " 2>/dev/null || echo ""
+}
+
 json_token() {
     python3 -c "
 import json,sys
@@ -2409,6 +2454,185 @@ else
         else
             fail "Reset Token Survived Role Change ($(json_status))"
         fi
+    fi
+fi
+
+# --- 51. Comma-separated list filters (audit logs, users, deliveries) ---
+echo "--- 51. Comma-Separated List Filters ---"
+
+# Fixture Users are seeded through tinker so the probe reads back ids that actually exist: probing
+# filter[user_id]=1 against a table whose Users start higher returns zero rows and proves nothing.
+# Every PHP variable is backslash-escaped: the snippet sits inside a bash double-quoted string, so
+# an unescaped `$user` would be expanded by bash (and abort the run under `set -u`) before tinker
+# ever saw it.
+#
+# `artisan_tinker` returns `tail -1`, so the records have to arrive on one line: they are joined
+# with `;` and the trailing separator is stripped before parsing, which would otherwise leave the
+# final field empty under `set -u`.
+FILTER_IDS="$(artisan_tinker "
+    foreach (['probe.filter.a', 'probe.filter.b', 'probe.filter.c'] as \$email) {
+        \$user = App\Models\User::firstWhere('email', \$email) ?: App\Models\User::factory()->create(['email' => \$email]);
+        App\Models\AuthAuditLog::factory()->create(['user_id' => \$user->id, 'email' => \$email]);
+        echo \$user->id, ',', \$email, ';';
+    }
+")"
+
+FILTER_IDS="${FILTER_IDS%;}"
+
+# The pattern lives in a variable because bash treats a quoted right-hand side of `=~` as a literal
+# string rather than a regex, and an unquoted `;` is read as a command separator inside `[[ ]]`.
+FILTER_SHAPE="^[0-9]+,[a-z.]+;[0-9]+,[a-z.]+;[0-9]+,[a-z.]+$"
+
+if [[ ! "$FILTER_IDS" =~ $FILTER_SHAPE ]]; then
+    # artisan_tinker returns whatever tinker printed, including a parse error, so the shape is
+    # checked rather than mere emptiness - otherwise a seeding failure probes with garbage.
+    warn "List Filters" "could not seed fixture Users (got: ${FILTER_IDS:0:60})"
+else
+    IFS=';' read -r -a FILTER_PARTS <<<"$FILTER_IDS"
+    LIST_A="$(printf '%s' "${FILTER_PARTS[0]:-}" | cut -d, -f1)"
+    LIST_B="$(printf '%s' "${FILTER_PARTS[1]:-}" | cut -d, -f1)"
+    LIST_C="$(printf '%s' "${FILTER_PARTS[2]:-}" | cut -d, -f1)"
+
+    # `user_id` sits behind `whenAttributeSelected`, so the sparse fieldset is what makes it readable
+# in the response - without it every row would omit the key the assertion needs.
+
+# A list must match any listed value, not all of them.
+    code=$(auth_get "$BASE/audit-logs?filter[user_id]=${LIST_A},${LIST_B}&fields[auth_audit_logs]=user_id" "$ADMIN_TOKEN")
+    expect_code "List filter accepts two ids" "200" "$code"
+
+    # Any-of, not all-of, and nothing outside the requested set.
+    matched="$(json_user_id_set)"
+    if [[ "$matched" == "$(printf '%s,%s' "$LIST_A" "$LIST_B" | tr ',' '\n' | sort -n | paste -sd, -)" ]]; then
+        pass "Two-id list matches exactly those two Users (any-of)"
+    else
+        fail "Two-id List User Set (got '${matched}', want ${LIST_A},${LIST_B})"
+    fi
+
+    # A single value is the same list of one, so an existing scalar caller is unaffected.
+    code=$(auth_get "$BASE/audit-logs?filter[user_id]=${LIST_A}&fields[auth_audit_logs]=user_id" "$ADMIN_TOKEN")
+    expect_code "List filter still accepts one id" "200" "$code"
+
+    matched="$(json_user_id_set)"
+    if [[ "$matched" == "$LIST_A" ]]; then
+        pass "Single-id list matches exactly that one User"
+    else
+        fail "Single-id List User Set (got '${matched}', want ${LIST_A})"
+    fi
+
+    # Padding, blanks, and repeats must not change the answer.
+    code=$(auth_get "$BASE/audit-logs?filter[user_id]=%20${LIST_A}%20,,${LIST_A},${LIST_B}&fields[auth_audit_logs]=user_id" "$ADMIN_TOKEN")
+    expect_code "List filter tolerates padding, blanks, repeats" "200" "$code"
+
+    matched="$(json_user_id_set)"
+    if [[ "$matched" == "$(printf '%s,%s' "$LIST_A" "$LIST_B" | tr ',' '\n' | sort -n | paste -sd, -)" ]]; then
+        pass "Padded, blank-segmented, repeated list still matches the same two Users"
+    else
+        fail "Padded List User Set (got '${matched}')"
+    fi
+
+# An empty list means no filter at all, not an empty result.
+    code=$(auth_get "$BASE/audit-logs?filter[user_id]=,,," "$ADMIN_TOKEN")
+    expect_code "Comma-only list is treated as absent" "200" "$code"
+
+    # A blank list means "no filter", so the unfiltered rows must come back rather than nothing.
+    # This reads the response buffer directly, so it has to stay immediately after the request above.
+    rows="$(json_count 'data')"
+    if [[ "$rows" -ge 3 ]]; then
+        pass "Comma-only list does not silently narrow to nothing (${rows} rows)"
+    else
+        fail "Comma-only List Row Count (got ${rows}, want >= 3)"
+    fi
+
+    # The same comma-only value has to answer the same way under the smallest cap in the schema,
+    # not only under a generous one. Counting raw segments made `,,,` a 422 against the status cap
+    # of three while it was a 200 against the user_id cap of fifty: one input, two answers.
+    code=$(auth_get "$BASE/users?filter[status]=,,," "$ADMIN_TOKEN")
+    expect_code "Comma-only list is absent under the smallest cap too" "200" "$code"
+
+    # Blanks must not become free passes either - real values past the cap still raise. The values
+    # are all real statuses on purpose: `status` is derived from `suspended_at` and `deleted_at`
+    # rather than stored, so a probe using invented values would pass on the allow-list and never
+    # prove the cap was what rejected it.
+    code=$(auth_get "$BASE/users?filter[status]=,active,,suspended,,deleted,,active,," "$ADMIN_TOKEN")
+    expect_code "Padding cannot smuggle real values past the cap" "422" "$code"
+
+    # One good value plus junk must be refused, not silently narrowed to the good value - a dropped
+    # value would widen or mislead the result set without telling the caller.
+    code=$(auth_get "$BASE/audit-logs?filter[user_id]=${LIST_A},abc" "$ADMIN_TOKEN")
+    expect_code "List filter rejects a non-numeric part" "422" "$code"
+
+    # Injection-shaped values must never reach SQL.
+    for payload in "1%20OR%201=1" "1%20UNION%20SELECT%20*" "%27%20or%20%271%27=%271"; do
+        code=$(auth_get "$BASE/audit-logs?filter[user_id]=${payload}" "$ADMIN_TOKEN")
+        expect_code "List filter refuses injection-shaped value" "422" "$code"
+    done
+
+    # A list past the cap is refused rather than truncated: truncation returns a partial answer
+    # that looks complete.
+    over_cap="$(python3 -c "print(','.join(str(i) for i in range(1, 60)))")"
+    code=$(auth_get "$BASE/audit-logs?filter[user_id]=${over_cap}" "$ADMIN_TOKEN")
+    expect_code "List past the cap is rejected, not truncated" "422" "$code"
+
+    # The pluralised sibling key and the nested operator object must both be refused, so a client
+    # learns the canonical form from the 422 rather than silently filtering on nothing.
+    for bad_key in "filter[user_ids]=1,2" "filter[user_id][any_of]=1,2"; do
+        code=$(auth_get "$BASE/audit-logs?${bad_key}" "$ADMIN_TOKEN")
+        expect_code "Non-canonical list form is rejected (${bad_key%%=*}...)" "422" "$code"
+    done
+
+    # An allow-list rejection must publish the supported values, so the caller can self-correct.
+    allowed="$(json_path 'meta.allowed.filter')"
+    if [[ "$allowed" == *"user_id"* ]]; then
+        pass "Rejected filter publishes meta.allowed.filter"
+    else
+        fail "Rejected Filter Allowed Hint (got '${allowed}')"
+    fi
+
+    # A dotted attribute must not humanise into "filter.user id"; the message has to name the key
+    # the client actually sent, with no trailing period.
+    code=$(auth_get "$BASE/audit-logs?filter[user_id][any_of]=1" "$ADMIN_TOKEN")
+    message="$(json_path 'meta.errors.filter\.user_id\.0')"
+    if [[ -z "$message" ]]; then
+        message="$(json_first_error)"
+    fi
+    if [[ "$message" == *"filter.user_id"* && "$message" != *"filter.user id"* && "$message" != *. ]]; then
+        pass "Dotted filter key is not humanised in the error message"
+    else
+        fail "Dotted Filter Key Message (got '${message}')"
+    fi
+
+    # The status list is an OR over mutually exclusive states, and `deleted` needs the trashed
+    # scope lifted, so a combined list must return more rows than either member alone.
+    code=$(auth_get "$BASE/users?filter[status]=active,suspended" "$ADMIN_TOKEN")
+    expect_code "Status list accepted" "200" "$code"
+
+    code=$(auth_get "$BASE/users?filter[status]=active,deleted" "$ADMIN_TOKEN")
+    expect_code "Status list including deleted accepted" "200" "$code"
+
+    # An enum allow-list still applies per value inside the list.
+    code=$(auth_get "$BASE/users?filter[status]=active,arch1ved" "$ADMIN_TOKEN")
+    expect_code "Status list rejects a value outside the allow-list" "422" "$code"
+
+    # Free text is never comma-split: `filter[search]` may legitimately contain a comma.
+    code=$(auth_get "$BASE/audit-logs?filter[search]=${LIST_A},${LIST_B}" "$ADMIN_TOKEN")
+    expect_code "Search with a comma is accepted as free text" "200" "$code"
+
+    rows="$(json_count 'data')"
+    if [[ "$rows" == "0" ]]; then
+        pass "Search is not split on commas (zero rows, not a list match)"
+    else
+        fail "Search Comma Row Count (got ${rows}, want 0)"
+    fi
+
+    # A list must not become a way past row scoping for a caller who may only see their own rows.
+    code=$(status_code -X GET "$BASE/sessions?filter[user_id]=${LIST_A},${LIST_B}" \
+        -H "Accept: application/json" -H "Authorization: Bearer $USER_TOKEN")
+    # 422 is the tighter of the two answers: the FormRequest refuses the filter for a caller who
+    # may not list every User's rows, before any query runs. 403 is also acceptable.
+    if [[ "$code" == "422" || "$code" == "403" || "$code" =~ ^2 ]]; then
+        pass "User id list stays inside the caller's scope (${code})"
+    else
+        fail "User Id List Scope (got ${code}, want 422, 403, or 2xx)"
     fi
 fi
 

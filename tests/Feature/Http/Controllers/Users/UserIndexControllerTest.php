@@ -34,6 +34,7 @@ use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\AssertsApiEnvelope;
 use Tests\TestCase;
 
 /**
@@ -64,6 +65,7 @@ use Tests\TestCase;
 #[CoversClass(QualifiedColumn::class)]
 final class UserIndexControllerTest extends TestCase
 {
+    use AssertsApiEnvelope;
     /*
     |--------------------------------------------------------------------------
     | Traits
@@ -981,5 +983,283 @@ final class UserIndexControllerTest extends TestCase
         // Assert
 
         $response->assertUnprocessable();
+    }
+
+    /**
+     * Filter the directory by several account statuses in one comma-separated list.
+     *
+     * The three statuses are mutually exclusive, so the list is a plain OR and `deleted` needs
+     * the trashed scope lifted.
+     */
+    #[Test]
+    public function it_filters_by_several_statuses(): void
+    {
+        // Arrange
+
+        $active = User::factory()->for($this->team)->user()->create();
+        $suspended = User::factory()->for($this->team)->suspended()->create();
+        $deleted = User::factory()->for($this->team)->user()->create();
+        $deleted->delete();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[status]=active,deleted',
+        );
+
+        // Assert
+
+        $response->assertOk();
+
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+
+        $this->assertContains($active->id, $ids);
+        $this->assertContains($deleted->id, $ids);
+        $this->assertNotContains($suspended->id, $ids);
+    }
+
+    /**
+     * Combining every status returns both live and trashed Users, so nothing is silently lost.
+     */
+    #[Test]
+    public function it_returns_everything_when_all_statuses_are_listed(): void
+    {
+        // Arrange
+
+        $active = User::factory()->for($this->team)->user()->create();
+        $suspended = User::factory()->for($this->team)->suspended()->create();
+        $deleted = User::factory()->for($this->team)->user()->create();
+        $deleted->delete();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[status]=active,suspended,deleted&per_page=100',
+        );
+
+        // Assert
+
+        $response->assertOk();
+
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+
+        $this->assertContains($active->id, $ids);
+        $this->assertContains($suspended->id, $ids);
+        $this->assertContains($deleted->id, $ids);
+    }
+
+    /**
+     * Filter the directory by several role names in one comma-separated list.
+     */
+    #[Test]
+    public function it_filters_by_several_roles(): void
+    {
+        // Arrange
+
+        $admin = User::factory()->for($this->team)->admin()->create();
+        $manager = User::factory()->for($this->team)->manager()->create();
+        $plain = User::factory()->for($this->team)->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[role]='.RoleName::Admin->value.','.RoleName::Manager->value,
+        );
+
+        // Assert
+
+        $response->assertOk();
+
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+
+        $this->assertContains($admin->id, $ids);
+        $this->assertContains($manager->id, $ids);
+        $this->assertNotContains($plain->id, $ids);
+    }
+
+    /**
+     * Combine a status list with a role list, each filtered on its own terms.
+     */
+    #[Test]
+    public function it_combines_a_status_list_with_a_role_list(): void
+    {
+        // Arrange
+
+        $activeManager = User::factory()->for($this->team)->manager()->create();
+        $suspendedManager = User::factory()->for($this->team)->manager()->suspended()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[status]=active,suspended&filter[role]='.RoleName::Manager->value,
+        );
+
+        // Assert
+
+        $response->assertOk();
+
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+
+        $this->assertContains($activeManager->id, $ids);
+        $this->assertContains($suspendedManager->id, $ids);
+    }
+
+    /**
+     * Reject a status that is not on the allow-list, naming the offending value.
+     */
+    #[Test]
+    public function it_rejects_a_status_outside_the_allow_list(): void
+    {
+        // Arrange
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/users?filter[status]=active,archived');
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.status']);
+        $this->assertStringContainsString(
+            'archived',
+            $this->firstFilterError($response, 'filter.status'),
+        );
+    }
+
+    /**
+     * Reject a role that is not on the allow-list.
+     */
+    #[Test]
+    public function it_rejects_a_role_outside_the_allow_list(): void
+    {
+        // Arrange
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/users?filter[role]=Admin,Wizard');
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.role']);
+        $this->assertStringContainsString(
+            'Wizard',
+            $this->firstFilterError($response, 'filter.role'),
+        );
+    }
+
+    /**
+     * Reject a status list longer than the closed set of statuses allows.
+     */
+    #[Test]
+    public function it_rejects_a_status_list_longer_than_the_allow_list(): void
+    {
+        // Arrange
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[status]=active,suspended,deleted,active',
+        );
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.status']);
+        $this->assertStringContainsString(
+            'At Most '.UserQueryConstraints::MAX_FILTER_STATUSES,
+            $this->firstFilterError($response, 'filter.status'),
+        );
+    }
+
+    /**
+     * Treat a comma-only status list as an absent filter, not an oversized one.
+     *
+     * Status carries the smallest cap in the schema, so this is where a cap that counted raw
+     * segments showed itself: `,,,` was four segments against a cap of three and raised, while
+     * the identical value under a generous cap returned every row. The same empty input has to
+     * mean no filter regardless of which filter carries it.
+     */
+    #[Test]
+    public function it_treats_a_comma_only_status_list_as_an_absent_filter(): void
+    {
+        // Arrange
+
+        $unfiltered = $this->actingAs($this->viewer)->getJson('/api/users?per_page=100');
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/users?filter[status]=,,,&per_page=100');
+
+        // Assert
+
+        $response->assertOk();
+        $this->assertSame(
+            $unfiltered->json('meta.pagination.total'),
+            $response->json('meta.pagination.total'),
+            'A comma-only list must not narrow the result set.',
+        );
+    }
+
+    /**
+     * Keep the cap meaningful for real values while blanks stay free.
+     *
+     * The pair is what makes the rule coherent: blanks are not values and never count, but a
+     * genuine fourth status still raises however many commas are padded around it.
+     */
+    #[Test]
+    public function it_still_rejects_real_statuses_past_the_cap_when_padded_with_blanks(): void
+    {
+        // Arrange
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/users?filter[status]=,active,,suspended,,deleted,,active,,',
+        );
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.status']);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helpers
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Read the first validation message for a filter key from the error envelope.
+     *
+     * Laravel keys a validation error against the attribute as written, so a dotted rule key stays
+     * a literal `filter.status` in the array rather than nesting. Reading it through
+     * `json('meta.errors.status')` would therefore find nothing, which is why this indexes the
+     * decoded array directly.
+     *
+     * @param  TestResponse<JsonResponse> $response the 422 response
+     * @param  string                     $key      the `filter[…]` key, for example `filter.status`
+     * @return string                     the first message, or an empty string when absent
+     */
+    private function firstFilterError(TestResponse $response, string $key): string
+    {
+        /** @var array<string, list<string>> $errors */
+        $errors = $response->json('meta.errors') ?? [];
+
+        return $errors[$key][0] ?? '';
     }
 }

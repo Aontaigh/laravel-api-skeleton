@@ -30,7 +30,7 @@ final class IndexSortQueryTest extends UnitTestCase
     */
 
     /**
-     * Order by an allow-listed column with an id tie-break.
+     * Order by an allow-listed column with an ID tie-break.
      */
     #[Test]
     public function it_orders_by_a_whitelisted_column_with_an_id_tie_break(): void

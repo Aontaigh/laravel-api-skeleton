@@ -146,7 +146,7 @@ final class SessionIndexControllerTest extends TestCase
     }
 
     /**
-     * Never expose the Laravel session id in the API payload.
+     * Never expose the Laravel session ID in the API payload.
      */
     #[Test]
     public function it_never_exposes_the_laravel_session_id(): void
@@ -263,6 +263,136 @@ final class SessionIndexControllerTest extends TestCase
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($this->viewer)->getJson("/api/sessions?filter[user_id]={$otherUser->id}");
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.user_id']);
+    }
+
+    /**
+     * Filter Web Sessions by several User IDs in one comma-separated list.
+     */
+    #[Test]
+    public function it_filters_sessions_by_several_user_ids_for_admin_viewers(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var User $first */
+        $first = User::factory()->user()->create();
+        /** @var User $second */
+        $second = User::factory()->user()->create();
+        /** @var User $unrelated */
+        $unrelated = User::factory()->user()->create();
+
+        WebSession::factory()->for($first)->create();
+        WebSession::factory()->for($second)->create();
+        WebSession::factory()->for($unrelated)->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson(
+            '/api/sessions?filter[user_id]='.$first->id.','.$second->id,
+        );
+
+        // Assert
+
+        $response->assertOk();
+
+        /** @var list<array{user_id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['user_id'], $rows);
+
+        $this->assertContains($first->id, $ids);
+        $this->assertContains($second->id, $ids);
+        $this->assertNotContains($unrelated->id, $ids);
+    }
+
+    /**
+     * Reject a User ID list past the cap, even for an admin who is allowed to filter by User.
+     */
+    #[Test]
+    public function it_rejects_a_session_user_id_list_past_the_cap(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        $ids = implode(',', range(1, SessionQueryConstraints::MAX_FILTER_USER_IDS + 1));
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/sessions?filter[user_id]='.$ids);
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.user_id']);
+    }
+
+    /**
+     * Reject the pluralised sibling key so a client learns the singular key is canonical.
+     */
+    #[Test]
+    public function it_rejects_the_pluralised_session_user_ids_key(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/sessions?filter[user_ids]=1,2');
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.user_ids']);
+    }
+
+    /**
+     * Reject a User ID list for a caller who may only see their own Sessions.
+     *
+     * The authorisation check has to hold for the list form too, not just a single value.
+     */
+    #[Test]
+    public function it_rejects_a_user_id_list_for_callers_without_list_all(): void
+    {
+        // Arrange
+
+        $otherUser = User::factory()->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson(
+            '/api/sessions?filter[user_id]='.$otherUser->id.','.($otherUser->id + 1),
+        );
+
+        // Assert
+
+        $this->assertApiValidationErrors($response, ['filter.user_id']);
+    }
+
+    /**
+     * Reject a non-numeric User ID rather than dropping it and widening the result set.
+     */
+    #[Test]
+    public function it_rejects_a_non_numeric_session_user_id(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/sessions?filter[user_id]=1,abc');
 
         // Assert
 

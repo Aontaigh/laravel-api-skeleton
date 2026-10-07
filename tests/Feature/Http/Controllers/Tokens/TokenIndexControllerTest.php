@@ -145,7 +145,7 @@ final class TokenIndexControllerTest extends TestCase
     }
 
     /**
-     * Exclude rows that share the viewer's id but belong to another morph type.
+     * Exclude rows that share the viewer's ID but belong to another morph type.
      */
     #[Test]
     public function it_excludes_tokens_with_a_non_user_tokenable_type(): void

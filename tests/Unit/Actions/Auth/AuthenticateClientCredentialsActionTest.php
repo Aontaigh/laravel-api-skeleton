@@ -94,7 +94,7 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
     }
 
     /**
-     * Reject unknown client ids with a generic validation message.
+     * Reject unknown client IDs with a generic validation message.
      */
     #[Test]
     public function it_rejects_unknown_client_ids_with_a_generic_message(): void

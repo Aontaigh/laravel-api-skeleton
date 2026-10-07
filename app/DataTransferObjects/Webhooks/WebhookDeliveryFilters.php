@@ -18,11 +18,11 @@ final readonly class WebhookDeliveryFilters
     /**
      * Create new WebhookDeliveryFilters.
      *
-     * @param string|null $event  the event identifier filter, or null when omitted
-     * @param string|null $status the delivery status filter, or null when omitted
+     * @param list<string> $events   the event identifier filters, empty when omitted
+     * @param list<string> $statuses the delivery status filters, empty when omitted
      */
     public function __construct(
-        public ?string $event = null,
-        public ?string $status = null,
+        public array $events = [],
+        public array $statuses = [],
     ) {}
 }

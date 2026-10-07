@@ -155,7 +155,7 @@ final class DestroyCurrentSessionControllerTest extends TestCase
      */
 
     /**
-     * Return 404 when no active registry row matches the inbound session id.
+     * Return 404 when no active registry row matches the inbound session ID.
      */
     #[Test]
     public function it_returns_not_found_when_no_registry_row_matches_the_current_session(): void

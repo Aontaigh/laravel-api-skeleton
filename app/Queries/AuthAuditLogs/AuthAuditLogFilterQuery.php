@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Queries\AuthAuditLogs;
 
 use App\DataTransferObjects\AuthAuditLogs\AuthAuditLogFilters;
+use App\Enums\AuthAuditEvent;
 use App\Models\AuthAuditLog;
 use App\Support\LikePattern;
 use Illuminate\Database\Eloquent\Builder;
@@ -38,25 +39,19 @@ final class AuthAuditLogFilterQuery
             );
         }
 
-        if ($filters->event !== null) {
-            $query->where(
+        if ($filters->events !== []) {
+            $query->whereIn(
                 AuthAuditLogQueryConstraints::TABLE.'.event',
-                $filters->event->value,
+                array_map(static fn (AuthAuditEvent $event): string => $event->value, $filters->events),
             );
         }
 
-        if ($filters->userId !== null) {
-            $query->where(
-                AuthAuditLogQueryConstraints::TABLE.'.user_id',
-                $filters->userId,
-            );
+        if ($filters->userIds !== []) {
+            $query->whereIn(AuthAuditLogQueryConstraints::TABLE.'.user_id', $filters->userIds);
         }
 
-        if ($filters->apiClientId !== null) {
-            $query->where(
-                AuthAuditLogQueryConstraints::TABLE.'.api_client_id',
-                $filters->apiClientId,
-            );
+        if ($filters->apiClientIds !== []) {
+            $query->whereIn(AuthAuditLogQueryConstraints::TABLE.'.api_client_id', $filters->apiClientIds);
         }
     }
 }

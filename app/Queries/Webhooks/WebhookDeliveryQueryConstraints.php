@@ -71,6 +71,16 @@ final class WebhookDeliveryQueryConstraints
      */
     public const MAX_PER_PAGE = 100;
 
+    /**
+     * Largest list `filter[event]` may carry.
+     *
+     * Bounded by the closed set of Webhook events plus `PING`.
+     */
+    public const MAX_FILTER_EVENTS = 10;
+
+    /** Largest list `filter[status]` may carry. Bounded by the closed set of delivery statuses. */
+    public const MAX_FILTER_STATUSES = 10;
+
     /*
     |--------------------------------------------------------------------------
     | Public

@@ -117,7 +117,7 @@ final class AuthRateLimitKeySafetyTest extends TestCase
     }
 
     /**
-     * Answer validation, not a server error, when the exchange client id is an array.
+     * Answer validation, not a server error, when the exchange client ID is an array.
      */
     #[Test]
     public function it_answers_validation_for_an_array_exchange_client_id(): void

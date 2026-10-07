@@ -89,6 +89,13 @@ final class SessionQueryConstraints
      */
     public const MAX_PER_PAGE = 100;
 
+    /**
+     * Largest list `filter[user_id]` may carry.
+     *
+     * Uncapped lists would let one request hand the database an arbitrarily long `IN` clause.
+     */
+    public const MAX_FILTER_USER_IDS = 50;
+
     /*
     |--------------------------------------------------------------------------
     | Public

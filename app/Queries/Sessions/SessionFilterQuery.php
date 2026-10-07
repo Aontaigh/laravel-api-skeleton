@@ -38,11 +38,8 @@ final class SessionFilterQuery
             );
         }
 
-        if ($filters->userId !== null) {
-            $query->where(
-                SessionQueryConstraints::TABLE.'.user_id',
-                $filters->userId,
-            );
+        if ($filters->userIds !== []) {
+            $query->whereIn(SessionQueryConstraints::TABLE.'.user_id', $filters->userIds);
         }
 
         if ($filters->search !== null) {

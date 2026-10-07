@@ -79,6 +79,27 @@ final class AuthAuditLogQueryConstraints
      */
     public const MAX_PER_PAGE = 100;
 
+    /**
+     * Largest list `filter[user_id]` may carry.
+     *
+     * A comma-separated list becomes a `whereIn`, so an uncapped list would let one request
+     * hand the database an arbitrarily long `IN` clause. Sized below the largest cap any
+     * surveyed vendor publishes (Reddit Ads allows 200 IDs, Zendesk 100) and comfortably inside
+     * a URL length budget for integer IDs.
+     */
+    public const MAX_FILTER_USER_IDS = 50;
+
+    /** Largest list `filter[api_client_id]` may carry. */
+    public const MAX_FILTER_CLIENT_IDS = 25;
+
+    /**
+     * Largest list `filter[event]` may carry.
+     *
+     * Tight because the allowed values are a closed enum of a couple of dozen members, so a
+     * longer list can only be a mistake.
+     */
+    public const MAX_FILTER_EVENTS = 10;
+
     /*
     |--------------------------------------------------------------------------
     | Public

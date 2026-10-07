@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns\AuthAuditLogs;
 
 use App\Enums\AuthAuditEvent;
+use App\Http\Requests\Concerns\ParsesCommaListQueryParam;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
@@ -13,8 +14,8 @@ use App\Http\Requests\Concerns\ResolvesAuthenticatedViewer;
 use App\Queries\AuthAuditLogs\AuthAuditLogQueryConstraints;
 use App\Queries\Users\UserQueryConstraints;
 use App\Support\AllowListValidation;
+use App\Support\CommaListRule;
 use Illuminate\Contracts\Validation\Validator;
-use Illuminate\Validation\Rule;
 
 /**
  * Shared auth audit log Index filter rules and typed accessors.
@@ -29,6 +30,7 @@ trait AppliesAuthAuditLogFilters
     |--------------------------------------------------------------------------
     */
 
+    use ParsesCommaListQueryParam;
     use ParsesFieldsQueryParam;
     use ParsesIncludeQueryParam;
     use ParsesSearchQueryParam;
@@ -62,51 +64,39 @@ trait AppliesAuthAuditLogFilters
     }
 
     /**
-     * Get the validated audit event filter, or null when absent.
+     * Get the validated audit event filters.
      *
+     * Accepts one value or a comma-separated list, and returns an empty list
+     * when absent so the caller branches on emptiness alone.
      *
-     *
-     * @return AuthAuditEvent|null the exact event filter, or null
+     * @return list<AuthAuditEvent> the audit events to match, empty when unfiltered
      */
-    public function eventFilter(): ?AuthAuditEvent
+    public function eventFilters(): array
     {
-        if (! $this->safe()->filled('filter.event')) {
-            return null;
-        }
-
-        return AuthAuditEvent::from($this->safe()->string('filter.event')->toString());
+        return array_map(
+            AuthAuditEvent::from(...),
+            $this->stringList('filter.event', AuthAuditLogQueryConstraints::MAX_FILTER_EVENTS),
+        );
     }
 
     /**
-     * Get the validated User filter, or null when absent.
+     * Get the validated User filters.
      *
-     *
-     *
-     * @return int|null the exact User filter, or null
+     * @return list<int> the User IDs to match, empty when unfiltered
      */
-    public function userIdFilter(): ?int
+    public function userIdFilters(): array
     {
-        if (! $this->safe()->filled('filter.user_id')) {
-            return null;
-        }
-
-        return $this->safe()->integer('filter.user_id');
+        return $this->integerList('filter.user_id', AuthAuditLogQueryConstraints::MAX_FILTER_USER_IDS);
     }
 
     /**
-     * Get the validated API Client filter, or null when absent.
+     * Get the validated API Client filters.
      *
-     *
-     *
-     * @return int|null the exact API Client filter, or null
+     * @return list<int> the API Client IDs to match, empty when unfiltered
      */
-    public function apiClientIdFilter(): ?int
+    public function apiClientIdFilters(): array
     {
-        if (! $this->safe()->filled('filter.api_client_id')) {
-            return null;
-        }
-
-        return $this->safe()->integer('filter.api_client_id');
+        return $this->integerList('filter.api_client_id', AuthAuditLogQueryConstraints::MAX_FILTER_CLIENT_IDS);
     }
     /*
     |--------------------------------------------------------------------------
@@ -126,9 +116,14 @@ trait AppliesAuthAuditLogFilters
             'filter' => ['sometimes', 'array'],
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
-            'filter.event' => ['sometimes', 'nullable', 'string', Rule::in(self::allowedEventFilterValues())],
-            'filter.user_id' => ['sometimes', 'nullable', 'integer'],
-            'filter.api_client_id' => ['sometimes', 'nullable', 'integer'],
+            'filter.event' => [
+                'sometimes',
+                'nullable',
+                'string',
+                CommaListRule::in(AuthAuditLogQueryConstraints::MAX_FILTER_EVENTS, self::allowedEventFilterValues()),
+            ],
+            ...$this->commaListFilterRules('filter.user_id', AuthAuditLogQueryConstraints::MAX_FILTER_USER_IDS),
+            ...$this->commaListFilterRules('filter.api_client_id', AuthAuditLogQueryConstraints::MAX_FILTER_CLIENT_IDS),
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => [
                 'sometimes',
@@ -194,6 +189,20 @@ trait AppliesAuthAuditLogFilters
     protected function allowedFilterKeys(): array
     {
         return ['search', 'event', 'user_id', 'api_client_id'];
+    }
+
+    /**
+     * The list-capable filters on this request, mapped to their maximum list size.
+     *
+     * @return array<string, int>
+     */
+    protected function commaListFilterDefinitions(): array
+    {
+        return [
+            'filter.event' => AuthAuditLogQueryConstraints::MAX_FILTER_EVENTS,
+            'filter.user_id' => AuthAuditLogQueryConstraints::MAX_FILTER_USER_IDS,
+            'filter.api_client_id' => AuthAuditLogQueryConstraints::MAX_FILTER_CLIENT_IDS,
+        ];
     }
 
     /**

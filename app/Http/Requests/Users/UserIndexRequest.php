@@ -69,11 +69,28 @@ final class UserIndexRequest extends ApiFormRequest
     public function withValidator(Validator $validator): void
     {
         $this->validateFilterKeys($validator);
+        $this->validateCommaListFilterHints($validator);
         $this->validateFieldsKeys($validator);
         $this->validateFieldsQueryParam($validator, 'users');
         $this->validateFieldsQueryParam($validator, 'teams');
         $this->validateFieldsQueryParam($validator, 'roles');
         $this->validateSortQueryParam($validator);
         $this->validateIncludeQueryParam($validator);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Validation failure copy for this request.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->commaListFilterMessages();
     }
 }

@@ -21,7 +21,7 @@ final class SessionRotationTest extends TestCase
     */
 
     /**
-     * Regenerate rotates the session id, invalidating the prior (fixated) id.
+     * Regenerate rotates the session ID, invalidating the prior (fixated) ID.
      *
      * This is the primitive `LoginController` and `RememberLoginController` call
      * at the privilege boundary - proving it directly documents the defence the

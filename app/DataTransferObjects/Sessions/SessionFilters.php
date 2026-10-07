@@ -23,12 +23,12 @@ final readonly class SessionFilters
      * @param User        $viewer        the authenticated User (drives row scoping)
      * @param bool        $listsAllUsers whether the viewer may see every User's sessions
      * @param string|null $search        optional device, IP, or user-agent search term
-     * @param int|null    $userId        optional owner filter for admin viewers
+     * @param list<int>   $userIds       optional owner filters for admin viewers
      */
     public function __construct(
         public User $viewer,
         public bool $listsAllUsers = false,
         public ?string $search = null,
-        public ?int $userId = null,
+        public array $userIds = [],
     ) {}
 }

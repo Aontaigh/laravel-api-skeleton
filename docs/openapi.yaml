@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 2.0.1
+  version: 2.1.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -37,6 +37,9 @@ info:
     - **Validation Error (422)** - `meta.errors` is a field → messages map; allow-list
       failures also include `meta.allowed` with the supported values for that key
     - **Invalid Token Abilities (422)** - `meta.invalid_abilities` lists unknown ability strings
+    - **Not Found (404)** - `Route Not Found` when no route matches the URI (e.g. a
+      typo'd path); `Resource Not Found` when a matched route's record does not exist
+      or is not visible to the caller
 
     ## Index Query Contract
 
@@ -51,10 +54,27 @@ info:
     | `fields[{resource}]` | comma-separated columns | Sparse fieldset - only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. |
     | `include` | comma-separated relations | Whitelisted eager loads. Singular keys may load plural relations (e.g. `include=role` eager-loads `roles`). |
     | `filter[search]` | string (max 255) | Partial match on name (and email for users and audit logs). Only whitelisted `filter[…]` keys are accepted per resource. |
-    | `filter[status]` | `active`, `suspended`, or `deleted` | **`GET /users` only** — account status; `deleted` selects soft-deleted rows for restore workflows. |
-    | `filter[role]` | `Admin`, `Manager`, `User`, or `Service` | **`GET /users` only** — exact Spatie role name. |
+    | `filter[status]` | `active`, `suspended`, `deleted`, or a comma-separated list | **`GET /users` only**  - account status; `deleted` selects soft-deleted rows for restore workflows. A list matches any listed status (max 3) |
+    | `filter[role]` | `Admin`, `Manager`, `User`, `Service`, or a comma-separated list | **`GET /users` only**  - Spatie role name. A list matches any listed role (max 4) |
     | `page` | integer ≥ 1 | Offset pagination page (default `1`). |
     | `per_page` | integer 1–100 | Page size (default `25`). |
+
+    ### Multi-Value Filters
+
+    Where a `filter[…]` key accepts several values, it takes one **comma-separated list on the
+    same singular key**: `filter[user_id]=1,2,3`. A single value is the same list of one, so
+    `filter[user_id]=3` keeps working unchanged. There is no pluralised sibling key
+    (`filter[user_ids]`) and no nested operator object (`filter[user_id][any_of]`). The two are
+    rejected by different rules, and both responses point the client at the supported keys: an
+    unsupported key such as `filter[user_ids]` is refused as an unknown filter, while an array
+    value such as `filter[user_id][any_of]` fails the string rule for that key.
+
+    Commas are safe here because these filters are typed scalars (integers or enum values) whose
+    values cannot contain a comma. `filter[search]` is free text and is never split.
+
+    Every list filter is capped, and a list past its cap is rejected rather than truncated,
+    because a truncated list would return a partial answer that looks complete. The cap differs
+    per filter and is published in each parameter description.
 
     ### Sparse Fieldsets and Includes
 
@@ -772,7 +792,7 @@ paths:
       description: |
         End the caller's current cookie-bound session without revoking bearer
         tokens or bumping `session_version`. Requires `sessions.revoke-own` and
-        an active registry row for the inbound Laravel session id.
+        an active registry row for the inbound Laravel session ID.
       operationId: revokeCurrentSession
       responses:
         '200':
@@ -1160,7 +1180,7 @@ paths:
       tags: [Users]
       summary: Force Log Out Users
       description: |
-        Admin-only session termination for one or more Users by id. Requires
+        Admin-only session termination for one or more Users by ID. Requires
         `users.force-logout`.
 
         Revokes **all** Sanctum Personal Access Tokens for each target User,
@@ -3228,6 +3248,15 @@ components:
         data: null
         meta: {}
 
+    RouteNotFoundError:
+      summary: No Route Matches the URI
+      value:
+        status: error
+        status_code: 404
+        message: Route Not Found
+        data: null
+        meta: {}
+
     ValidationErrorExample:
       summary: Allow-List or Payload Validation Failed
       value:
@@ -3264,20 +3293,33 @@ components:
               - audit-logs.list
               - permissions.list
               - roles.list
+              - sessions.list-all
+              - sessions.list-own
+              - sessions.revoke-any
+              - sessions.revoke-own
+              - teams.create
+              - teams.delete
               - teams.list
+              - teams.update
               - tokens.create-for-user
               - tokens.create-own
               - tokens.list-own
               - tokens.revoke-own
+              - users.assign-role
               - users.create
               - users.delete
               - users.force-logout
               - users.list
               - users.list-all
               - users.reassign-team
+              - users.restore
               - users.suspend
               - users.update
               - users.view-email
+              - webhooks.create
+              - webhooks.delete
+              - webhooks.list
+              - webhooks.update
 
     MeUpdateSuccess:
       summary: Updated Profile
@@ -3554,7 +3596,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 2.0.1
+          version: 2.1.0
         meta: {}
 
     HealthUnavailable:
@@ -3823,21 +3865,28 @@ components:
           - Webhook Endpoint Updated
           - Webhook Endpoint Deleted
           - Webhook Secret Rotated
-      description: Exact Match on the Persisted Event Value.
+      description: |
+        Exact Match on the Persisted Event Value. Accepts one value or a comma-separated list
+        of values (max 10), matching any listed event.
 
     QueryFilterUserId:
       name: filter[user_id]
       in: query
       schema:
-        type: integer
-      description: Exact Match on `user_id`.
+        type: string
+      description: |
+        Exact Match on `user_id`. Accepts one integer id or a comma-separated list of them
+        (max 50). Applies to `GET /sessions` (requires `sessions.list-all`) and
+        `GET /auth-audit-logs`.
 
     QueryFilterApiClientId:
       name: filter[api_client_id]
       in: query
       schema:
-        type: integer
-      description: Exact Match on `api_client_id`.
+        type: string
+      description: |
+        Exact Match on `api_client_id`. Accepts one integer id or a comma-separated list of them
+        (max 25).
 
     QuerySortUsers:
       name: sort
@@ -4274,7 +4323,7 @@ components:
           example: up
         version:
           type: string
-          example: 2.0.1
+          example: 2.1.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -4609,7 +4658,7 @@ components:
           $ref: '#/components/schemas/ApiDateTime'
         is_current:
           type: boolean
-          description: True when the inbound request session id matches this registry row
+          description: True when the inbound request session ID matches this registry row
         user:
           $ref: '#/components/schemas/User'
 

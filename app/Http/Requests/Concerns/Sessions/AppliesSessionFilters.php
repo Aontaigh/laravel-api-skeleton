@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns\Sessions;
 
+use App\Http\Requests\Concerns\ParsesCommaListQueryParam;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
@@ -27,6 +28,7 @@ trait AppliesSessionFilters
     |--------------------------------------------------------------------------
     */
 
+    use ParsesCommaListQueryParam;
     use ParsesFieldsQueryParam;
     use ParsesIncludeQueryParam;
     use ParsesSearchQueryParam;
@@ -70,17 +72,23 @@ trait AppliesSessionFilters
     }
 
     /**
-     * Resolve the optional `filter[user_id]` value for admin viewers.
+     * Resolve the optional `filter[user_id]` values for admin viewers.
      *
-     * @return ?int
+     * Returns an empty list when the caller may not list every User's sessions, or when the
+     * filter is absent, so the query layer guards on emptiness alone. The
+     * `filter.user_id` authorisation check in `validateFilterKeys` is what actually rejects the
+     * request for a non-admin; returning an empty list here would otherwise widen nothing but
+     * would hide that rejection from the caller.
+     *
+     * @return list<int>
      */
-    public function userIdFilter(): ?int
+    public function userIdFilters(): array
     {
-        if (! $this->listsAllUsers() || ! $this->safe()->filled('filter.user_id')) {
-            return null;
+        if (! $this->listsAllUsers()) {
+            return [];
         }
 
-        return $this->safe()->integer('filter.user_id');
+        return $this->integerList('filter.user_id', SessionQueryConstraints::MAX_FILTER_USER_IDS);
     }
     /*
     |--------------------------------------------------------------------------
@@ -97,7 +105,7 @@ trait AppliesSessionFilters
     {
         return [
             'filter' => ['sometimes', 'array'],
-            'filter.user_id' => ['sometimes', 'nullable', 'integer'],
+            ...$this->commaListFilterRules('filter.user_id', SessionQueryConstraints::MAX_FILTER_USER_IDS),
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
             'page' => ['sometimes', 'integer', 'min:1'],
@@ -176,6 +184,18 @@ trait AppliesSessionFilters
     protected function allowedFilterKeys(): array
     {
         return ['search', 'user_id'];
+    }
+
+    /**
+     * The list-capable filters on this request, mapped to their maximum list size.
+     *
+     * @return array<string, int>
+     */
+    protected function commaListFilterDefinitions(): array
+    {
+        return [
+            'filter.user_id' => SessionQueryConstraints::MAX_FILTER_USER_IDS,
+        ];
     }
 
     /**

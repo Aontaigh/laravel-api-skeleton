@@ -23,19 +23,19 @@ final readonly class UserFilters
      * `$viewer` is required: row scoping is derived from it, so allowing
      * null would let a caller silently produce an unscoped result set.
      *
-     * @param User        $viewer        the authenticated User (drives row scoping)
-     * @param bool        $listsAllTeams whether the viewer may see every Team, not just their own
-     * @param string|null $search        optional name/email search term
-     * @param bool        $canViewEmails whether the viewer may read User emails
-     * @param string|null $status        optional account status filter (`active`, `suspended`, or `deleted`)
-     * @param string|null $role          optional role name filter (`Admin`, `Manager`, `User`, or `Service`)
+     * @param User         $viewer        the authenticated User (drives row scoping)
+     * @param bool         $listsAllTeams whether the viewer may see every Team, not just their own
+     * @param string|null  $search        optional name/email search term
+     * @param bool         $canViewEmails whether the viewer may read User emails
+     * @param list<string> $statuses      optional account status filters (`active`, `suspended`, or `deleted`)
+     * @param list<string> $roles         optional role name filters (`Admin`, `Manager`, `User`, or `Service`)
      */
     public function __construct(
         public User $viewer,
         public bool $listsAllTeams = false,
         public ?string $search = null,
         public bool $canViewEmails = false,
-        public ?string $status = null,
-        public ?string $role = null,
+        public array $statuses = [],
+        public array $roles = [],
     ) {}
 }

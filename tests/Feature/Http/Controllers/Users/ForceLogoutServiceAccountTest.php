@@ -55,7 +55,7 @@ final class ForceLogoutServiceAccountTest extends TestCase
     */
 
     /**
-     * Reject force-logout payloads that target service account ids.
+     * Reject force-logout payloads that target service account IDs.
      */
     #[Test]
     public function it_rejects_force_logout_for_service_account_ids(): void

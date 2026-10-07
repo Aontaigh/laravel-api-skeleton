@@ -59,7 +59,7 @@ final class TokenFilterQueryTest extends UnitTestCase
     */
 
     /**
-     * Scope Tokens to the viewer's User morph type and id.
+     * Scope Tokens to the viewer's User morph type and ID.
      */
     #[Test]
     public function it_scopes_tokens_to_the_viewer(): void
@@ -108,7 +108,7 @@ final class TokenFilterQueryTest extends UnitTestCase
         // Assert
 
         /*
-         * Exactly two where clauses (morph type + id), no search where.
+         * Exactly two where clauses (morph type + ID), no search where.
          */
 
         $this->assertCount(2, $query->getQuery()->wheres);

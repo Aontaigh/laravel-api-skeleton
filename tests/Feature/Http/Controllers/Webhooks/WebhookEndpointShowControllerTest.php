@@ -71,7 +71,7 @@ final class WebhookEndpointShowControllerTest extends TestCase
      */
 
     /**
-     * Return an endpoint by id without its secret.
+     * Return an endpoint by ID without its secret.
      */
     #[Test]
     public function it_returns_an_endpoint_without_its_secret(): void

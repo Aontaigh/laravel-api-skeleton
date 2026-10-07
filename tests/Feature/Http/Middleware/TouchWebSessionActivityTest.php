@@ -37,13 +37,13 @@ final class TouchWebSessionActivityTest extends TestCase
     */
 
     /**
-     * Invoke the middleware with a fabricated request bound to a session id.
+     * Invoke the middleware with a fabricated request bound to a session ID.
      *
      * Builds the request directly instead of going through the HTTP kernel so
-     * the test pins the session id the registry row was created with.
+     * the test pins the session ID the registry row was created with.
      *
      * @param  User|null   $user        the resolved user, or null when unauthenticated
-     * @param  string      $sessionId   the session id bound to the request
+     * @param  string      $sessionId   the session ID bound to the request
      * @param  string|null $bearerToken the bearer token, or null for a cookie session
      * @return Response    the downstream response
      */

@@ -131,7 +131,7 @@ final class SessionFilterQueryTest extends UnitTestCase
         $filters = new SessionFilters(
             viewer: $this->viewer(),
             listsAllUsers: true,
-            userId: 99,
+            userIds: [99],
         );
 
         // Act

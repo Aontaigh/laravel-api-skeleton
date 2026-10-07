@@ -223,7 +223,7 @@ final class InvalidateStoredSessionActionTest extends TestCase
      */
 
     /**
-     * Destroy-failure logs must carry a fingerprint, never the raw session id.
+     * Destroy-failure logs must carry a fingerprint, never the raw session ID.
      */
     #[Test]
     public function it_logs_a_fingerprint_instead_of_the_raw_session_id(): void

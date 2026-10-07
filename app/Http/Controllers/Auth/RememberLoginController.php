@@ -82,7 +82,7 @@ final class RememberLoginController
              * recorded as a refusal rather than a credential failure - matching
              * how the password sign-in path classifies the same accounts. The
              * principal is named here: the audit trail is an internal record
-             * and withholding the id would make the refusal unjoinable, while
+             * and withholding the ID would make the refusal unjoinable, while
              * the HTTP answer stays generic either way.
              */
             $this->recordRestorationFailure($request, AuditOutcome::Refused, userId: $user->id);

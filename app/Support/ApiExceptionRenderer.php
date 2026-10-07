@@ -13,6 +13,7 @@ use Illuminate\Http\Exceptions\ThrottleRequestsException;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -76,6 +77,12 @@ final class ApiExceptionRenderer
     /**
      * Title Case message for a given HTTP status code.
      *
+     * Mapped codes carry house copy that deliberately diverges from the reason
+     * phrase (`Unauthenticated`, `Validation Failed`). Unmapped 4xx fall back to
+     * the official RFC 9110 reason phrase so the message can never contradict
+     * `status_code`; unmapped 5xx stay generic, since phrases like `Bad Gateway`
+     * leak infrastructure topology to clients.
+     *
      * @param  int    $statusCode the HTTP status code
      * @return string the Title Case error message
      */
@@ -89,7 +96,9 @@ final class ApiExceptionRenderer
             405 => 'Method Not Allowed',
             422 => 'Validation Failed',
             429 => 'Too Many Requests',
-            default => $statusCode >= 500 ? 'Server Error' : 'Bad Request',
+            default => $statusCode >= 500
+                ? 'Server Error'
+                : (Response::$statusTexts[$statusCode] ?? 'Bad Request'),
         };
     }
 
@@ -230,6 +239,10 @@ final class ApiExceptionRenderer
     /**
      * Render a not-found failure as the standard API envelope.
      *
+     * An unmatched URI (typo'd path) answers "Route Not Found"; a missing
+     * model or an explicit `abort(404)` on a matched route keeps "Resource
+     * Not Found".
+     *
      * @param  NotFoundHttpException $exception the not-found exception
      * @param  Request               $request   the inbound request
      * @return JsonResponse|null     the envelope, or null when the request is not an API route
@@ -238,9 +251,19 @@ final class ApiExceptionRenderer
         NotFoundHttpException $exception,
         Request $request,
     ): ?JsonResponse {
+        /*
+         * Routing only binds a route to the request when the URI matched, so
+         * route nullability separates the two 404 causes. This holds whether
+         * the handler passes the raw ModelNotFoundException or the prepared
+         * NotFoundHttpException to the render callbacks - that preparation
+         * order has shifted between framework versions, and either way a
+         * model miss happens after routing matched.
+         */
+        $message = $request->route() === null ? 'Route Not Found' : 'Resource Not Found';
+
         return self::envelope(
             request: $request,
-            message: 'Resource Not Found',
+            message: $message,
             statusCode: 404,
         );
     }

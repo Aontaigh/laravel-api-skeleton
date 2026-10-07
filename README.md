@@ -18,7 +18,7 @@ query-driven resource pattern you can copy for every endpoint.**
 </p>
 
 Ships with fully wired resources - **Users**, **Roles**, **Teams**, **API Tokens**, **API
-Clients**, **Web Sessions**, **Audit Logs**, and **Webhooks** - each implementing the same index contract
+Clients**, **Web Sessions**, **Auth Audit Logs**, and **Webhooks** - each implementing the same index contract
 (`sort`, `fields`, `include`, `filter`, pagination) where it applies.
 Clone, run Sail, issue a token, open **[http://localhost/api/docs](http://localhost/api/docs)**
 (Scalar try-it UI), or import [docs/openapi.yaml](docs/openapi.yaml) into Postman.
@@ -64,14 +64,14 @@ you can copy into greenfield APIs or port legacy endpoints toward over time.
 
 **What You Get:**
 
-- 🧭 Paginated, filterable **user** index with team row scoping and permission-gated fields
-- 👥 **Role** index and **team** management (create, rename, guarded delete) for management UIs
+- 🧭 Paginated, filterable **User** index with **Team** row scoping and permission-gated fields
+- 👥 **Role** index and **Team** management (create, rename, guarded delete) for management UIs
 - 🔑 Self-service **profile** update, password change, and admin-issued **API Tokens** via Sanctum
 - 🔐 Email **two-factor authentication** with stateless pending challenges and broker-based **password recovery** that rotates every credential
-- 🖥️ Device **session registry** with per-device revocation, fail-closed store handling, and an append-only **Auth Audit Log**
-- 📡 Outbound **webhooks** with signed deliveries (HMAC, retry with backoff, auto-disable) and SSRF-screened targets
+- 🖥️ Device **Web Session** registry with per-device revocation, fail-closed store handling, and an append-only **Auth Audit Log**
+- 📡 Outbound **Webhooks** with signed deliveries (HMAC, retry with backoff, auto-disable) and SSRF-screened targets
 - 🛡️ Admin **account suspension** (suspend / unsuspend), a public `/health` probe, and a public `/api/status` uptime page
-- 📖 Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with hosted [Scalar](https://scalar.com) docs at `/api/docs` (local and production)
+- 📖 Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with hosted [Scalar](https://scalar.com) docs at `/api/docs` (`local` and `production`)
 - 🐳 Dockerised local dev via [Laravel Sail](https://laravel.com/docs/sail)
 - ✅ 90% line-coverage CI gate with parallel quality jobs
 
@@ -168,6 +168,24 @@ APP_URL=http://localhost:8090
 
 Then `docker compose down && ./vendor/bin/sail up -d`. Every `http://localhost` URL in
 this README assumes the default port 80; substitute yours if you remap it.
+
+**Remapping the host port does not change anything inside the container.** Port 80 is
+nginx *inside* the image, and `APP_PORT` only decides which host port forwards to it.
+That matters when a command runs in the wrong place:
+
+```bash
+# From your shell - use whatever host port you mapped.
+HP="$(grep -E '^APP_PORT=' .env | cut -d= -f2)"; HP="${HP:-80}"
+curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:${HP}/api/users"      # 401
+
+# From inside Sail - always port 80, whatever APP_PORT says.
+./vendor/bin/sail exec laravel.test curl -s -o /dev/null -w '%{http_code}\n' \
+  http://localhost/api/users                                                    # 401
+```
+
+`scripts/pen-test-auth.sh` probes from inside Sail, so its default
+`PEN_TEST_BASE=http://localhost/api` needs no port. A `000` from curl means you
+reached the wrong namespace, not that the API is down.
 
 **3. The first request throws `MissingAppKeyException`**
 
@@ -628,7 +646,7 @@ the status page throttle. Disclosure policy: [SECURITY.md](SECURITY.md).
 
 **Interactive Docs (Scalar):** [http://localhost/api/docs](http://localhost/api/docs) - try
 endpoints in the browser. Paste a Sanctum bearer token via **Authentication** in the
-Scalar UI; `persistAuth` keeps it across reloads. Works in production at
+Scalar UI; `persistAuth` keeps it across reloads. Works in `production` at
 `{APP_URL}/api/docs`.
 
 OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
@@ -761,19 +779,31 @@ Local (Sail - matches PHP 8.5 when host PHP is older):
 ```bash
 ./vendor/bin/sail composer lint          # Pint (--test)
 ./vendor/bin/sail composer lint:fix      # Pint, auto-fix
+./vendor/bin/sail composer lint:links    # Markdown links and anchors
 ./vendor/bin/sail composer analyse       # Larastan, level 10
 ./vendor/bin/sail composer test          # PHPUnit
 ./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
-./vendor/bin/sail composer ci            # lint + analyse + semgrep + coverage + version sync + composer audit
+./vendor/bin/sail composer verify:version        # composer.json / package.json / App version agree
+./vendor/bin/sail composer ci            # the chain below
 ```
 
-> [!NOTE]
-> `composer ci` does not run OpenAPI example verification. After a seeded DB is up, run
-> `./vendor/bin/sail composer verify:openapi` (or `bash scripts/verify-openapi-examples.sh`
-> on the host) - CI runs it as a separate parallel job.
+`composer ci` chains `lint`, `lint:links`, `analyse`, `semgrep`, `test:coverage:check`,
+`verify:openapi`, `verify:version`, and `composer audit --locked`. It needs a seeded
+database and a served app, because `verify:openapi` replays every documented example
+against a live instance:
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, Larastan, PHPUnit with
-coverage, `composer audit`, Semgrep, Zizmor, and OpenAPI verification on every pull request
+```bash
+./vendor/bin/sail artisan migrate:fresh --seed
+./vendor/bin/sail composer ci
+```
+
+It does **not** cover Zizmor, `actionlint`, the Renovate config, or the live pen test -
+those are the remaining CI jobs. See [docs/testing.md](docs/testing.md) for all twelve
+steps, which of them run on the host rather than in Sail, and what each one writes.
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, a Markdown link check,
+Larastan, PHPUnit with coverage, `composer audit`, OpenAPI example verification, Semgrep,
+Zizmor, `actionlint` with the Renovate config, and a summary gate on every pull request
 and push to `main`. Require the **All Quality Gates** check for branch protection. CI uses
 native PHP 8.5 with a MySQL service container - not Sail.
 
@@ -814,6 +844,10 @@ Two consequences worth knowing:
 
 ## 🧪 Testing
 
+**Run it:** `./vendor/bin/sail composer test` for the suite, or step 4 in
+[docs/testing.md](docs/testing.md) for the full gate list with the coverage floor. Use Sail,
+not a host `php` - the project requires `^8.5`.
+
 **Unit tests** ([tests/Unit/](tests/Unit/)) pin logic without a database:
 
 - [tests/Unit/Support/](tests/Unit/Support/) - parse grammar (`IndexSortParser`,
@@ -844,8 +878,9 @@ pins exactly-once audit and OTP dispatch. [ApiDocsTest](tests/Feature/Http/ApiDo
 feature or resource tests on production FormRequests and Resources, not `tests/Support/`
 stubs.
 
-The full run order, coverage-floor mechanics, and the 48-section adversarial pen test are
-documented in [docs/testing.md](docs/testing.md).
+The full run order, which steps run on the host rather than in Sail, what each gate
+writes to disk or the database, the coverage-floor mechanics, and the 51-section
+adversarial pen test are documented in [docs/testing.md](docs/testing.md).
 
 ## 🚫 What's Not Included
 

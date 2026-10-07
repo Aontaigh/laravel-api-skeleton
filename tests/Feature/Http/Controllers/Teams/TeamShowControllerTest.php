@@ -71,7 +71,7 @@ final class TeamShowControllerTest extends TestCase
      */
 
     /**
-     * Return a Team by id.
+     * Return a Team by ID.
      */
     #[Test]
     public function it_returns_a_team_by_id(): void

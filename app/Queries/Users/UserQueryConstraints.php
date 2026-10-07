@@ -46,6 +46,21 @@ final class UserQueryConstraints
     public const ALLOWED_STATUSES = ['active', 'suspended', 'deleted'];
 
     /**
+     * Largest list `filter[status]` may carry.
+     *
+     * Tighter than the ID caps because the allow-list has only three members, so a longer list
+     * can only be a mistake.
+     */
+    public const MAX_FILTER_STATUSES = 3;
+
+    /**
+     * Largest list `filter[role]` may carry.
+     *
+     * Bounded by the four Role names that exist.
+     */
+    public const MAX_FILTER_ROLES = 4;
+
+    /**
      * Sparse fieldset columns every viewer may request via `fields[users]=`.
      * `email` is deliberately absent from the base list: it is appended only
      * for viewers holding `users.view-email`, so the column cannot leak to

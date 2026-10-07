@@ -88,7 +88,7 @@ final class ClientShowControllerTest extends TestCase
      */
 
     /**
-     * Return an API client by id.
+     * Return an API client by ID.
      */
     #[Test]
     public function it_returns_an_api_client_by_id(): void
