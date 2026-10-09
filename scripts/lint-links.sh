@@ -118,12 +118,11 @@ EXEMPT_LINK_PATTERNS=(
     # unreachable on a runner, so checking it would fail CI for a page that is
     # correct.
     '^https?://(localhost|127\.0\.0\.1)(:[0-9]+)?(/|$)'
-    # Keep a Changelog footer for a version section that is not tagged yet: GitHub
-    # compare URLs 404 until `vX.Y.Z` exists on the remote. Both in-flight entries
-    # for the release being cut are exempt - the `X.Y.Z` section itself and the
-    # `Unreleased` link that points at it.
-    'github\.com/Aontaigh/laravel-api-skeleton/compare/v2\.1\.0\.\.\.v3\.0\.0$'
-    'github\.com/Aontaigh/laravel-api-skeleton/compare/v3\.0\.0\.\.\.HEAD$'
+    # A version section not tagged yet has a compare URL that 404s until the tag
+    # exists on the remote. Add the in-flight pair here while cutting a release
+    # (`vPREV...vX.Y.Z` and `vX.Y.Z...HEAD`) and delete it once the tag resolves:
+    # a stale pair passes silently and hides the next release's dead links. See
+    # docs/releasing.md.
 )
 
 # ---------------------------------------------------------------------------
