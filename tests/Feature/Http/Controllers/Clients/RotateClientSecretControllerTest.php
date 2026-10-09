@@ -133,13 +133,13 @@ final class RotateClientSecretControllerTest extends TestCase
         // Act + Assert
 
         /*
-         * The old secret is dead: exchange with it answers the generic 422.
+         * The old secret is dead: exchange with it answers the generic RFC 6749 `invalid_client`.
          */
         $this->postJson('/api/oauth/token', [
             'grant_type' => 'client_credentials',
             'client_id' => $client->client_id,
             'client_secret' => $oldSecret,
-        ])->assertUnprocessable();
+        ])->assertBadRequest();
 
         // Act + Assert
 

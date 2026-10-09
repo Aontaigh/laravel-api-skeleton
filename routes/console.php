@@ -66,14 +66,33 @@ Schedule::command('health:record')
 
 /*
 |--------------------------------------------------------------------------
+| Expired Token Pruning
+|--------------------------------------------------------------------------
+|
+| Removes expired Personal Access Tokens once a day. An expired row still
+| occupies the table and still reads as live in an admin list, so the
+| framework pruner runs as routine hygiene rather than waiting on the
+| broader retention decision below. Scheduled a little after the GeoIP
+| refresh so the two housekeeping jobs never contend for the same window.
+|
+*/
+
+Schedule::command('sanctum:prune-expired')
+    ->dailyAt('03:45')
+    ->timezone('UTC')
+    ->withoutOverlapping();
+
+/*
+|--------------------------------------------------------------------------
 | Data Retention Policy
 |--------------------------------------------------------------------------
 |
-| No scheduled pruning is configured: every table currently retains its
-| rows indefinitely. `system_health_checks` grows by roughly 864 rows per
-| component per day, and `auth_audit_logs` grows with authentication
-| traffic - retention is a deliberate product and compliance decision,
-| not a scheduler default. When a retention window is agreed, add a
-| bounded prune command here and document the window in the CHANGELOG.
+| Beyond the expired-token pruner above, no scheduled pruning is configured:
+| every other table currently retains its rows indefinitely.
+| `system_health_checks` grows by roughly 864 rows per component per day, and
+| `auth_audit_logs` grows with authentication traffic - retention is a
+| deliberate product and compliance decision, not a scheduler default. When a
+| retention window is agreed, add a bounded prune command here and document
+| the window in the CHANGELOG.
 |
 */

@@ -78,8 +78,8 @@ final class ApiClientAuthRateLimitingTest extends TestCase
 
         // Act
 
-        $this->postJson('/api/oauth/token', $payload)->assertUnprocessable();
-        $this->postJson('/api/oauth/token', $payload)->assertUnprocessable();
+        $this->postJson('/api/oauth/token', $payload)->assertBadRequest();
+        $this->postJson('/api/oauth/token', $payload)->assertBadRequest();
 
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->postJson('/api/oauth/token', $payload);

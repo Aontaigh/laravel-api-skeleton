@@ -184,12 +184,14 @@ final class StoreTokenControllerTest extends TestCase
     }
 
     /**
-     * Apply an explicit future expiry verbatim.
+     * Apply an explicit future expiry within the maximum lifetime verbatim.
      */
     #[Test]
     public function it_applies_an_explicit_expiry(): void
     {
         // Arrange
+
+        Carbon::setTestNow('2026-01-15 10:00:00');
 
         /** @var User $viewer */
         $viewer = User::factory()->user()->create();
@@ -199,7 +201,7 @@ final class StoreTokenControllerTest extends TestCase
         /** @var TestResponse<JsonResponse> $response */
         $response = $this->actingAs($viewer)->postJson('/api/tokens', [
             'name' => 'Dated Token',
-            'expires_at' => '2030-01-31T23:59:59+00:00',
+            'expires_at' => '2026-03-01T00:00:00+00:00',
         ]);
 
         // Assert
@@ -209,7 +211,7 @@ final class StoreTokenControllerTest extends TestCase
         $expiresAt = $response->json('data.token.expires_at');
         $this->assertIsString($expiresAt);
         $this->assertSame(
-            '2030-01-31 23:59:59',
+            '2026-03-01 00:00:00',
             Carbon::parse($expiresAt)->toDateTimeString(),
         );
         $this->assertDatabaseHas('personal_access_tokens', [
@@ -217,17 +219,20 @@ final class StoreTokenControllerTest extends TestCase
             'tokenable_id' => $viewer->id,
             'tokenable_type' => User::class,
         ]);
+
+        Carbon::setTestNow();
     }
 
     /**
-     * Issue a never-expiring Token only when the caller sends an explicit null.
+     * Refuse a never-expiring Token.
      *
-     * Omitting `expires_at` applies the default lifetime; only an explicit
-     * `null` opts out, so a forgotten field can never produce a Token that
-     * lives forever.
+     * Omitting `expires_at` applies the default lifetime; an explicit `null`
+     * used to opt the Token out of expiry entirely. A credential that never
+     * ages out cannot be revoked by time, so the request is refused with a
+     * Title Case message naming the rule.
      */
     #[Test]
-    public function it_issues_a_never_expiring_token_when_expires_at_is_null(): void
+    public function it_refuses_a_never_expiring_token(): void
     {
         // Arrange
 
@@ -244,14 +249,41 @@ final class StoreTokenControllerTest extends TestCase
 
         // Assert
 
-        $response->assertCreated();
-        $response->assertJsonPath('data.token.expires_at', null);
-        $this->assertDatabaseHas('personal_access_tokens', [
-            'name' => 'Never Expiring Token',
-            'tokenable_id' => $viewer->id,
-            'tokenable_type' => User::class,
-            'expires_at' => null,
+        $response->assertUnprocessable();
+        $response->assertJsonPath('message', 'Tokens Must Expire');
+        $response->assertJsonPath('status_code', 422);
+        $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Never Expiring Token']);
+    }
+
+    /**
+     * Refuse an expiry beyond the configured maximum lifetime.
+     */
+    #[Test]
+    public function it_refuses_an_expiry_beyond_the_maximum_lifetime(): void
+    {
+        // Arrange
+
+        Carbon::setTestNow('2026-01-15 10:00:00');
+
+        /** @var User $viewer */
+        $viewer = User::factory()->user()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($viewer)->postJson('/api/tokens', [
+            'name' => 'Overlong Token',
+            'expires_at' => '2027-06-01T00:00:00+00:00',
         ]);
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $response->assertJsonPath('message', 'Token Expiry Exceeds The Maximum Lifetime');
+        $response->assertJsonPath('meta.max_expiration_days', 366);
+        $this->assertDatabaseMissing('personal_access_tokens', ['name' => 'Overlong Token']);
+
+        Carbon::setTestNow();
     }
 
     /*

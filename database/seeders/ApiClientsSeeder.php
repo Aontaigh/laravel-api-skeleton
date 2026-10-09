@@ -22,7 +22,7 @@ final class ApiClientsSeeder extends Seeder
     |--------------------------------------------------------------------------
     */
 
-    /** Public client id for the seeded demo integration. */
+    /** Public client ID for the seeded demo integration. */
     public const DEMO_CLIENT_ID = 'demo-integration-client';
 
     /** Default plaintext secret for the seeded demo integration (local only). */

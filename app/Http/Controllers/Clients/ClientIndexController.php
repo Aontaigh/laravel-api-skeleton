@@ -65,6 +65,8 @@ final class ClientIndexController
 
         $filters = new ApiClientFilters(
             search: $request->searchTerm(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

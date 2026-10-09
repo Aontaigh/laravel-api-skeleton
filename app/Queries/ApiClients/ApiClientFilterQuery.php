@@ -37,5 +37,13 @@ final class ApiClientFilterQuery
                 [$pattern],
             );
         }
+
+        if ($filters->from !== null) {
+            $query->where(ApiClientQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where(ApiClientQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

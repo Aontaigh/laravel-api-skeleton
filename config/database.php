@@ -61,6 +61,29 @@ return [
             'prefix_indexes' => true,
             'strict' => true,
             'engine' => null,
+            /*
+             * Pin the session time zone to UTC rather than inheriting the server's.
+             *
+             * Standard: store UTC, convert at the edges. This is the convention behind RFC 3339
+             * section 4.3 ("Unexpected Local Time"), which requires a numeric offset on a
+             * timestamp precisely so the instant is unambiguous, and the reason MySQL ships
+             * `default_time_zone` as a connection-level setting that clients are expected to
+             * assert rather than assume. [CWE-1059](https://cwe.mitre.org/data/definitions/1059.html)
+             * (Incomplete Documentation) records the failure mode when that assumption is left
+             * implicit.
+             *
+             * Why it matters here concretely: a MySQL `DATETIME` carries no zone of its own, so
+             * the server decides how to interpret it. Left at `SYSTEM`, a host configured for
+             * Europe/Paris interprets every stored UTC value as local wall clock and shifts each
+             * date comparison by an hour - and only in that environment, so it passes CI and fails
+             * in production. Asserting `+00:00` makes the assumption explicit and makes the
+             * behaviour identical on every host.
+             *
+             * This matches what the application already assumes: `config('app.timezone')` is UTC
+             * and `ApiDateTime` serialises with `->utc()`. Overridable via `DB_TIMEZONE` for the
+             * rare deployment that stores in a fixed non-UTC zone.
+             */
+            'timezone' => env('DB_TIMEZONE', '+00:00'),
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 Mysql::ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
             ]) : [],
@@ -112,8 +135,10 @@ return [
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
-            // 'encrypt' => env('DB_ENCRYPT', 'yes'),
-            // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
+            /*
+             * 'encrypt' => env('DB_ENCRYPT', 'yes'),
+             * 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
+             */
         ],
 
     ],

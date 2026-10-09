@@ -17,12 +17,12 @@ still runs a `COUNT(*)` over the full `users` table.
 
 **Options When That Becomes Slow:**
 
-| Approach | When to Use |
-| --- | --- |
+| Approach                                 | When to Use                                              |
+| ---------------------------------------- | -------------------------------------------------------- |
 | **Cursor pagination** (`cursorPaginate`) | Large tables, infinite-scroll UIs; avoids offset `COUNT` |
-| **Require `filter[team_id]` for admins** | Ops tooling where cross-team views are rare |
-| **Cached or approximate counts** | Dashboard totals where exact counts are not required |
-| **Read replica + deferred counts** | High read volume; return rows first, count async |
+| **Require `filter[team_id]` for admins** | Ops tooling where cross-team views are rare              |
+| **Cached or approximate counts**         | Dashboard totals where exact counts are not required     |
+| **Read replica + deferred counts**       | High read volume; return rows first, count async         |
 
 For this starter, offset pagination is sufficient until `users` exceeds low
 millions of rows or admin `COUNT` shows up in slow-query logs.
@@ -35,12 +35,12 @@ so search scans every row in the current scope (team, guard, or token owner).
 
 **Options at Scale:**
 
-| Approach | Notes |
-| --- | --- |
-| **MySQL `FULLTEXT`** on `name` (and `email` for users) | Good for word-based search; add a dedicated `filter[search_fulltext]` or swap implementation behind the same key when volume warrants |
-| **PostgreSQL `tsvector` + GIN** | Same idea if you migrate off MySQL |
-| **Dedicated search** (Meilisearch, OpenSearch, Typesense) | Best for fuzzy match, ranking, and multi-field search across resources |
-| **Prefix-only search** (`term%`) | Can use B-tree indexes but changes UX - only match starts-with |
+| Approach                                                  | Notes                                                                                                                                 |
+| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| **MySQL `FULLTEXT`** on `name` (and `email` for users)    | Good for word-based search; add a dedicated `filter[search_fulltext]` or swap implementation behind the same key when volume warrants |
+| **PostgreSQL `tsvector` + GIN**                           | Same idea if you migrate off MySQL                                                                                                    |
+| **Dedicated search** (Meilisearch, OpenSearch, Typesense) | Best for fuzzy match, ranking, and multi-field search across resources                                                                |
+| **Prefix-only search** (`term%`)                          | Can use B-tree indexes but changes UX - only match starts-with                                                                        |
 
 Wildcard **neutralisation** (via `LikePattern` + `ESCAPE`) is already enforced
 so `%` and `_` in user input cannot become match-all probes - that is a

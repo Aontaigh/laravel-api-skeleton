@@ -23,6 +23,7 @@ use App\Support\ApiDateTime;
 use App\Support\ApiResponse;
 use App\Support\CommaListRule;
 use App\Support\CommaSeparatedList;
+use App\Support\DateBoundaryParser;
 use App\Support\LikePattern;
 use App\Support\QualifiedColumn;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -56,6 +57,7 @@ use Tests\TestCase;
 #[CoversClass(CommaListRule::class)]
 #[CoversClass(LikePattern::class)]
 #[CoversClass(QualifiedColumn::class)]
+#[CoversClass(DateBoundaryParser::class)]
 final class AuthAuditLogIndexControllerTest extends TestCase
 {
     /*
@@ -401,6 +403,37 @@ final class AuthAuditLogIndexControllerTest extends TestCase
 
         // Assert
 
+        $response->assertForbidden();
+    }
+
+    /**
+     * Refuse a service account that holds the permission itself.
+     *
+     * The Policy refuses service accounts even when the permission is mis-assigned, because this
+     * view exposes a service account's own audit trail. The Service role does not hold
+     * `audit-logs.list`, so the test above is satisfied by the role matrix alone and stays green
+     * if the `isServiceAccount()` guard is deleted. Granting the permission first pins the guard.
+     */
+    #[Test]
+    public function it_refuses_a_service_account_even_when_the_permission_is_mis_assigned(): void
+    {
+        // Arrange
+
+        /** @var User $serviceUser */
+        $serviceUser = User::factory()->serviceAccount()->create();
+        $serviceUser->givePermissionTo(AuthAuditLogPolicy::LIST_PERMISSION);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($serviceUser)->getJson('/api/audit-logs');
+
+        // Assert
+
+        $this->assertTrue(
+            $serviceUser->can(AuthAuditLogPolicy::LIST_PERMISSION),
+            'The permission must be held, otherwise the refusal proves nothing.',
+        );
         $response->assertForbidden();
     }
 
@@ -822,7 +855,7 @@ final class AuthAuditLogIndexControllerTest extends TestCase
 
         $this->assertApiValidationErrors($response, ['filter.user_id']);
         $this->assertSame(
-            ['api_client_id', 'event', 'search', 'user_id'],
+            ['api_client_id', 'event', 'from', 'search', 'to', 'user_id'],
             $response->json('meta.allowed.filter'),
         );
     }
@@ -854,5 +887,175 @@ final class AuthAuditLogIndexControllerTest extends TestCase
         $this->assertStringNotContainsString('filter.user id', $message);
         $this->assertStringEndsNotWith('.', $message);
         $this->assertStringContainsString('filter.user_id', $message);
+    }
+
+    /*
+     * Date Range Tests
+     * ----------------
+     */
+
+    /**
+     * Filter audit logs by an inclusive lower bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_from_only(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-01 10:00:00']);
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-05 10:00:00']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?filter[from]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * Filter audit logs by an inclusive upper bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_to_only(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-01 10:00:00']);
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-05 10:00:00']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?filter[to]=2026-10-01');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * Filter audit logs by an inclusive range on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_both_bounds(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-01 10:00:00']);
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-05 10:00:00']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?filter[from]=2026-10-01&filter[to]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+    }
+
+    /**
+     * Include the whole named day for a bare date upper bound.
+     */
+    #[Test]
+    public function it_includes_the_whole_day_for_a_bare_date_to_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-05 15:00:00']);
+        AuthAuditLog::factory()->create(['created_at' => '2026-10-06 00:00:01']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?filter[to]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * Reject a range whose upper bound precedes its lower bound.
+     */
+    #[Test]
+    public function it_rejects_a_to_bound_before_the_from_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?filter[from]=2026-10-05&filter[to]=2026-10-01');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.to']);
+    }
+
+    /**
+     * Reject a bound Carbon cannot parse.
+     */
+    #[Test]
+    public function it_rejects_an_unparseable_from_date(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?filter[from]=not-a-date');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
+    }
+
+    /**
+     * Reject a blank bound instead of narrowing to nothing.
+     *
+     * A blank date is malformed input, not an empty list: unlike a comma list, there is no
+     * "empty date" that could mean absent, so the `date` rule refuses it.
+     */
+    #[Test]
+    public function it_rejects_a_blank_from_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?filter[from]=');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
     }
 }

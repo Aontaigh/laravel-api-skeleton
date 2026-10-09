@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 2.1.0
+  version: 3.0.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -51,13 +51,40 @@ info:
     | Param | Format | Notes |
     | --- | --- | --- |
     | `sort` | `{column}` or `-{column}` | Single column; prefix `-` for descending. Whitelist is resource-specific (see each operation). Default sort is documented per resource. |
-    | `fields[{resource}]` | comma-separated columns | Sparse fieldset - only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. |
-    | `include` | comma-separated relations | Whitelisted eager loads. Singular keys may load plural relations (e.g. `include=role` eager-loads `roles`). |
+    | `fields[{resource}]` | comma-separated columns | Sparse fieldset - only listed columns are selected and returned. Keys are resource-specific (`fields[users]`, `fields[teams]`, …). Spaces after commas are trimmed. | Capped at 255 characters.
+    | `include` | comma-separated relations | Whitelisted eager loads. Singular keys may load plural relations (e.g. `include=role` eager-loads `roles`). | Capped at 255 characters.
     | `filter[search]` | string (max 255) | Partial match on name (and email for users and audit logs). Only whitelisted `filter[…]` keys are accepted per resource. |
     | `filter[status]` | `active`, `suspended`, `deleted`, or a comma-separated list | **`GET /users` only**  - account status; `deleted` selects soft-deleted rows for restore workflows. A list matches any listed status (max 3) |
     | `filter[role]` | `Admin`, `Manager`, `User`, `Service`, or a comma-separated list | **`GET /users` only**  - Spatie role name. A list matches any listed role (max 4) |
+    | `filter[from]` / `filter[to]` | date or datetime | Inclusive `created_at` range bounds on every list endpoint, compared in UTC. A bare `Y-m-d` date expands to the whole day; an inverted range answers `422`. |
     | `page` | integer ≥ 1 | Offset pagination page (default `1`). |
     | `per_page` | integer 1–100 | Page size (default `25`). |
+
+      ### Why `include` And `fields[…]` Carry A Length Bound
+
+      Both params are capped at **255 characters**, enforced as a `max` validation rule before
+      the value is parsed.
+
+      This follows **OWASP API4:2023** (Unrestricted Resource Consumption), which traces to
+      [CWE-770](https://cwe.mitre.org/data/definitions/770.html). A list param with no ceiling is
+      the cheapest denial of service to write: one request carrying megabytes of commas forces the
+      server to allocate and walk the payload before any allow-list check can reject it.
+
+      The size is measured, not guessed. `include` is intersected against `ALLOWED_INCLUDES`, which
+      holds one to three relation names per resource. The widest `fields[…]` allow-list is
+      `AuthAuditLogQueryConstraints::ALLOWED_FIELDS`: 16 fields, 198 characters joined. 255 leaves
+      headroom for a longer name without approaching anything a client would legitimately send, and
+      each `fields[…]` key is bounded independently, so one request may still carry several keys.
+
+      This bound is **not** in tension with the multi-value filters below, which cap the *count* of
+      values instead. A filter part is validated against a closed enum, so a padded list is rejected
+      part-by-part and the count cap is already a complete bound on the work. A fieldset or include
+      part is a bare column or relation name with no closed vocabulary, so counting values proves
+      nothing about payload size and a length ceiling is the only bound that applies.
+
+      An oversized value is rejected with `422` rather than truncated. Truncation would be worse than
+      a slow request: a silently shortened fieldset returns a response that looks complete but is
+      missing the columns the caller asked for, and that is a correctness failure they cannot detect.
 
     ### Multi-Value Filters
 
@@ -760,6 +787,8 @@ paths:
         - $ref: '#/components/parameters/QueryFilterSearch'
         - $ref: '#/components/parameters/QueryFilterUserId'
         - $ref: '#/components/parameters/QueryIncludeSessions'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -1102,6 +1131,8 @@ paths:
         - $ref: '#/components/parameters/QueryFilterSearch'
         - $ref: '#/components/parameters/QueryFilterUserStatus'
         - $ref: '#/components/parameters/QueryFilterUserRole'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -1538,6 +1569,8 @@ paths:
         - $ref: '#/components/parameters/QuerySortWebhooks'
         - $ref: '#/components/parameters/QueryFieldsWebhooks'
         - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -1733,6 +1766,8 @@ paths:
         - $ref: '#/components/parameters/QueryFieldsWebhookDeliveries'
         - $ref: '#/components/parameters/QueryFilterWebhookEvent'
         - $ref: '#/components/parameters/QueryFilterWebhookStatus'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -1848,6 +1883,8 @@ paths:
         - $ref: '#/components/parameters/QuerySortTokens'
         - $ref: '#/components/parameters/QueryFieldsTokens'
         - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -1886,12 +1923,13 @@ paths:
         `abilities` defaults to `["*"]` when omitted. Each ability must be a
         registered Spatie permission name.
 
-        Tokens expire after `API_TOKEN_EXPIRATION_DAYS` (default 90); set the
-        env var to `0` for never-expiring defaults. Send `expires_at` to set
-        an explicit expiry: omitted keeps the configured default, an explicit
-        `null` opts the Token into never expiring, and a value in the past
-        answers `422`. The `expires_at` timestamp is set on creation and
-        enforced by Sanctum.
+        Tokens expire after `API_TOKEN_EXPIRATION_DAYS` (default 90). Send
+        `expires_at` to set an explicit expiry up to
+        `API_TOKEN_MAX_EXPIRATION_DAYS` (default 366) days ahead: omitted keeps
+        the configured default, a later date answers `422 Token Expiry Exceeds
+        The Maximum Lifetime`, an explicit `null` (never expires) answers
+        `422 Tokens Must Expire`, and a value in the past answers `422`. The
+        `expires_at` timestamp is set on creation and enforced by Sanctum.
       operationId: createToken
       requestBody:
         required: true
@@ -1988,6 +2026,8 @@ paths:
         - $ref: '#/components/parameters/QueryFieldsRoles'
         - $ref: '#/components/parameters/QueryFieldsPermissions'
         - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -2077,6 +2117,8 @@ paths:
         - $ref: '#/components/parameters/QuerySortPermissions'
         - $ref: '#/components/parameters/QueryFieldsPermissions'
         - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -2125,6 +2167,8 @@ paths:
         - $ref: '#/components/parameters/QuerySortApiClients'
         - $ref: '#/components/parameters/QueryFieldsApiClients'
         - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -2360,6 +2404,8 @@ paths:
         - $ref: '#/components/parameters/QueryFilterAuditEvent'
         - $ref: '#/components/parameters/QueryFilterUserId'
         - $ref: '#/components/parameters/QueryFilterApiClientId'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -2446,6 +2492,8 @@ paths:
         - $ref: '#/components/parameters/QuerySortTeams'
         - $ref: '#/components/parameters/QueryFieldsTeams'
         - $ref: '#/components/parameters/QueryFilterSearch'
+        - $ref: '#/components/parameters/QueryFilterFrom'
+        - $ref: '#/components/parameters/QueryFilterTo'
         - $ref: '#/components/parameters/QueryPage'
         - $ref: '#/components/parameters/QueryPerPage'
       responses:
@@ -3098,6 +3146,7 @@ components:
             actor_user_id: null
             event: Login
             outcome: succeeded
+            client_ineligibility_reason: null
             email: admin@example.com
             ip_address: 127.0.0.1
             user_agent: OpenAPI Verify
@@ -3596,7 +3645,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 2.1.0
+          version: 3.0.0
         meta: {}
 
     HealthUnavailable:
@@ -3888,6 +3937,25 @@ components:
         Exact Match on `api_client_id`. Accepts one integer id or a comma-separated list of them
         (max 25).
 
+    QueryFilterFrom:
+      name: filter[from]
+      in: query
+      schema:
+        type: string
+      description: |
+        Inclusive Lower Bound on `created_at`, Compared in UTC. A bare `Y-m-d` date expands to
+        the start of that UTC day; a date-time resolves to the instant it names.
+
+    QueryFilterTo:
+      name: filter[to]
+      in: query
+      schema:
+        type: string
+      description: |
+        Inclusive Upper Bound on `created_at`, Compared in UTC. A bare `Y-m-d` date expands to
+        the end of that UTC day, so a day range covers every row stamped during the named day.
+        Must not precede `filter[from]`; an inverted range answers `422`.
+
     QuerySortUsers:
       name: sort
       in: query
@@ -4072,6 +4140,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: team,role
       description: |
         Comma-Separated Eager Loads. Allowed: `team`, `role`. Spaces After Commas
@@ -4082,6 +4151,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: permissions
       description: Comma-Separated Eager Loads. Allowed Permissions.
 
@@ -4090,6 +4160,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: user
       description: Comma-Separated Eager Loads. Allowed `user`.
 
@@ -4098,6 +4169,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,name,created_at
       description: |
         Sparse Fieldset for User Columns. Allowed: `id`, `name`, `created_at`;
@@ -4108,6 +4180,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,name
       description: Sparse Fieldset for Nested Team When `include=team`. Allowed Columns `id`, `name`.
 
@@ -4116,6 +4189,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,name,url
       description: "Sparse Fieldset for Webhook Endpoint Columns. Allowed: `id`, `name`, `url`, `events`, `is_active`, `failure_streak`, `disabled_at`, `created_at` (never the secret)."
 
@@ -4124,6 +4198,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,event,status
       description: "Sparse Fieldset for Webhook Delivery Columns. Allowed: `id`, `uuid`, `event`, `status`, `attempts`, `last_status_code`, `last_error`, `delivered_at`, `created_at`."
 
@@ -4132,6 +4207,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,name
       description: |
         Sparse Fieldset for Role Columns (User `role` Include or Role Index/Show).
@@ -4142,6 +4218,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,name
       description: |
         Sparse Fieldset for Permission Columns (Permission Index or nested
@@ -4152,6 +4229,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,name,abilities,created_at
       description: |
         Sparse Fieldset for Token Columns. Allowed: `id`, `name`, `abilities`,
@@ -4162,6 +4240,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,device_name,ip_address,last_activity_at,is_current
       description: |
         Sparse Fieldset for Web Session Columns. Allowed: `id`, `user_id` (admins
@@ -4174,6 +4253,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: user
       description: |
         Comma-Separated Eager Loads. Allowed: `user`.
@@ -4183,6 +4263,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,name,client_id,abilities,is_active
       description: |
         Sparse Fieldset for API Client Columns. Allowed: `id`, `name`, `client_id`,
@@ -4193,6 +4274,7 @@ components:
       in: query
       schema:
         type: string
+        maxLength: 255
         example: id,event,email,created_at
       description: |
         Sparse Fieldset for Auth Audit Log Columns. Allowed: `id`, `user_id`,
@@ -4323,7 +4405,7 @@ components:
           example: up
         version:
           type: string
-          example: 2.1.0
+          example: 3.0.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -4710,6 +4792,12 @@ components:
               enum: [succeeded, failed, refused]
             - type: 'null'
           description: Outcome of the recorded activity (Microsoft Entra result model) - `succeeded` when the activity worked, `failed` when an attempt failed (bad credentials, delivery failure), `refused` when it was deliberately skipped (service-account password reset); null on rows written before the column existed
+        client_ineligibility_reason:
+          oneOf:
+            - type: string
+              enum: [human_owned, suspended_owner, missing_owner]
+            - type: 'null'
+          description: Why a `refused` outcome was recorded, explaining which policy declined the exchange - the same `outcome` alone cannot distinguish a suspended owner from a missing one. Null unless the outcome is `refused`
         email:
           oneOf:
             - type: string
@@ -5082,11 +5170,9 @@ components:
             type: string
           description: Registered Spatie Permission Names; Defaults to `["*"]`
         expires_at:
-          oneOf:
-            - type: string
-              format: date-time
-            - type: 'null'
-          description: Explicit Expiry; Omitted Keeps the Configured Default Lifetime, an Explicit `null` Never Expires, and a Value in the Past Answers `422`
+          type: string
+          format: date-time
+          description: Explicit Expiry Within `API_TOKEN_MAX_EXPIRATION_DAYS` of Now; Omitted Keeps the Configured Default Lifetime; `null` or a Later Date Answers `422`
 
     UpdateUserRequest:
       type: object

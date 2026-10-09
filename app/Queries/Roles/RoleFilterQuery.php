@@ -42,5 +42,13 @@ final class RoleFilterQuery
                 [$pattern],
             );
         }
+
+        if ($filters->from !== null) {
+            $query->where(RoleQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where(RoleQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

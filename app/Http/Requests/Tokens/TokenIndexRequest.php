@@ -74,4 +74,20 @@ final class TokenIndexRequest extends ApiFormRequest
         $this->validateSortQueryParam($validator);
         $this->validateIncludeQueryParam($validator);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Validation failure copy for this request.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->dateRangeFilterMessages('filter.from', 'filter.to');
+    }
 }

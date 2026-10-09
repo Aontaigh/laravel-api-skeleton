@@ -70,9 +70,43 @@ trait ParsesFieldsQueryParam
     protected function fieldsQueryParamRules(string $resourceKey): array
     {
         return [
-            "fields.{$resourceKey}" => ['sometimes', 'string'],
+            "fields.{$resourceKey}" => ['sometimes', 'string', 'max:'.self::MAX_RAW_LENGTH],
         ];
     }
+
+    /**
+     * The largest raw `fields[…]` value these bounds permit.
+     *
+     * Standard: [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/) ("Define and enforce
+a maximum size of data on all incoming parameters and payloads, such as maximum length for
+     * strings"), which traces to
+     * [CWE-770](https://cwe.mitre.org/data/definitions/770.html). Same rationale as the `include`
+     * bound in `ParsesIncludeQueryParam`: an unmeasured list param is an unbounded allocation
+     * before any allow-list intersection runs.
+     *
+     * Why 255, measured rather than guessed: the widest allow-list in this app is
+     * `AuthAuditLogQueryConstraints::ALLOWED_FIELDS`, 16 fields that join to 198 characters. 255
+     * leaves headroom for a longer column name without approaching anything a caller would
+     * legitimately send, and each `fields[…]` key is bounded independently, so one request may
+     * still carry several keys at once.
+     *
+     * Re-measure both numbers when a column is added to any `ALLOWED_FIELDS` list: this bound is
+     * sized from that measurement, so a silent column addition is exactly how it would come to
+     * reject a legitimate full fieldset.
+     *
+     * This is a request-size bound rather than a list-size bound, and it does not conflict with the
+     * comma-list filter rules capping the **count** of values. A filter part is validated against a
+     * closed enum, so a padded list is rejected part-by-part and the count cap already bounds the
+     * work. A fieldset part is a bare column name with no closed vocabulary, so there is nothing to
+     * count against and a length ceiling is the only bound that applies.
+     *
+     * Truncating instead of rejecting would be worse than a slow request: a silently shortened
+     * fieldset returns a response that looks complete but is missing the columns the caller asked
+     * for, which is a correctness failure they cannot detect.
+     *
+     * @see \App\Http\Requests\Concerns\ParsesIncludeQueryParam::MAX_RAW_LENGTH for the `include` bound
+     */
+    private const MAX_RAW_LENGTH = 255;
 
     /*
     |--------------------------------------------------------------------------

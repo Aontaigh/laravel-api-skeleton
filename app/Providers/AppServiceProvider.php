@@ -22,6 +22,7 @@ use App\Services\GeoIp\MaxMindGeoIpLocator;
 use App\Services\UserAgent\Contracts\UserAgentParser;
 use App\Services\Webhooks\SystemWebhookDnsResolver;
 use App\Support\Auth\PasswordMaxLength;
+use App\Support\IpAddress;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Validation\UncompromisedVerifier;
@@ -228,14 +229,14 @@ final class AppServiceProvider extends ServiceProvider
             $user = $request->user();
 
             return Limit::perMinute(config()->integer('api.rate_limit_per_minute'))
-                ->by($user !== null ? (string) $user->id : $request->ip());
+                ->by($user !== null ? (string) $user->id : IpAddress::normalise($request->ip()));
         });
 
         RateLimiter::for('api-tokens', static function (Request $request) {
             $user = $request->user();
 
             return Limit::perMinute(config()->integer('api.token_rate_limit_per_minute'))
-                ->by($user !== null ? (string) $user->id : $request->ip());
+                ->by($user !== null ? (string) $user->id : IpAddress::normalise($request->ip()));
         });
 
         /*
@@ -248,7 +249,7 @@ final class AppServiceProvider extends ServiceProvider
             $user = $request->user();
 
             return Limit::perMinute(config()->integer('api.webhook_rate_limit_per_minute'))
-                ->by($user !== null ? (string) $user->id : $request->ip());
+                ->by($user !== null ? (string) $user->id : IpAddress::normalise($request->ip()));
         });
 
         /*
@@ -257,11 +258,16 @@ final class AppServiceProvider extends ServiceProvider
          * account-creation spam (tighter ceiling), while login needs headroom
          * for a NAT full of legitimate users. Sharing one bucket would let
          * register abuse eat the login budget and vice versa.
+         *
+         * Login adds a third, address-independent bucket keyed on the e-mail
+         * alone, so rotating addresses cannot buy fresh attempts against one
+         * account ([OWASP API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/)).
          */
         RateLimiter::for('api-auth-login', function (Request $request): array {
             return [
                 Limit::perMinute(config()->integer('api.auth_rate_limit_per_minute'))
                     ->by($this->authCompositeKey($request, 'email')),
+                ...$this->perAccountLimit(config()->integer('api.auth_login_account_rate_limit_per_minute'), $request),
                 ...$this->perIpCeiling(config()->integer('api.auth_login_ip_ceiling_per_minute'), $request),
             ];
         });
@@ -320,14 +326,14 @@ final class AppServiceProvider extends ServiceProvider
         RateLimiter::for('api-status', static function (Request $request): array {
             return [
                 Limit::perMinute(config()->integer('api.status_rate_limit_per_minute'))
-                    ->by((string) $request->ip()),
+                    ->by(IpAddress::normalise($request->ip())),
             ];
         });
 
         RateLimiter::for('health', static function (Request $request): array {
             return [
                 Limit::perMinute(config()->integer('api.health_rate_limit_per_minute'))
-                    ->by((string) $request->ip()),
+                    ->by(IpAddress::normalise($request->ip())),
             ];
         });
 
@@ -409,7 +415,7 @@ final class AppServiceProvider extends ServiceProvider
     {
         $value = $request->input($field);
 
-        return (is_string($value) ? Str::lower($value) : '').'|'.$request->ip();
+        return (is_string($value) ? Str::lower($value) : '').'|'.IpAddress::normalise($request->ip());
     }
 
     /**
@@ -426,8 +432,9 @@ final class AppServiceProvider extends ServiceProvider
     private function authenticatedUserKey(Request $request): string
     {
         $identifier = $request->user()?->getAuthIdentifier();
+        $address = IpAddress::normalise($request->ip());
 
-        return (is_scalar($identifier) ? (string) $identifier : (string) $request->ip()).'|'.$request->ip();
+        return (is_scalar($identifier) ? (string) $identifier : $address).'|'.$address;
     }
 
     /**
@@ -441,17 +448,54 @@ final class AppServiceProvider extends ServiceProvider
      */
     private function twoFactorCompositeKey(Request $request): string
     {
-        $token = $request->string('two_factor_token', '')->toString();
+        /*
+         * Read the raw value, never `$request->string()`: the limiter runs
+         * before validation, so an array payload would throw "Array to string
+         * conversion" in the Stringable constructor and answer 500 instead of
+         * letting validation answer 422.
+         */
+        $token = $request->input('two_factor_token');
+        $token = is_string($token) ? $token : '';
+        $address = IpAddress::normalise($request->ip());
 
         if ($token !== '') {
-            return hash('sha256', $token).'|'.$request->ip();
+            return hash('sha256', $token).'|'.$address;
         }
 
         if ($request->hasSession()) {
-            return $request->session()->getId().'|'.$request->ip();
+            return $request->session()->getId().'|'.$address;
         }
 
-        return 'anonymous|'.$request->ip();
+        return 'anonymous|'.$address;
+    }
+
+    /**
+     * Build the address-independent per-account ceiling for the login limiter.
+     *
+     * `email|address` bounds one account per source address, but an attacker who
+     * rotates addresses buys a fresh composite allowance with every address.
+     * This bucket keys on the lowercased e-mail alone, so the account's total
+     * attempt budget holds however the caller spreads across addresses
+     * ([OWASP API4:2023](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/)).
+     *
+     * It is joined only when the request actually carries an e-mail. The same
+     * limiter covers the remember-me restore, whose request has no e-mail field;
+     * an always-on key would drop every such caller into one platform-wide empty
+     * bucket and throttle unrelated Users together.
+     *
+     * @param  int         $perMinute the per-account allowance for this endpoint
+     * @param  Request     $request   the incoming request
+     * @return list<Limit> the per-account limit, or an empty list when no e-mail is present
+     */
+    private function perAccountLimit(int $perMinute, Request $request): array
+    {
+        $email = $request->input('email');
+
+        if (! is_string($email) || trim($email) === '') {
+            return [];
+        }
+
+        return [Limit::perMinute($perMinute)->by('account|'.Str::lower($email))];
     }
 
     /**
@@ -464,6 +508,9 @@ final class AppServiceProvider extends ServiceProvider
      * `local` environment; the per-credential composite limits (which carry the
      * real anti-abuse intent) always remain.
      *
+     * The address is normalised through {@see IpAddress::normalise()}, so an IPv6
+     * caller spends one ceiling per `/64` rather than one per address.
+     *
      * @param  int         $perMinute the per-IP allowance for this endpoint
      * @param  Request     $request   the incoming request
      * @return list<Limit> the per-IP limit, or an empty list in local
@@ -474,7 +521,7 @@ final class AppServiceProvider extends ServiceProvider
             return [];
         }
 
-        return [Limit::perMinute($perMinute)->by((string) $request->ip())];
+        return [Limit::perMinute($perMinute)->by(IpAddress::normalise($request->ip()))];
     }
 
     /**

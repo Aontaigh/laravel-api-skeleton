@@ -72,6 +72,8 @@ final class UserIndexController
             canViewEmails: $request->viewer()->can('users.view-email'),
             statuses: $request->statusFilters(),
             roles: $request->roleFilters(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

@@ -89,4 +89,39 @@ final class ApiRateLimitingTest extends TestCase
         $response->assertJsonPath('message', 'Too Many Requests');
         $response->assertJsonPath('data', null);
     }
+
+    /**
+     * Send the framework's advisory headers on the throttled response.
+     *
+     * The envelope replaces the response the framework would have decorated, so
+     * `Retry-After`
+     * ([RFC 9110 section 10.2.3](https://www.rfc-editor.org/rfc/rfc9110#section-10.2.3))
+     * and the `X-RateLimit-*` pair must be copied across, or a client cannot
+     * know how long to wait and retries immediately.
+     */
+    #[Test]
+    public function it_sends_the_advisory_headers_when_throttled(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        for ($attempt = 0; $attempt < 3; $attempt++) {
+            $this->actingAs($admin)->getJson('/api/users')->assertOk();
+        }
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users');
+
+        // Assert
+
+        $response->assertStatus(429);
+        $response->assertHeader('X-RateLimit-Limit', '3');
+        $response->assertHeader('X-RateLimit-Remaining', '0');
+        $response->assertHeader('Retry-After');
+        $this->assertGreaterThan(0, (int) $response->headers->get('Retry-After'));
+    }
 }

@@ -56,9 +56,41 @@ trait ParsesIncludeQueryParam
     protected function includeQueryParamRules(): array
     {
         return [
-            'include' => ['sometimes', 'string'],
+            'include' => ['sometimes', 'string', 'max:'.self::MAX_RAW_LENGTH],
         ];
     }
+
+    /**
+     * The largest raw `include` value these bounds permit.
+     *
+     * Standard: [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/) ("Define and enforce
+a maximum size of data on all incoming parameters and payloads, such as maximum length for
+     * strings"), which traces to
+     * [CWE-770](https://cwe.mitre.org/data/definitions/770.html) (Allocation of Resources Without
+     * Limits or Throttling). A list param with no length ceiling is the cheapest denial-of-service
+     * to write: one request carrying megabytes of commas forces the server to allocate and walk the
+     * whole payload before any allow-list check rejects it.
+     *
+     * Why 255, and why a length rule at all when the comma-list filter rules deliberately omit one:
+     *
+     * - The size is chosen from the data, not from taste. `include` is intersected against
+     *   `ALLOWED_INCLUDES`, which holds one to three relation names per resource, so the longest
+     *   legal value is well under a hundred characters. 255 leaves headroom for a longer relation
+     *   name without approaching anything a client would legitimately send.
+     * - This bound is *not* in tension with the comma-list filter rules, which cap the **count** of
+     *   values instead. Those filters validate every part against a closed enum, so an oversized
+     *   value is rejected part-by-part and the count cap is a complete bound on the work. `include`
+     *   has no such enum: it is a list of column-like tokens with no closed vocabulary, so counting
+     *   values proves nothing about payload size and a length ceiling is the only bound available.
+     * - The bound is enforced before `CommaSeparatedList::parse()` runs, so a padded value is
+     *   rejected at validation rather than after parsing.
+     *
+     * Truncation is never an option here: silently dropping the tail of a fieldset produces a
+     * response that looks complete but is not, so an oversized value is rejected instead.
+     *
+     * @see self::fieldsQueryParamRules() for the same bound on `fields[…]`
+     */
+    private const MAX_RAW_LENGTH = 255;
 
     /*
     |--------------------------------------------------------------------------

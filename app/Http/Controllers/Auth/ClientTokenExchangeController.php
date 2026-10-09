@@ -11,6 +11,7 @@ use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Events\AuthEventOccurred;
 use App\Exceptions\Auth\ClientCredentialRefusedException;
+use App\Exceptions\Auth\OAuthTokenRequestException;
 use App\Http\Requests\Auth\ClientTokenExchangeRequest;
 use App\Http\Resources\PersonalAccessTokenResource;
 use App\Support\ApiResponse;
@@ -90,10 +91,13 @@ final class ClientTokenExchangeController
                 requestId: RequestId::current($request),
             ));
 
-            throw ValidationException::withMessages([
-                'client_id' => ['Invalid Credentials'],
-            ]);
+            throw OAuthTokenRequestException::invalidGrant();
         } catch (ValidationException $exception) {
+            /*
+             * The only remaining validation failure is a bad credential, which the Action reports
+             * as a plain ValidationException rather than one of the RFC codes. Translate it here so
+             * the caller still gets `invalid_client`.
+             */
             AuthEventOccurred::dispatch(new RecordAuthAuditData(
                 event: AuthAuditEvent::ClientTokenExchangeFailed,
                 outcome: AuditOutcome::Failed,
@@ -102,7 +106,7 @@ final class ClientTokenExchangeController
                 requestId: RequestId::current($request),
             ));
 
-            throw $exception;
+            throw OAuthTokenRequestException::invalidClient();
         }
 
         $newToken = $result['token'];

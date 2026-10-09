@@ -36,6 +36,11 @@ final class CommaSeparatedList
             explode(',', $value),
         );
 
+        /*
+         * Filter explicitly on the empty string: a bare `array_filter()` drops
+         * the non-empty token `"0"`, which would turn an explicit value into an
+         * omitted one.
+         */
         return array_values(array_filter(
             $segments,
             static fn (string $segment): bool => $segment !== '',

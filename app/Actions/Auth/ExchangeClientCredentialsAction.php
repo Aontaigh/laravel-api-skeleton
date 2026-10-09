@@ -11,6 +11,7 @@ use App\DataTransferObjects\Tokens\CreateTokenData;
 use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
 use App\Models\ApiClient;
+use App\Support\TokenLifetime;
 use Laravel\Sanctum\NewAccessToken;
 
 /**
@@ -64,8 +65,10 @@ final class ExchangeClientCredentialsAction
         $client = $this->authenticate->execute($credentials);
         $user = $client->user;
 
-        $days = config()->integer('api.client_token_expiration_days');
-        $expiresAt = $days > 0 ? now()->addDays($days) : null;
+        $days = TokenLifetime::boundedConfiguredDays(
+            config()->integer('api.client_token_expiration_days'),
+        );
+        $expiresAt = now()->addDays($days);
 
         $newToken = $this->issueToken->execute(new CreateTokenData(
             forUser: $user,

@@ -39,5 +39,13 @@ final class WebhookDeliveryFilterQuery
         if ($filters->statuses !== []) {
             $query->whereIn('status', $filters->statuses);
         }
+
+        if ($filters->from !== null) {
+            $query->where('created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where('created_at', '<=', $filters->to);
+        }
     }
 }

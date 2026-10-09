@@ -74,4 +74,20 @@ final class PermissionIndexRequest extends ApiFormRequest
         $this->validateFieldsQueryParam($validator, 'permissions');
         $this->validateSortQueryParam($validator);
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Validation Messages
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Validation failure copy for this request.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return $this->dateRangeFilterMessages('filter.from', 'filter.to');
+    }
 }

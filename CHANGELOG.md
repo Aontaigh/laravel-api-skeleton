@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.0] - 2026-10-09
+
+### Breaking Changes
+
+- **Non-Expiring Tokens Are Refused:** `POST /api/tokens` answers `422 Tokens Must Expire` for an explicit `expires_at: null`, and `422 Token Expiry Exceeds The Maximum Lifetime` for a caller-chosen expiry beyond `API_TOKEN_MAX_EXPIRATION_DAYS` (default **366**). Both requests succeeded before this release - a `null` minted a token that never expired - so a client that relies on either now has to send an expiry inside the ceiling
+
+### Added
+
+- **Date-Range Filters on Every Index:** `filter[from]` and `filter[to]` bound `created_at` inclusively on all ten list endpoints, compared in UTC. A bare `Y-m-d` date expands to the whole day; a date-time resolves to the instant it names (offset-bearing values normalised to UTC before the comparison); an inverted, unparseable, or blank bound answers `422`. Shared plumbing: [`DateBoundaryParser`](app/Support/DateBoundaryParser.php) (shape detection, UTC resolution) and the [`AppliesDateRangeFilters`](app/Http/Requests/Concerns/AppliesDateRangeFilters.php) concern (rules with resolved-boundary comparison, Title Case messages, typed accessors). Unit tests cover the parser (bare and non-padded dates, colon-free date-times, offsets, unparseable input); every index carries from-only, to-only, both-bounds, whole-day, inversion, unparseable, and blank feature tests
+
+- **Rate-Limit Contract Hardened:** every address-derived limiter key now runs the caller address through [`IpAddress`](app/Support/IpAddress.php) - IPv4 unchanged, IPv6 collapsed to its `/64` network so one subscriber cannot mint a bucket per address; login adds an address-independent per-account bucket keyed on the lowercased e-mail alone (`API_AUTH_LOGIN_ACCOUNT_RATE_LIMIT_PER_MINUTE`, default **10**), joined only when the request carries one so the remember-me restore does not fall into a shared empty bucket; and trusted proxies resolve through per-environment defaults (`TRUSTED_PROXIES_{ENVIRONMENT}`, e.g. `TRUSTED_PROXIES_PRODUCTION`) with `TRUSTED_PROXIES` still the override and a wildcard never accepted. [`ApiRateLimitSharedStoreTest`](tests/Feature/Http/ApiRateLimitSharedStoreTest.php) boots with `CACHE_STORE=database` and asserts the limiter's counter row lands in the `cache` table, which the `array` store the rest of the suite uses cannot prove
+
+- **Credential Pen-Test Probes:** [scripts/pen-test-auth.sh](scripts/pen-test-auth.sh) now proves the token endpoint is enumeration-neutral - a wrong secret and an unknown client answer the same generic `Client Authentication Failed` with an RFC 6749 section 5.2 body rather than the house envelope - that a suspended or soft-deleted service user cannot exchange client credentials, and that a rotated secret is rejected
+
+### Changed
+
+- **Token Lifetime Ceiling:** every issued token now carries an expiry bounded by `API_TOKEN_MAX_EXPIRATION_DAYS` (default **366**). A configured lifetime at or above the ceiling is capped to it, and a configured `0` falls back to the ceiling rather than disabling expiry. [`CreatePersonalAccessTokenAction`](app/Actions/Tokens/CreatePersonalAccessTokenAction.php) resolves the expiry through [`TokenLifetime`](app/Support/TokenLifetime.php) and the refusal is mapped in [`ApiExceptionRenderer`](app/Support/ApiExceptionRenderer.php). Expired rows are pruned daily by the newly scheduled `sanctum:prune-expired` ([routes/console.php](routes/console.php)). The reference's fine-grained token narrowing and the consuming apps' fixed full-grant model are recorded, with the fixed-grant cost, in [README.md](README.md#tokens)
+- **Documentation Aligned to the `write-readme` Standard:** every page was audited against the toolkit skill. [README.md](README.md) gains a persona router, a Getting Help ladder, and explicit anchors - the emoji headings had broken the `#quick-start` and `#api` slugs other documents link to - plus corrections to the limiter routes, the API client revocation behaviour, and the webhook event list. [docs/rate-limiting.md](docs/rate-limiting.md) is new, and [docs/testing.md](docs/testing.md), [docs/releasing.md](docs/releasing.md), [docs/permissions.md](docs/permissions.md), [docs/performance.md](docs/performance.md), and [docs/api.md](docs/api.md) were recounted against the code
+
+### Fixed
+
+- **Throttled Responses Now Carry the Advisory Headers:** `renderThrottle()` builds a fresh envelope, so the framework's `Retry-After` and `X-RateLimit-*` headers rode the exception it replaced and were dropped - a throttled client had no interval to wait and retried immediately, spending the next window as well. [`ApiExceptionRenderer`](app/Support/ApiExceptionRenderer.php) now copies them onto the envelope, and a feature test asserts `Retry-After` and `X-RateLimit-Limit`/`X-RateLimit-Remaining` on the `429`
+
 ## [2.1.0] - 2026-10-07
 
 ### Added
@@ -490,7 +513,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Request Correlation IDs: Every Response Carries X-Reques:** Request correlation IDs: every response carries `X-Request-ID` (caller-supplied value honoured
+- **Request Correlation IDs: Every Response Carries `X-Request-ID`:** Request correlation IDs: every response carries `X-Request-ID` (caller-supplied value honoured
   when well-formed, W3C `traceparent` trace ID as fallback, fresh UUID otherwise - never
   authentication); the ID rides the log context and is persisted on `auth_audit_logs.request_id`
   so one value joins responses, logs, and audit rows
@@ -518,7 +541,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE`, default 10); new User ID + IP buckets for password
   change (`auth-password-change`) and session revokes (`auth-sessions-revoke`); two-factor status
   polling gains a per-IP ceiling; the email-verify ceiling tightens to 15
-- **Centralised Input Bounds: Emailmaxlength and Passwordres:** Centralised input bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` helpers beside the
+- **Centralised Input Bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` Helpers:** Centralised input bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` helpers beside the
   existing `PasswordMaxLength` (config-driven `max` rules with Title Case copy on login, register,
   recovery, and admin creation; reset tokens bound to the broker's 64 characters); `Password::defaults()`
   now caps length so overlong input never reaches Argon2id, and the breach verifier runs with a
@@ -573,7 +596,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   session revokes, token issuance and revocation, and API client lifecycle - credential, session,
   and access-control events only. Plain resource administration (user create/rename/delete, team
   CRUD) stays out by design so incident response is never buried under admin noise
-- **Optional E.164 Phone on Users (`Post /:** Optional E.164 `phone` on users (`POST` / `PATCH /api/users`, canonical form enforced by the new
+- **Optional E.164 `phone` on Users (`POST` / `PATCH /api/users`):** Optional E.164 `phone` on users (`POST` / `PATCH /api/users`, canonical form enforced by the new
   `E164PhoneNumber` rule backed by libphonenumber, exposed through `fields[users]`); the `E164Phone`
   support helper also ships `normalize()` for a future SMS two-factor channel
 - **Split Auth Rate Limits: Login and Registration:** Split auth rate limits: login and registration keep the shared email+IP rate but carry separate
@@ -581,7 +604,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE`, default 10); new User ID + IP buckets for password
   change (`auth-password-change`) and session revokes (`auth-sessions-revoke`); two-factor status
   polling gains a per-IP ceiling; the email-verify ceiling tightens to 15
-- **Centralised Input Bounds: Emailmaxlength and Passwordres:** Centralised input bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` helpers beside the
+- **Centralised Input Bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` Helpers:** Centralised input bounds: `EmailMaxLength` and `PasswordResetTokenMaxLength` helpers beside the
   existing `PasswordMaxLength` (config-driven `max` rules with Title Case copy on login, register,
   recovery, and admin creation; reset tokens bound to the broker's 64 characters); `Password::defaults()`
   now caps length so overlong input never reaches Argon2id, and the breach verifier runs with a
@@ -602,22 +625,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **System Status Endpoint:** `GET /api/status` - public System Status page: current state and daily uptime history per monitored component (`database`, `cache`, `queue`), with worst-reading `overall_status` rollup and a `days` window query param (1-90, default 90); rate limited per IP via a dedicated `api-status` limiter (`API_STATUS_RATE_LIMIT_PER_MINUTE`, default 30)
 - **System Health Checks:** `system_health_checks` table, `SystemHealthCheck` model and factory, and the `health:record` console command (scheduled every five minutes except in `local` and `testing`, `withoutOverlapping()`) - runs every tagged check and persists one row per component per run with a shared `checked_at` instant
-- **System Health Subsystem: Systemhealthcheck Contract, Sys:** System Health subsystem: `SystemHealthCheck` contract, `SystemHealthStatus` enum, `SystemHealthCheckResult` DTO, `SystemHealthCheckRegistry` (container-tagged checks), `SystemHealthServiceProvider`, `DatabaseHealthCheck` (`select 1` with a 500 ms degraded threshold), `CacheHealthCheck` (throwaway-key round trip), `QueueHealthCheck` (sync reports Up; otherwise resolves the connection without dispatching a job), `SystemHealthHistoryQuery` (all aggregation in SQL), `ShowSystemStatusRequest`, and `SystemStatusController` - plus unit and feature tests and the `/status` OpenAPI path, schemas, and example
+- **System Health Subsystem: `SystemHealthCheck` Contract and `SystemHealthStatus` Enum:** System Health subsystem: `SystemHealthCheck` contract, `SystemHealthStatus` enum, `SystemHealthCheckResult` DTO, `SystemHealthCheckRegistry` (container-tagged checks), `SystemHealthServiceProvider`, `DatabaseHealthCheck` (`select 1` with a 500 ms degraded threshold), `CacheHealthCheck` (throwaway-key round trip), `QueueHealthCheck` (sync reports Up; otherwise resolves the connection without dispatching a job), `SystemHealthHistoryQuery` (all aggregation in SQL), `ShowSystemStatusRequest`, and `SystemStatusController` - plus unit and feature tests and the `/status` OpenAPI path, schemas, and example
 - **Password Recovery Endpoints:** `POST /api/auth/forgot-password` and `POST /api/auth/reset-password` - broker-based account recovery with enumeration-neutral responses and a shared `api-auth-password` rate limiter (composite email+IP plus per-IP ceiling)
 - **ResetUserPasswordAction:** `ResetUserPasswordAction` - full credential rotation on reset: Personal Access Tokens revoked, web sessions stamped revoked with post-commit payload destruction, remember token rotated, `session_version` bumped
 - **ResetPasswordNotification:** `ResetPasswordNotification` (queued, config-driven SPA destination via `API_PASSWORD_RESET_URL`) and `PasswordChangedNotification` (queued security alert with parsed request details), plus the `PasswordChangeSource` enum
 - **Password Reset Requested:** `Password Reset Requested` and `Password Reset` audit events, a `sendPasswordResetNotification()` override on the User model, and new forgot/reset feature and notification unit tests
-- **Self-service Password Hardening (`PATCH /api/me/password:** Self-service password hardening (`PATCH /api/me/password`): new password now enforces the shared `Password::defaults()` policy with `PasswordMaxLength` and the new `api.password_max_length` config, rejects a password identical to the current one, and dispatches the `PasswordChangedNotification` security alert (`PasswordChangeSource::SelfService`) after a successful change
-- **Pluggable User-agent Parser (`config/useragent.php`, Bas:** Pluggable user-agent parser (`config/useragent.php`, `basic` and `null` drivers) - web sessions registered without an explicit `device_name` now derive one from the parsed user agent
-- **Fail-closed Session Revocation: Invalidatestoredsessiona:** Fail-closed session revocation: `InvalidateStoredSessionAction` returns the store's destroy result, logs a truncated SHA-256 fingerprint instead of the raw session ID, and `failClosed()` bumps `session_version` so a store failure still recalls every cookie; adopted by the password-change, logout, surgical-revoke, and password-reset flows
-- **Session Activity Tracking: Touchwebsessionactivityaction:** Session activity tracking: `TouchWebSessionActivityAction` and the `session.touch` middleware refresh `last_activity_at` on cookie sessions at most every five minutes; `session.version` exposes a shared `SESSION_KEY` constant
+- **Self-service Password Hardening (`PATCH /api/me/password`):** Self-service password hardening (`PATCH /api/me/password`): new password now enforces the shared `Password::defaults()` policy with `PasswordMaxLength` and the new `api.password_max_length` config, rejects a password identical to the current one, and dispatches the `PasswordChangedNotification` security alert (`PasswordChangeSource::SelfService`) after a successful change
+- **Pluggable User-agent Parser (`config/useragent.php`, `basic` and `null` Drivers):** Pluggable user-agent parser (`config/useragent.php`, `basic` and `null` drivers) - web sessions registered without an explicit `device_name` now derive one from the parsed user agent
+- **Fail-closed Session Revocation: `InvalidateStoredSessionAction`:** Fail-closed session revocation: `InvalidateStoredSessionAction` returns the store's destroy result, logs a truncated SHA-256 fingerprint instead of the raw session ID, and `failClosed()` bumps `session_version` so a store failure still recalls every cookie; adopted by the password-change, logout, surgical-revoke, and password-reset flows
+- **Session Activity Tracking: `TouchWebSessionActivityAction`:** Session activity tracking: `TouchWebSessionActivityAction` and the `session.touch` middleware refresh `last_activity_at` on cookie sessions at most every five minutes; `session.version` exposes a shared `SESSION_KEY` constant
 - **Password Recovery Endpoints:** `POST /api/auth/forgot-password` and reset flow added to `scripts/pen-test-auth.sh` (enumeration, rate limit, token binding, replay, credential rotation, audit) plus a session-activity probe, `docs/testing.md`, and the testing-doc link in `README.md`
 - **Config/hashing.php:** `config/hashing.php` - Argon2id as the default password hash driver with env-driven work factors and `HASH_REHASH_ON_LOGIN`
 - **Rehash-on-login in Authenticateuseraction:** Rehash-on-login in `AuthenticateUserAction` - transparently upgrades stale Argon2id hashes after work-factor bumps
 - **RehashOnLoginTest:** `RehashOnLoginTest` - covers stale-hash upgrade, suspended-user guard (no rehash), and unchanged current hashes
-- **Geoip Subsystem: the Geoiplocator Contract, the Geoiploc:** GeoIP subsystem: the `GeoIpLocator` contract, the `GeoIpLocation` DTO, the `GeoIpDatabase` singleton (bind in `AppServiceProvider::register()`), and the fail-open `MaxMindGeoIpLocator` (private/reserved-range skip outside `local`, `geoip.local_fallback_ip` lookup in `local`, city capped at 255 characters, uppercased ISO 3166-1 alpha-2 country)
+- **GeoIP Subsystem: the `GeoIpLocator` Contract, the `GeoIpLocation` DTO, and the `GeoIpDatabase` Singleton:** GeoIP subsystem: the `GeoIpLocator` contract, the `GeoIpLocation` DTO, the `GeoIpDatabase` singleton (bind in `AppServiceProvider::register()`), and the fail-open `MaxMindGeoIpLocator` (private/reserved-range skip outside `local`, `geoip.local_fallback_ip` lookup in `local`, city capped at 255 characters, uppercased ISO 3166-1 alpha-2 country)
 - **Geoip:update:** `geoip:update` command - downloads GeoLite2-City with a 120 second timeout, validates the extracted MMDB by opening it with a `GeoIp2\Database\Reader` before touching the destination, and swaps it in with an atomic `rename()` on the destination filesystem; temp-dir cleanup and credential guards kept, no Octane runtime hint (this starter runs PHP-FPM/Sail)
-- **Weekly Geoip:Update Schedule in Routes/Console.Php:** Weekly `geoip:update` schedule in `routes/console.php` - Sundays 03:15 UTC for `staging` and `production` only, `withoutOverlapping()`, skipped entirely when MaxMind credentials are not configured
+- **Weekly `geoip:update` Schedule (`routes/console.php`):** Weekly `geoip:update` schedule in `routes/console.php` - Sundays 03:15 UTC for `staging` and `production` only, `withoutOverlapping()`, skipped entirely when MaxMind credentials are not configured
 - **Location City:** `location_city` and `location_country` columns on `web_sessions` and `auth_audit_logs` - written once per session registration (never on the activity heartbeat) and by the queued auth audit listener from the event IP, exposed on `WebSessionResource` behind the same `sessions.list-all` telemetry gate as `ip_address`/`user_agent` and as plain fields on `AuthAuditLogResource`, with sparse fieldset allow-lists, OpenAPI schemas, examples, and a `GeoIP` section in `.env.example`
 - **Full Data Retention Policy: No Scheduled Pruning:** Full data retention policy: no scheduled pruning; every table (including `system_health_checks` and `auth_audit_logs`) retains its rows indefinitely by deliberate compliance decision, documented in `routes/console.php`
 - **Health Probe:** `GET /health` request class (`ShowHealthRequest`) so the probe controller follows the every-controller-takes-a-FormRequest convention
@@ -705,8 +728,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Users.create:** `users.create` and `api-clients.update` permissions; permission catalog count is now 21
 - **MFA Method:** `mfa_method` column on users (migration); `MfaMethod` enum; audit events for two-factor issued, verified, and failed
 - **FinaliseAuthenticatedSessionAction:** `FinaliseAuthenticatedSessionAction` - shared remember-me, token issuance, and login audit for password and two-factor completion flows
-- **Queued Twofactorchallengeissued Event and Sendtwofactorc:** Queued `TwoFactorChallengeIssued` event and `SendTwoFactorCodeNotification` listener for off-request email delivery
-- **Configurable Two-factor TTLs and Attempt Limits (`Api Tw:** Configurable two-factor TTLs and attempt limits (`API_TWO_FACTOR_CODE_TTL_SECONDS`, `API_TWO_FACTOR_PENDING_TTL_SECONDS`, `API_TWO_FACTOR_MAX_ATTEMPTS`)
+- **Queued `TwoFactorChallengeIssued` Event and `SendTwoFactorCodeNotification` Listener:** Queued `TwoFactorChallengeIssued` event and `SendTwoFactorCodeNotification` listener for off-request email delivery
+- **Configurable Two-factor TTLs and Attempt Limits (`API_TWO_FACTOR_CODE_TTL_SECONDS`, `API_TWO_FACTOR_PENDING_TTL_SECONDS`, `API_TWO_FACTOR_MAX_ATTEMPTS`):** Configurable two-factor TTLs and attempt limits (`API_TWO_FACTOR_CODE_TTL_SECONDS`, `API_TWO_FACTOR_PENDING_TTL_SECONDS`, `API_TWO_FACTOR_MAX_ATTEMPTS`)
 
 ### Changed
 
@@ -737,7 +760,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Public Post /Api/Auth/Login and Post /Api/Auth/Register:** Public `POST /api/auth/login` and `POST /api/auth/register` endpoints - password auth with Sanctum
+- **Public `POST /api/auth/login` and `POST /api/auth/register` Endpoints:** Public `POST /api/auth/login` and `POST /api/auth/register` endpoints - password auth with Sanctum
   bearer tokens, generic invalid-credential responses, and `api-auth` rate limiting
   (10 requests / minute per IP and email)
 - **Global Logout Endpoint:** `POST /api/logout` - revokes every Sanctum token, clears remember-me state, deletes all
@@ -745,7 +768,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   present
 - **Auth Audit Logs:** `auth_audit_logs` table and `RecordAuthAuditAction` - audit trail for login, failed
   login, logout, registration, and remember-me session restoration
-- **Remember-me on Post /Api/Auth/Login (`remember: True`):** Remember-me on `POST /api/auth/login` (`remember: true`) - extended PAT lifetime, rotated
+- **Remember-me on `POST /api/auth/login` (`remember: true`) Cookie:** Remember-me on `POST /api/auth/login` (`remember: true`) - extended PAT lifetime, rotated
   `remember_token`, web-guard remember cookie; `POST /api/auth/login/remember` for SPA re-auth
 - **Users API:** `POST /api/users/logout` - admin-only force-logout by User ID; revokes every Sanctum
   token, clears remember-me state, and deletes all server-side session rows for each target
@@ -762,7 +785,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Profile Self-Service API:** `GET /api/me` - caller profile without `users.list`
 - **AuthenticatedUserResource:** `AuthenticatedUserResource` for login and registration responses (always includes email
   for the session owner)
-- **Account Suspension (`suspended_at`) with Active.Account:** Account suspension (`suspended_at`) with `active.account` middleware and adversarial
+- **Account Suspension (`suspended_at`) with `active.account` Middleware:** Account suspension (`suspended_at`) with `active.account` middleware and adversarial
   `scripts/pen-test-auth.sh` coverage
 
 ### Changed
@@ -815,16 +838,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **IndexSortParser:** `IndexSortParser` and `AllowList` Support helpers for query-param parsing and allow-list comparison
 - **Unit Tests for Indexsortparser and Allowlist with:** Unit tests for `IndexSortParser` and `AllowList` with adversarial `#[DataProvider]` coverage
-- **CORS Configuration (`config/cors.php`) and Apicorstest F:** CORS configuration (`config/cors.php`) and `ApiCorsTest` feature coverage for browser clients
-- **Personal Access Token Expiration via Api Token Expiratio:** Personal Access Token expiration via `API_TOKEN_EXPIRATION_DAYS` (default 90), synced to Sanctum config
+- **CORS Configuration (`config/cors.php`) and `ApiCorsTest` Feature Coverage:** CORS configuration (`config/cors.php`) and `ApiCorsTest` feature coverage for browser clients
+- **Personal Access Token Expiration via `API_TOKEN_EXPIRATION_DAYS` Config:** Personal Access Token expiration via `API_TOKEN_EXPIRATION_DAYS` (default 90), synced to Sanctum config
 - **Feature Tests for Expired Sanctum Tokens and:** Feature tests for expired Sanctum tokens and token `expires_at` on creation
 
 ### Changed
 
 - **FormRequest Parse Traits Delegate Grammar to Support:** FormRequest parse traits delegate grammar to Support classes; traits retain HTTP wiring only
 - **Removed Redundant FormRequest Harness Unit Tests:** Removed redundant FormRequest harness unit tests - fields, include, and sort wiring covered by feature tests
-- **OpenAPI Tokensindexsuccess Example Uses Nullable Last Us:** OpenAPI `TokensIndexSuccess` example uses nullable `last_used_at` for newly issued tokens
-- **OpenAPI Verify Script Pre-creates Index Tokens and:** OpenAPI verify script pre-creates index tokens and requests `sort=-id` for stable envelopes
+- **OpenAPI `TokensIndexSuccess` Example Uses Nullable `last_used_at`:** OpenAPI `TokensIndexSuccess` example uses nullable `last_used_at` for newly issued tokens
+- **OpenAPI Verify Script Pre-creates Index Tokens and Requests `sort=-id` for Stable Envelopes:** OpenAPI verify script pre-creates index tokens and requests `sort=-id` for stable envelopes
 
 ### Fixed
 
@@ -834,12 +857,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Unit Tests for API Resources (`UserResource`, Roleresour:** Unit tests for API Resources (`UserResource`, `RoleResource`, `PermissionResource`, `TeamResource`, `PersonalAccessTokenResource`) and `SerialisesSparseAttributes`
-- **Unit Tests for FormRequest Concerns (`ParsesFieldsQueryP:** Unit tests for FormRequest concerns (`ParsesFieldsQueryParam`, `ParsesIncludeQueryParam`, `ParsesSearchQueryParam`, `SanitisesPlainTextAttributes`, `ValidatesTokenPayload`)
-- **Unit Tests for Support Helpers (`CommaSeparatedList`, Ap:** Unit tests for Support helpers (`CommaSeparatedList`, `ApiExceptionRenderer`, `ApiDateTime`, `AllowListValidation`, `ApiResponse`, `LikePattern`, `PlainText`, `QualifiedColumn`)
-- **Feature Tests for Sanctum Authentication, API Token:** Feature tests for Sanctum authentication, API token rate limiting, and security probes (SQL injection, mass assignment, boundary inputs)
+- **Unit Tests for API Resources (`UserResource`, `RoleResource`, `PermissionResource`, `TeamResource`, `PersonalAccessTokenResource`) and `SerialisesSparseAttributes`:** Unit tests for API Resources (`UserResource`, `RoleResource`, `PermissionResource`, `TeamResource`, `PersonalAccessTokenResource`) and `SerialisesSparseAttributes`
+- **Unit Tests for FormRequest Concerns (`ParsesFieldsQueryParam`, `ParsesIncludeQueryParam`, `ParsesSearchQueryParam`, `SanitisesPlainTextAttributes`, `ValidatesTokenPayload`):** Unit tests for FormRequest concerns (`ParsesFieldsQueryParam`, `ParsesIncludeQueryParam`, `ParsesSearchQueryParam`, `SanitisesPlainTextAttributes`, `ValidatesTokenPayload`)
+- **Unit Tests for Support Helpers (`CommaSeparatedList`, `ApiExceptionRenderer`, `ApiDateTime`, `AllowListValidation`, `ApiResponse`, `LikePattern`, `PlainText`, `QualifiedColumn`):** Unit tests for Support helpers (`CommaSeparatedList`, `ApiExceptionRenderer`, `ApiDateTime`, `AllowListValidation`, `ApiResponse`, `LikePattern`, `PlainText`, `QualifiedColumn`)
+- **Feature Tests for Sanctum Authentication, API Token Rate Limiting, and Security Probes:** Feature tests for Sanctum authentication, API token rate limiting, and security probes (SQL injection, mass assignment, boundary inputs)
 - **Feature Tests for Userpolicy Edge Cases and:** Feature tests for `UserPolicy` edge cases and expanded controller coverage
-- **CI Job Verifying OpenAPI Component Examples Against:** CI job verifying OpenAPI component examples against live API responses (`composer verify:openapi`)
+- **CI Job Verifying OpenAPI Component Examples Against Live API Responses:** CI job verifying OpenAPI component examples against live API responses (`composer verify:openapi`)
 - **Fields[roles]:** `fields[roles]` sparse-fieldset validation on `UserIndexRequest` and matching invalid-query coverage
 
 ### Changed
@@ -857,7 +880,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.1.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.1...v2.0.0

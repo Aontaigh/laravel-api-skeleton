@@ -1111,17 +1111,18 @@ fi
 echo "--- 26. OAuth Client-Credentials Abuse ---"
 reset_rate_limits
 post_json "$BASE/oauth/token" -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"WrongSecret12"}'
+# RFC 6749 section 5.2: the token endpoint answers {error, error_description}, not the house
+# envelope, so the enumeration check reads error_description rather than meta.errors.
 OAUTH_MSG="$(python3 -c "
 import json
 try:
     d=json.load(open('$BODY_FILE'))
-    errs=d.get('meta',{}).get('errors',{}).get('client_id',[])
-    print(errs[0] if errs else '')
+    print(d.get('error_description',''))
 except Exception:
     print('')
 " 2>/dev/null || echo "")"
-if [[ "$OAUTH_MSG" == "$MSG_INVALID_CREDENTIALS" ]]; then
-    pass "OAuth Wrong Secret Returns Generic $MSG_INVALID_CREDENTIALS"
+if [[ "$OAUTH_MSG" == "Client Authentication Failed" ]]; then
+    pass "OAuth Wrong Secret Returns Generic Invalid Client Description"
 else
     fail "OAuth Enumeration Leak: '$OAUTH_MSG'"
 fi
@@ -1131,12 +1132,11 @@ UNKNOWN_OAUTH="$(python3 -c "
 import json
 try:
     d=json.load(open('$BODY_FILE'))
-    errs=d.get('meta',{}).get('errors',{}).get('client_id',[])
-    print(errs[0] if errs else '')
+    print(d.get('error_description',''))
 except Exception:
     print('')
 " 2>/dev/null || echo "")"
-if [[ "$UNKNOWN_OAUTH" == "$MSG_INVALID_CREDENTIALS" && "$UNKNOWN_OAUTH" == "$OAUTH_MSG" ]]; then
+if [[ "$UNKNOWN_OAUTH" == "Client Authentication Failed" && "$UNKNOWN_OAUTH" == "$OAUTH_MSG" ]]; then
     pass "OAuth Unknown Client Matches Wrong Secret Message"
 else
     fail "OAuth client_id Enumeration: unknown='$UNKNOWN_OAUTH' wrong='$OAUTH_MSG'"
@@ -1151,11 +1151,12 @@ echo \$client->client_id;
 ")"
 if [[ -n "$SUSPENDED_CLIENT_ID" ]]; then
     reset_rate_limits
-    post_json "$BASE/oauth/token" -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${SUSPENDED_CLIENT_ID}\",\"client_secret\":\"${SUSPENDED_CLIENT_SECRET}\"}"
-    if [[ "$(json_status)" == "422" ]]; then
-        pass "Suspended service user cannot exchange OAuth token (422)"
+    SUSPENDED_OAUTH_CODE="$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
+        -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${SUSPENDED_CLIENT_ID}\",\"client_secret\":\"${SUSPENDED_CLIENT_SECRET}\"}")"
+    if [[ "$SUSPENDED_OAUTH_CODE" == "400" ]]; then
+        pass "Suspended service user cannot exchange OAuth token (400 invalid_grant)"
     else
-        fail "Suspended Service User OAuth Returned $(json_status)"
+        fail "Suspended Service User OAuth Returned $SUSPENDED_OAUTH_CODE"
     fi
 else
     warn "Suspended OAuth Client" "Could Not Create Suspended Client"
@@ -1170,24 +1171,24 @@ echo \$client->client_id;
 ")"
 if [[ -n "$SOFT_DELETED_CLIENT_ID" ]]; then
     reset_rate_limits
-    post_json "$BASE/oauth/token" -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${SOFT_DELETED_CLIENT_ID}\",\"client_secret\":\"${SOFT_DELETED_OAUTH_SECRET}\"}"
-    if [[ "$(json_status)" == "422" ]]; then
+        # RFC 6749 section 5.2 body, not the house envelope.
+    SOFT_OAUTH_CODE="$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${SOFT_DELETED_CLIENT_ID}\",\"client_secret\":\"${SOFT_DELETED_OAUTH_SECRET}\"}")"
+    if [[ "$SOFT_OAUTH_CODE" == "400" ]]; then
         SOFT_OAUTH_MSG="$(python3 -c "
 import json
 try:
     d=json.load(open('$BODY_FILE'))
-    errs=d.get('meta',{}).get('errors',{}).get('client_id',[])
-    print(errs[0] if errs else '')
+    print(d.get('error_description',''))
 except Exception:
     print('')
 " 2>/dev/null || echo "")"
-        if [[ "$SOFT_OAUTH_MSG" == "$MSG_INVALID_CREDENTIALS" ]]; then
-            pass "Soft-deleted service user cannot exchange OAuth token (422)"
+        if [[ "$SOFT_OAUTH_MSG" == "Client Authentication Failed" ]]; then
+            pass "Soft-deleted service user cannot exchange OAuth token (400 invalid_grant)"
         else
             fail "Soft-deleted Service OAuth Message Leak: '${SOFT_OAUTH_MSG}'"
         fi
     else
-        fail "Soft-deleted Service User OAuth Returned $(json_status)"
+        fail "Soft-deleted Service User OAuth Returned $SOFT_OAUTH_CODE"
     fi
 else
     warn "Soft-deleted OAuth Client" "Could Not Create Soft-deleted Client"
@@ -2204,7 +2205,7 @@ else
 
     code=$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
         -d '{"grant_type":"client_credentials","client_id":"demo-integration-client","client_secret":"DemoClientSecret12"}')
-    expect_code "Old secret rejected after rotation" "422" "$code"
+    expect_code "Old secret rejected after rotation" "400" "$code"
 
     code=$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
         -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"demo-integration-client\",\"client_secret\":\"${ROTATED}\"}")
@@ -2413,9 +2414,9 @@ else
             code=$(auth_get "$BASE/users" "$REORDER_MACHINE")
             expect_code "Deactivated client token rejected" "401" "$code"
 
-            post_json "$BASE/oauth/token" \
-                -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${LIFE_OAUTH_ID}\",\"client_secret\":\"${LIFE_OAUTH_SECRET}\"}"
-            expect_code "Deactivated client cannot exchange" "422" "$(json_status)"
+            LIFE_OAUTH_CODE="$(status_code -X POST "$BASE/oauth/token" -H "Content-Type: application/json" -H "Accept: application/json" \
+                -d "{\"grant_type\":\"client_credentials\",\"client_id\":\"${LIFE_OAUTH_ID}\",\"client_secret\":\"${LIFE_OAUTH_SECRET}\"}")"
+            expect_code "Deactivated client cannot exchange" "400" "$LIFE_OAUTH_CODE"
         else
             fail "Could Not Exchange Client for Reorder/Deactivate Probes"
         fi

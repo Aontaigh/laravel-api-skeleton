@@ -22,21 +22,21 @@ stay same-origin - no CORS configuration needed.
 3. Issue a token (see [README Quick Start](../README.md#quick-start))
 4. Click **Authentication** in Scalar → paste `Bearer {token}` → try any endpoint
 
-**Production Lock-down:** set `API_DOCS_BASIC_AUTH_USER` and
+**`production` Lock-down:** set `API_DOCS_BASIC_AUTH_USER` and
 `API_DOCS_BASIC_AUTH_PASSWORD` in `.env`. Both routes (`/api/docs` and
 `/api/openapi.yaml`) then require HTTP Basic Auth. API endpoints remain protected
 by Sanctum regardless.
 
-| Piece | Location |
-| --- | --- |
-| Scalar page route | [routes/web.php](../routes/web.php) → `GET /api/docs` |
-| OpenAPI file route | [routes/web.php](../routes/web.php) → `GET /api/openapi.yaml` |
-| Docs controller | [ShowApiDocsController](../app/Http/Controllers/Api/ShowApiDocsController.php) |
-| Spec controller | [ShowOpenApiSpecController](../app/Http/Controllers/Api/ShowOpenApiSpecController.php) |
-| Scalar Blade view | [api-docs.blade.php](../resources/views/api-docs.blade.php) |
-| Optional Basic Auth | [EnsureCanViewApiDocs](../app/Http/Middleware/EnsureCanViewApiDocs.php) |
-| Spec path config | `config/api.php` → `openapi_spec` |
-| Feature tests | [ApiDocsTest](../tests/Feature/Http/ApiDocsTest.php) |
+| Piece               | Location                                                                               |
+| ------------------- | -------------------------------------------------------------------------------------- |
+| Scalar page route   | [routes/web.php](../routes/web.php) → `GET /api/docs`                                  |
+| OpenAPI file route  | [routes/web.php](../routes/web.php) → `GET /api/openapi.yaml`                          |
+| Docs controller     | [ShowApiDocsController](../app/Http/Controllers/Api/ShowApiDocsController.php)         |
+| Spec controller     | [ShowOpenApiSpecController](../app/Http/Controllers/Api/ShowOpenApiSpecController.php) |
+| Scalar Blade view   | [api-docs.blade.php](../resources/views/api-docs.blade.php)                            |
+| Optional Basic Auth | [EnsureCanViewApiDocs](../app/Http/Middleware/EnsureCanViewApiDocs.php)                |
+| Spec path config    | `config/api.php` → `openapi_spec`                                                      |
+| Feature tests       | [ApiDocsTest](../tests/Feature/Http/ApiDocsTest.php)                                   |
 
 ## Learning Path
 
@@ -50,10 +50,10 @@ by Sanctum regardless.
 
 ## View the Docs
 
-**Scalar (recommended)** - interactive try-it UI, served by the app:
+**Scalar (Recommended)** - interactive try-it UI, served by the app:
 
-- Local: [http://localhost/api/docs](http://localhost/api/docs)
-- Production: `{APP_URL}/api/docs`
+- `local`: [http://localhost/api/docs](http://localhost/api/docs)
+- `production`: `{APP_URL}/api/docs`
 
 **Swagger Editor** - paste or import [openapi.yaml](openapi.yaml):
 
@@ -87,8 +87,8 @@ the API host. Laravel's `HandleCors` middleware is enabled by
 default; paths are `api/*` and `sanctum/csrf-cookie`.
 
 **Bearer Tokens (Recommended):** send `Authorization: Bearer {token}` from your
-frontend. Set `CORS_ALLOWED_ORIGINS` in production to your app URL(s). Local and
-testing environments allow common dev-server origins (`localhost:3000`, `:5173`) when
+frontend. Set `CORS_ALLOWED_ORIGINS` in `production` to your app URL(s). `local` and
+`testing` environments allow common dev-server origins (`localhost:3000`, `:5173`) when
 the env var is unset.
 
 ```bash
@@ -99,14 +99,14 @@ CORS_ALLOWED_ORIGINS=https://app.example.com,https://www.example.com
 **Axios Example:**
 
 ```javascript
-import axios from 'axios';
+import axios from "axios";
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL, // e.g. http://localhost/api
-  headers: { Authorization: `Bearer ${token}` },
+    baseURL: import.meta.env.VITE_API_URL, // e.g. http://localhost/api
+    headers: { Authorization: `Bearer ${token}` },
 });
 
-const { data } = await api.get('/users');
+const { data } = await api.get("/users");
 ```
 
 **Sanctum Cookie / CSRF SPA Auth (Optional):** set `CORS_SUPPORTS_CREDENTIALS=true`,
@@ -114,11 +114,11 @@ list the frontend origin in `CORS_ALLOWED_ORIGINS`, align `SANCTUM_STATEFUL_DOMA
 and call `GET /sanctum/csrf-cookie` before login. This skeleton defaults to
 bearer-token auth; cookie mode is documented for teams that adopt Sanctum's SPA flow.
 
-| Piece | Location |
-| --- | --- |
-| CORS config | [config/cors.php](../config/cors.php) |
+| Piece                | Location                                                 |
+| -------------------- | -------------------------------------------------------- |
+| CORS config          | [config/cors.php](../config/cors.php)                    |
 | Stateful SPA domains | [config/sanctum.php](../config/sanctum.php) → `stateful` |
-| Feature tests | [ApiCorsTest](../tests/Feature/Http/ApiCorsTest.php) |
+| Feature tests        | [ApiCorsTest](../tests/Feature/Http/ApiCorsTest.php)     |
 
 ## Keeping the Spec in Sync
 

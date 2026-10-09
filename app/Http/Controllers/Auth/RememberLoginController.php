@@ -106,9 +106,9 @@ final class RememberLoginController
         | Action
         |--------------------------------------------------------------------------
         |
-        | Rotate the session id at the privilege boundary before issuing the
+        | Rotate the session ID at the privilege boundary before issuing the
         | token: a restored remember-me session is still crossing from
-        | unauthenticated to authenticated, so any fixated pre-auth id must not
+        | unauthenticated to authenticated, so any fixated pre-auth ID must not
         | survive. Guarded because a bearer-token client has no session bound.
         |
         */

@@ -65,6 +65,8 @@ final class TokenIndexController
         $filters = new TokenFilters(
             viewer: $request->viewer(),
             search: $request->searchTerm(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

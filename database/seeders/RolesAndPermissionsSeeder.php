@@ -153,17 +153,21 @@ final class RolesAndPermissionsSeeder extends Seeder
     /**
      * Run the seeder.
      *
-     * Resets the cached permission collection first so re-running the
-     * seeder in the same process (e.g. `RefreshDatabase` in tests) never
-     * assigns a role a permission ID from a row that migration already
-     * dropped.
+     * Idempotent by design, so this is safe to call from a dated reseed migration as well as from
+     * `db:seed`: `findOrCreate` and `syncPermissions` converge on the declared matrix whether or
+     * not the rows already exist. That is what lets a repair migration reach databases that
+     * migrated before a permission was added, which the deploy path cannot do because
+     * `composer setup` runs `migrate --force` without `--seed`.
+     *
+     * The permission cache is reset **after** syncing, not before. Spatie caches the resolved
+     * permission set for the request, so a flush before the writes leaves that cache stale for
+     * anything that reads permissions later in the same process, and the very first authorisation
+     * check after a reseed would still see the pre-reseed matrix.
      *
      * @return void
      */
     public function run(): void
     {
-        app(PermissionRegistrar::class)->forgetCachedPermissions();
-
         foreach (self::PERMISSIONS as $permission) {
             Permission::findOrCreate($permission);
         }
@@ -171,5 +175,7 @@ final class RolesAndPermissionsSeeder extends Seeder
         foreach (self::ROLE_PERMISSIONS as $roleName => $permissions) {
             Role::findOrCreate($roleName)->syncPermissions($permissions);
         }
+
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
     }
 }

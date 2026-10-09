@@ -60,6 +60,19 @@ final class AuthAuditLogResource extends JsonResource
                 'outcome',
                 fn (): ?string => $this->resource->outcome?->value,
             ),
+            /*
+             * Why a refused exchange failed, which `outcome` alone cannot say. A refusal is the
+             * only outcome with a non-null reason, and it is precisely the case an investigator
+             * needs to distinguish: "this client was declined because its owner is suspended" is a
+             * different incident from "this token exchange failed because the secret was wrong",
+             * and both persist `outcome: Refused` versus `Failed` on rows that otherwise look alike.
+             *
+             * The value is an enum name, not free text, so it cannot leak anything the actor typed.
+             */
+            'client_ineligibility_reason' => $this->whenAttributeSelected(
+                'client_ineligibility_reason',
+                fn (): ?string => $this->resource->client_ineligibility_reason?->value,
+            ),
             'email' => $this->whenAttributeSelected(
                 'email',
                 fn (): ?string => $this->resource->email,

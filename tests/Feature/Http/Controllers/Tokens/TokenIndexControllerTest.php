@@ -19,6 +19,7 @@ use App\Queries\Tokens\TokenQueryConstraints;
 use App\Support\ApiDateTime;
 use App\Support\ApiResponse;
 use App\Support\CommaSeparatedList;
+use App\Support\DateBoundaryParser;
 use App\Support\LikePattern;
 use App\Support\QualifiedColumn;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -50,6 +51,7 @@ use Tests\TestCase;
 #[CoversClass(CommaSeparatedList::class)]
 #[CoversClass(LikePattern::class)]
 #[CoversClass(QualifiedColumn::class)]
+#[CoversClass(DateBoundaryParser::class)]
 final class TokenIndexControllerTest extends TestCase
 {
     /*
@@ -441,5 +443,170 @@ final class TokenIndexControllerTest extends TestCase
             'page size below one' => ['per_page=0', 'per_page'],
             'page below one' => ['page=0', 'page'],
         ];
+    }
+
+    /*
+     * Date Range Tests
+     * ----------------
+     */
+
+    /**
+     * Filter tokens by an inclusive lower bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_from_only(): void
+    {
+        // Arrange
+
+        $old = $this->viewer->createToken('Old Token');
+        $old->accessToken->forceFill(['created_at' => '2026-10-01 10:00:00'])->save();
+
+        $new = $this->viewer->createToken('New Token');
+        $new->accessToken->forceFill(['created_at' => '2026-10-05 10:00:00'])->save();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens?filter[from]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * Filter tokens by an inclusive upper bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_to_only(): void
+    {
+        // Arrange
+
+        $old = $this->viewer->createToken('Old Token');
+        $old->accessToken->forceFill(['created_at' => '2026-10-01 10:00:00'])->save();
+
+        $new = $this->viewer->createToken('New Token');
+        $new->accessToken->forceFill(['created_at' => '2026-10-05 10:00:00'])->save();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens?filter[to]=2026-10-01');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * Filter tokens by an inclusive range on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_both_bounds(): void
+    {
+        // Arrange
+
+        $old = $this->viewer->createToken('Old Token');
+        $old->accessToken->forceFill(['created_at' => '2026-10-01 10:00:00'])->save();
+
+        $new = $this->viewer->createToken('New Token');
+        $new->accessToken->forceFill(['created_at' => '2026-10-05 10:00:00'])->save();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens?filter[from]=2026-10-01&filter[to]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+    }
+
+    /**
+     * Include the whole named day for a bare date upper bound.
+     */
+    #[Test]
+    public function it_includes_the_whole_day_for_a_bare_date_to_bound(): void
+    {
+        // Arrange
+
+        $daytime = $this->viewer->createToken('Daytime Token');
+        $daytime->accessToken->forceFill(['created_at' => '2026-10-05 15:00:00'])->save();
+
+        $night = $this->viewer->createToken('Night Token');
+        $night->accessToken->forceFill(['created_at' => '2026-10-06 00:00:01'])->save();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens?filter[to]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(1, 'data');
+    }
+
+    /**
+     * Reject a range whose upper bound precedes its lower bound.
+     */
+    #[Test]
+    public function it_rejects_a_to_bound_before_the_from_bound(): void
+    {
+        // Arrange
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens?filter[from]=2026-10-05&filter[to]=2026-10-01');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.to']);
+    }
+
+    /**
+     * Reject a bound Carbon cannot parse.
+     */
+    #[Test]
+    public function it_rejects_an_unparseable_from_date(): void
+    {
+        // Arrange
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens?filter[from]=not-a-date');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
+    }
+
+    /**
+     * Reject a blank bound instead of narrowing to nothing.
+     *
+     * A blank date is malformed input, not an empty list: unlike a comma list, there is no
+     * "empty date" that could mean absent, so the `date` rule refuses it.
+     */
+    #[Test]
+    public function it_rejects_a_blank_from_bound(): void
+    {
+        // Arrange
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($this->viewer)->getJson('/api/tokens?filter[from]=');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
     }
 }

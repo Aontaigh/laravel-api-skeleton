@@ -9,7 +9,7 @@ return [
     | API Rate Limits
     |--------------------------------------------------------------------------
     |
-    | Per-minute limits keyed by authenticated User id, falling back to IP for
+    | Per-minute limits keyed by authenticated User ID, falling back to IP for
     | unauthenticated callers (health checks and future public routes).
     |
     */
@@ -44,14 +44,25 @@ return [
     | (stops distributed spraying across many accounts from one address). The
     | ceilings are split: registration is cheaper to abuse for account-creation
     | spam (tighter ceiling), while login needs headroom for a NAT full of
-    | legitimate users. A bare per-email counter is deliberately avoided: it
-    | would let an attacker lock a victim out simply by hammering their address.
+    | legitimate users.
+    |
+    | Login adds an address-independent per-account bucket keyed on the
+    | lowercased e-mail alone: without it an attacker who rotates addresses buys
+    | a fresh composite allowance with every address. It is deliberately broader
+    | than the composite and joined only when the request actually carries an
+    | e-mail - the remember-me restore carries none, and an always-on key would
+    | drop those callers into one platform-wide bucket. An attacker can spend a
+    | victim's per-account allowance, which the wider value bounds, and the
+    | victim's own address is still gated by the composite.
+    |
     | The per-IP ceiling is dropped in `local`, where the whole test suite
     | shares one container IP and a hard cap would only lock the developer out.
     |
     */
 
     'auth_rate_limit_per_minute' => (int) env('API_AUTH_RATE_LIMIT_PER_MINUTE', 5),
+
+    'auth_login_account_rate_limit_per_minute' => (int) env('API_AUTH_LOGIN_ACCOUNT_RATE_LIMIT_PER_MINUTE', 10),
 
     'auth_login_ip_ceiling_per_minute' => (int) env('API_AUTH_LOGIN_IP_CEILING_PER_MINUTE', 20),
 
@@ -183,7 +194,9 @@ return [
     |
     | Number of days until a token issued via POST /oauth/token expires.
     | Shorter than user PAT lifetime by default for machine-to-machine access.
-    | Set to 0 to disable expiration (local development only).
+    | A value of 0 or below falls back to `token_max_expiration_days` rather
+    | than disabling expiration: a machine credential must always be able to
+    | age out.
     |
     */
 
@@ -206,13 +219,30 @@ return [
     | Personal Access Token Lifetime
     |--------------------------------------------------------------------------
     |
-    | Number of days until a newly issued Sanctum token expires. Set to 0 to
-    | disable expiration (local development only - not recommended in production).
-    | Synced to config/sanctum.php for authentication enforcement.
+    | Number of days until a newly issued Sanctum token expires. A value of 0
+    | or below falls back to `token_max_expiration_days` rather than disabling
+    | expiration. Synced to config/sanctum.php for authentication enforcement.
     |
     */
 
     'token_expiration_days' => (int) env('API_TOKEN_EXPIRATION_DAYS', 90),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Maximum Token Lifetime
+    |--------------------------------------------------------------------------
+    |
+    | Hard ceiling, in days, on every issued token's lifetime. A caller may ask
+    | for any expiry up to this many days from now; an explicit `null` (never
+    | expires) or a later date is refused with `422`. Configured lifetimes at
+    | or above the ceiling are capped to it, so no code path can mint a token
+    | that outlives the policy. This mirrors GitHub's organisation policy - a
+    | short default with a ceiling an owner can lift to at most a year and a
+    | day.
+    |
+    */
+
+    'token_max_expiration_days' => (int) env('API_TOKEN_MAX_EXPIRATION_DAYS', 366),
 
     /*
     |--------------------------------------------------------------------------

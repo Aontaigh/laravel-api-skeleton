@@ -72,6 +72,8 @@ final class WebhookDeliveryIndexController
         $filters = new WebhookDeliveryFilters(
             events: $request->eventFilters(),
             statuses: $request->statusFilters(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

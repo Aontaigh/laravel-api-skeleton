@@ -272,6 +272,28 @@ final class CommaListParserTest extends UnitTestCase
         $this->assertSame(['1', '2', '3'], $parts);
     }
 
+    /**
+     * Keep the token `"0"` through parsing, de-duplication, and the integer cast.
+     *
+     * A bare `array_filter()` drops `"0"` as falsy, which would turn an explicit
+     * ID of 0 into an omitted filter - the pin for the explicit `!== ''` guard
+     * in `CommaSeparatedList::parse()`.
+     */
+    #[Test]
+    public function it_keeps_the_zero_token(): void
+    {
+        // Arrange
+
+        // Act
+
+        $parts = CommaListParser::split('0,1,0');
+
+        // Assert
+
+        $this->assertSame(['0', '1'], $parts);
+        $this->assertSame([0, 1], CommaListParser::integers('0,1,0'));
+    }
+
     /*
     |--------------------------------------------------------------------------
     | Data Providers

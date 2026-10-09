@@ -131,4 +131,35 @@ final class AuthAuditLogPolicyTest extends TestCase
         $this->assertFalse($this->policy->viewAny($serviceUser));
         $this->assertFalse($this->policy->view($serviceUser, $log));
     }
+
+    /**
+     * Refuse a service account that holds the permission itself.
+     *
+     * The refusal exists to survive a mis-assignment, so the test has to *construct* the
+     * mis-assignment. The Service role deliberately does not hold `audit-logs.list`, which means
+     * the test above is satisfied by the role matrix alone: deleting
+     * `&& ! $user->isServiceAccount()` from the Policy leaves it green. Granting the permission
+     * first is the only way to pin the guard rather than the role.
+     */
+    #[Test]
+    public function it_refuses_a_service_account_even_when_the_permission_is_mis_assigned(): void
+    {
+        // Arrange
+
+        /** @var User $serviceUser */
+        $serviceUser = User::factory()->serviceAccount()->create();
+        $serviceUser->givePermissionTo(AuthAuditLogPolicy::LIST_PERMISSION);
+
+        $log = AuthAuditLog::factory()->create();
+
+        $this->assertTrue(
+            $serviceUser->can(AuthAuditLogPolicy::LIST_PERMISSION),
+            'The permission must be held, otherwise the refusal proves nothing.',
+        );
+
+        // Act + Assert
+
+        $this->assertFalse($this->policy->viewAny($serviceUser));
+        $this->assertFalse($this->policy->view($serviceUser, $log));
+    }
 }

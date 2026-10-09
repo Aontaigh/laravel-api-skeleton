@@ -19,6 +19,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * @property int|null                        $user_id
  * @property AuthAuditEvent                  $event
  * @property AuditOutcome|null               $outcome
+ * @property ClientIneligibilityReason|null  $client_ineligibility_reason
  * @property string|null                     $email
  * @property string|null                     $ip_address
  * @property string|null                     $user_agent

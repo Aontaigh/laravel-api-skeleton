@@ -29,33 +29,25 @@ convention below is demonstrated in this repo, so nothing here depends on that a
 
 ## Table of Contents
 
-- [Where To Start](#where-to-start)
-- [🧭 About](#-about)
-- [🚀 Quick Start](#-quick-start)
-- [⚙ How the Query-Driven API Works](#-how-the-query-driven-api-works)
-- [📚 Documentation](#-documentation)
-- [🧱 Stack](#-stack)
-- [📋 Requirements](#-requirements)
-- [🔌 API](#-api)
-- [🖥 API Reference](#-api-reference)
-- [🛡 Security](#-security)
-- [🏗 Architecture](#-architecture)
-- [📁 File Structure](#-file-structure)
-- [✅ Quality Gates](#-quality-gates)
-- [🧪 Testing](#-testing)
-- [🚫 What's Not Included](#-whats-not-included)
-- [📄 License](#-license)
+- [🧭 About](#about)
+- [Where to Start](#where-to-start)
+- [🚀 Quick Start](#quick-start)
+- [⚙ How the Query-Driven API Works](#how-the-query-driven-api-works)
+- [📚 Documentation](#documentation)
+- [🧱 Stack](#stack)
+- [📋 Requirements](#requirements)
+- [🔌 API](#api)
+- [🖥 API Reference](#api-reference)
+- [🛡 Security](#security)
+- [🏗 Architecture](#architecture)
+- [📁 File Structure](#file-structure)
+- [✅ Quality Gates](#quality-gates)
+- [🧪 Testing](#testing)
+- [🚫 What's Not Included](#whats-not-included)
+- [🆘 Getting Help](#getting-help)
+- [📄 License](#license)
 
-## Where to Start
-
-Pick your path by role - every route below lives in this README or the docs it links.
-
-| You Are…                                           | Start With                                                                                                                                                     |
-| -------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A new developer joining the team                   | [Quick Start](#-quick-start), then the [API](#-api) summaries                                                                                                  |
-| An architect evaluating the starter                | [Architecture](#-architecture), then [Security](#-security)                                                                                                    |
-| An integrator building a machine-to-machine client | [API Clients](#api-clients) and the demo client in [Quick Start](#-quick-start)                                                                                |
-| An AI agent mapping the codebase                   | [How the Query-Driven API Works](#-how-the-query-driven-api-works), then [docs/openapi.yaml](docs/openapi.yaml) and [docs/permissions.md](docs/permissions.md) |
+<a id="about"></a>
 
 ## 🧭 About
 
@@ -77,6 +69,21 @@ you can copy into greenfield APIs or port legacy endpoints toward over time.
 
 **Who It's For:** teams bootstrapping a JSON API, architects evaluating a consistent
 resource layer, or agents mapping a predictable Laravel layout.
+
+<a id="where-to-start"></a>
+
+## Where to Start
+
+Pick your path by role - every route below lives in this README or the docs it links.
+
+| You Are…                                           | Start With                                                                                                                                                    |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| A new developer joining the team                   | [Quick Start](#quick-start), then the [API](#api) summaries                                                                                                   |
+| An architect evaluating the starter                | [Architecture](#architecture), then [Security](#security)                                                                                                     |
+| An integrator building a machine-to-machine client | [API Clients](#api-clients) and the demo client in [Quick Start](#quick-start)                                                                                |
+| An AI agent mapping the codebase                   | [How the Query-Driven API Works](#how-the-query-driven-api-works), then [docs/openapi.yaml](docs/openapi.yaml) and [docs/permissions.md](docs/permissions.md) |
+
+<a id="quick-start"></a>
 
 ## 🚀 Quick Start
 
@@ -170,7 +177,7 @@ Then `docker compose down && ./vendor/bin/sail up -d`. Every `http://localhost` 
 this README assumes the default port 80; substitute yours if you remap it.
 
 **Remapping the host port does not change anything inside the container.** Port 80 is
-nginx *inside* the image, and `APP_PORT` only decides which host port forwards to it.
+nginx _inside_ the image, and `APP_PORT` only decides which host port forwards to it.
 That matters when a command runs in the wrong place:
 
 ```bash
@@ -226,7 +233,13 @@ object with `roles` and `permissions` arrays so SPAs can hide controls the serve
 - Login and register share a per-email+IP budget (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**),
   backed by split per-IP ceilings so account-creation spam cannot eat the login budget:
   login `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` (default **20**), registration
-  `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE` (default **10**).
+  `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE` (default **10**). Login also carries an
+  address-independent per-account bucket keyed on the e-mail alone
+  (`API_AUTH_LOGIN_ACCOUNT_RATE_LIMIT_PER_MINUTE`, default **10**), so rotating addresses cannot
+  buy fresh attempts against one account.
+- Every address-derived key uses the caller address resolved through `TRUSTED_PROXIES` (or its
+  per-environment `TRUSTED_PROXIES_{ENVIRONMENT}` default), and aggregates IPv6 to its `/64`
+  network so one subscriber cannot mint a bucket per address.
 - Password change and session revokes carry their own User ID + IP buckets
   (`auth-password-change`, `auth-sessions-revoke`).
 - Client-credentials exchange is rate-limited per `client_id`+IP
@@ -303,6 +316,8 @@ security alert is sent after a successful reset (source: `A Password Reset Link`
 [ForgotPasswordController](app/Http/Controllers/Auth/ForgotPasswordController.php), and
 [ResetPasswordController](app/Http/Controllers/Auth/ResetPasswordController.php).
 
+<a id="how-the-query-driven-api-works"></a>
+
 ## ⚙ How the Query-Driven API Works
 
 Every list endpoint follows the same request pipeline. Allow-lists live in code, not
@@ -321,18 +336,23 @@ parse grammar in [`app/Support/`](app/Support/) (`IndexSortParser`, `SearchTermP
 `CommaSeparatedList`, `AllowList`), authorisation in [`app/Policies/`](app/Policies/),
 machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 
+<a id="documentation"></a>
+
 ## 📚 Documentation
 
-| Doc                                        | Purpose                                                      |
-| ------------------------------------------ | ------------------------------------------------------------ |
-| [README.md](README.md)                     | 📌 Orientation, quick start, architecture summary            |
-| [/api/docs](http://localhost/api/docs)     | Scalar interactive reference - try endpoints in the browser  |
-| [docs/openapi.yaml](docs/openapi.yaml)     | 📄 OpenAPI 3.1 source file (also at `/api/openapi.yaml`)     |
-| [docs/api.md](docs/api.md)                 | 🖥️ Scalar setup, preview, import, and sync checklist         |
-| [docs/permissions.md](docs/permissions.md) | 🔐 Permission strings, role matrix, Policy links             |
-| [docs/performance.md](docs/performance.md) | ⚡ Pagination and search trade-offs at scale                 |
-| [docs/releasing.md](docs/releasing.md)     | 🏷️ Cutting a release - changelog, gates, tag, GitHub publish |
-| [docs/testing.md](docs/testing.md)         | 🧪 Quality gates, test suites, coverage floor, pen test      |
+| Doc                                            | Purpose                                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| [README.md](README.md)                         | 📌 Orientation, quick start, architecture summary                                          |
+| [/api/docs](http://localhost/api/docs)         | Scalar interactive reference - try endpoints in the browser                                |
+| [docs/openapi.yaml](docs/openapi.yaml)         | 📄 OpenAPI 3.1 source file (also at `/api/openapi.yaml`)                                   |
+| [docs/api.md](docs/api.md)                     | 🖥️ Scalar setup, preview, import, and sync checklist                                       |
+| [docs/permissions.md](docs/permissions.md)     | 🔐 Permission strings, role matrix, Policy links                                           |
+| [docs/rate-limiting.md](docs/rate-limiting.md) | 🚦 Limits, key shapes, IPv6 aggregation, counter storage, and the one remaining limitation |
+| [docs/performance.md](docs/performance.md)     | ⚡ Pagination and search trade-offs at scale                                               |
+| [docs/releasing.md](docs/releasing.md)         | 🏷️ Cutting a release - changelog, gates, tag, GitHub publish                               |
+| [docs/testing.md](docs/testing.md)             | 🧪 Quality gates, test suites, coverage floor, pen test                                    |
+
+<a id="stack"></a>
 
 ## 🧱 Stack
 
@@ -349,6 +369,8 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | [giggsey/libphonenumber](https://github.com/giggsey/libphonenumber-for-php) | E.164 phone parsing and validation                                         | [libphonenumber](https://github.com/giggsey/libphonenumber-for-php)            |
 | [geoip2/geoip2](https://github.com/maxmind/GeoIP2-php)                      | IP city/country enrichment via MaxMind GeoLite2                            | [GeoIP2](https://github.com/maxmind/GeoIP2-php)                                |
 
+<a id="requirements"></a>
+
 ## 📋 Requirements
 
 | Dependency        | Version            |
@@ -357,17 +379,19 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | Laravel           | ^13.8              |
 | Docker (for Sail) | any recent version |
 
+<a id="api"></a>
+
 ## 🔌 API
 
 Every list endpoint shares this query contract:
 
-| Param                | Purpose                                                                                                                                                        |
-| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sort`               | Whitelisted column; prefix `-` for descending (default varies per resource, e.g. `id` ascending)                                                               |
-| `fields[{resource}]` | Sparse fieldset - only requested columns are selected and returned                                                                                             |
-| `include`            | Whitelisted eager loads for nested relations                                                                                                                   |
-| `filter[{key}]`      | Resource-specific filters (e.g. `filter[search]`; Users also support `filter[status]` and `filter[role]`, all trimmed via `SearchTermParser` where applicable) |
-| `page`, `per_page`   | Pagination                                                                                                                                                     |
+| Param                | Purpose                                                                                                                                                                                                                                                    |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sort`               | Whitelisted column; prefix `-` for descending (default varies per resource, e.g. `id` ascending)                                                                                                                                                           |
+| `fields[{resource}]` | Sparse fieldset - only requested columns are selected and returned                                                                                                                                                                                         |
+| `include`            | Whitelisted eager loads for nested relations                                                                                                                                                                                                               |
+| `filter[{key}]`      | Resource-specific filters (e.g. `filter[search]`; Users also support `filter[status]` and `filter[role]`, all trimmed via `SearchTermParser` where applicable). Every list endpoint also accepts `filter[from]` / `filter[to]` date bounds on `created_at` |
+| `page`, `per_page`   | Pagination                                                                                                                                                                                                                                                 |
 
 > [!WARNING]
 > `per_page` is capped at **100**. Larger values return `422`.
@@ -474,7 +498,7 @@ GET /api/permissions?filter[search]=tokens&fields[permissions]=id,name&sort=name
 ```
 
 Requires `permissions.list` (Admin, Manager, and User). Scoped to the `web` guard.
-Powers Token and API Client ability pickers - the same catalog
+Powers Token and API Client ability pickers - the same catalogue
 [PermissionAbilityCatalog](app/Services/Permissions/PermissionAbilityCatalog.php)
 validates on create.
 
@@ -494,8 +518,10 @@ POST   /api/clients/{client}/rotate-secret # new secret returned once; old secre
 
 Requires `api-clients.list`, `api-clients.create`, `api-clients.update`, and
 `api-clients.delete` respectively (Admin only). The plaintext `client_secret` is
-returned once on `POST`. Setting `is_active` to `false` blocks future
-client-credentials exchange; existing bearer tokens are not revoked.
+returned once on `POST`. Deactivating the client (`is_active: false`) or changing its
+abilities destroys every outstanding bearer token inside the same transaction, so a
+narrowed scope takes effect immediately; secret rotation leaves live tokens valid. A
+client-credentials token expires after `API_CLIENT_TOKEN_EXPIRATION_DAYS` (default **30**).
 
 **Source of Truth:** [ApiClientQueryConstraints](app/Queries/ApiClients/ApiClientQueryConstraints.php),
 [ApiClientPolicy](app/Policies/ApiClientPolicy.php).
@@ -521,8 +547,8 @@ sent by a job with exponential backoff (8 attempts), HMAC signatures
 auto-disable after 10 consecutive failures. Target URLs are SSRF-screened
 (HTTPS-only, no private ranges). The secret is returned once and stored
 encrypted; receiving is at-least-once, so treat `Webhook-Id` as an idempotency
-key. Subscribed events: `user.created`, `user.deleted`, `user.suspended`, `user.unsuspended`,
-`team.created`, `team.updated`, `team.deleted`.
+key. Subscribed events: `user.created`, `user.deleted`, `user.restored`, `user.suspended`,
+`user.unsuspended`, `team.created`, `team.updated`, and `team.deleted`.
 
 **Source of Truth:** [WebhookEndpointQueryConstraints](app/Queries/Webhooks/WebhookEndpointQueryConstraints.php),
 [WebhookEndpointPolicy](app/Policies/WebhookEndpointPolicy.php),
@@ -532,7 +558,7 @@ key. Subscribed events: `user.created`, `user.deleted`, `user.suspended`, `user.
 
 ```http
 GET    /api/tokens
-POST   /api/tokens                       # {"name": "...", "abilities": ["*"], "expires_at": null}
+POST   /api/tokens                       # {"name": "...", "abilities": ["*"], "expires_at": "2026-12-01T00:00:00Z"}
 DELETE /api/tokens/{token}
 POST   /api/users/{user}/tokens          # Admin only
 ```
@@ -540,11 +566,24 @@ POST   /api/users/{user}/tokens          # Admin only
 `GET /api/tokens` lists only the caller's tokens. Abilities default to `['*']` and are
 validated against registered Spatie permissions via
 [PermissionAbilityCatalog](app/Services/Permissions/PermissionAbilityCatalog.php). The plaintext
-token is returned once on `POST` and never stored. New tokens expire after
-`API_TOKEN_EXPIRATION_DAYS` (default **90**); set to `0` to disable expiration locally.
-`expires_at` overrides that default: a future date sets the expiry, an explicit `null`
-opts the Token into never expiring, and omitting it keeps the configured default.
-The index lists newest first by default.
+token is returned once on `POST` and never stored.
+
+Every token expires. New tokens expire after `API_TOKEN_EXPIRATION_DAYS` (default **90**) and
+remember-me tokens after `API_REMEMBER_TOKEN_EXPIRATION_DAYS` (default **365**). `expires_at`
+overrides the default: a future date sets the expiry, and omitting it keeps the configured
+default. A caller-chosen expiry is capped by `API_TOKEN_MAX_EXPIRATION_DAYS` (default **366**):
+a later date answers **422** `Token Expiry Exceeds The Maximum Lifetime`, and an explicit `null`
+(never expires) answers **422** `Tokens Must Expire`. A configured lifetime at or above the
+ceiling is capped to it, and a configured `0` falls back to the ceiling, so no code path can mint
+a non-expiring token. Expired rows are swept daily by the scheduled `sanctum:prune-expired`
+command ([routes/console.php](routes/console.php)). The index lists newest first by default.
+
+**Scoping is a choice; this reference narrows.** Abilities may name any subset of the registered
+permissions, and a scoped token may never mint a broader one
+([PersonalAccessTokenPolicy::create](app/Policies/PersonalAccessTokenPolicy.php)). The consuming
+apps deliberately fix human tokens to the owner's full grant (`['*']`) instead of offering a
+picker, recorded here so the divergence is a decision rather than drift. The cost is explicit: a
+User cannot hand a script a deliberately narrow token, so a leaked human token is account-wide.
 
 **Source of Truth:** [TokenQueryConstraints](app/Queries/Tokens/TokenQueryConstraints.php),
 [PersonalAccessTokenPolicy](app/Policies/PersonalAccessTokenPolicy.php).
@@ -579,7 +618,8 @@ GET /api/audit-logs/{auth_audit_log}
 
 Admin-only read-only index of rows in `auth_audit_logs`. Requires the `Admin`
 role (and `audit-logs.list`). Supports `filter[search]` (email),
-`filter[event]`, `filter[user_id]`, `filter[api_client_id]`, sparse `fields[auth_audit_logs]`,
+`filter[event]`, `filter[user_id]`, `filter[api_client_id]`, `filter[from]` /
+`filter[to]` date bounds, sparse `fields[auth_audit_logs]`,
 `include=user`, and the standard sort and pagination params.
 
 Each row also carries the resolved `location_city` and `location_country` for the recorded
@@ -614,9 +654,10 @@ load-balancer probe. Reports the current state and daily uptime history for ever
 monitored component (`database`, `cache`, `queue`), read from rows persisted by the
 scheduled `health:record` command (every five minutes, except in `local` and `testing`).
 
-`overall_status` is the worst current reading across components; `monitoring_active` is
-`false` and readings are `null` before the first recorded run - missing monitoring data is
-never reported as an outage. The `days` window defaults to 90 and is capped at 90.
+`overall_status` reduces to the worst current reading across components - `up` until anything
+has reported; `monitoring_active` is `false` and each component's `status` and `checked_at` are
+`null` before the first recorded run, so missing monitoring data is never reported as an
+outage. The `days` window defaults to 90 and is capped at 90.
 Rate limited per IP via the dedicated `api-status` limiter (`API_STATUS_RATE_LIMIT_PER_MINUTE`,
 default **30**).
 
@@ -634,13 +675,16 @@ GET  /.well-known/security.txt   # public; RFC 9116 disclosure contact (served a
 `POST /api/csp-reports` accepts legacy `report-uri` and modern Reporting API
 shapes (per-IP throttled, `413` past 16 KiB) into the dedicated `csp-reports`
 log channel; both CSP policies point `report-uri` at it. `GET /api/app-info`
-reports application, runtime, driver names, and `auth.token_expiration_days` (configured default
-Personal Access Token lifetime; `0` means never expire by default) for deploy verification behind
-the status page throttle. Disclosure policy: [SECURITY.md](SECURITY.md).
+reports application, runtime, driver names, and `auth.token_expiration_days` (configured
+default Personal Access Token lifetime; a `0` falls back to the maximum lifetime, never
+disabling expiry) for deploy verification behind the status page throttle. Disclosure
+policy: [SECURITY.md](SECURITY.md).
 
 **Source of Truth:** [StoreCspReportController](app/Http/Controllers/CspReports/StoreCspReportController.php),
 [ShowAppInfoController](app/Http/Controllers/Api/ShowAppInfoController.php),
 [ShowSecurityTxtController](app/Http/Controllers/WellKnown/ShowSecurityTxtController.php).
+
+<a id="api-reference"></a>
 
 ## 🖥 API Reference
 
@@ -657,26 +701,30 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
   <img src="docs/images/scalar-docs.png" alt="Scalar interactive API reference showing the Laravel API Starter specification with endpoint navigation" width="960">
 </p>
 
+<a id="security"></a>
+
 ## 🛡 Security
 
-| Area                      | Implementation                                                                                                                                                                                                                                                                                                                                                                                                         | Where                                                                                                                                                                                                                                                                 |
-| ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Authentication            | Sanctum bearer tokens (90-day default expiry)                                                                                                                                                                                                                                                                                                                                                                          | [routes/api.php](routes/api.php) (`auth:sanctum`), `config/api.php`                                                                                                                                                                                                   |
-| Authorisation             | Spatie permissions + Policies                                                                                                                                                                                                                                                                                                                                                                                          | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/)                                                                                                                                                                                            |
-| Rate limiting             | 500 req/min API; 5 req/min auth (email+IP; split per-IP ceilings - 20 login, 10 register); 5 req/min two-factor send/verify (IP ceiling 20) and 60 req/min two-factor status polling; 3 req/min verification resend; dedicated User+IP buckets for password change and session revokes; 10 req/min token creation; 10 req/min webhook writes (per Admin); 30 req/min public status page and 60 req/min health (per IP) | `config/api.php`, `bootstrap/app.php`                                                                                                                                                                                                                                 |
-| Account recovery          | Broker-based reset link with enumeration-neutral responses; reset rotates every credential                                                                                                                                                                                                                                                                                                                             | [ForgotPasswordController](app/Http/Controllers/Auth/ForgotPasswordController.php), [ResetUserPasswordAction](app/Actions/Auth/ResetUserPasswordAction.php)                                                                                                           |
-| Two-factor authentication | Email OTP with pending challenges, stateless `two_factor_token` support, and per-route throttles                                                                                                                                                                                                                                                                                                                       | [SendTwoFactorController](app/Http/Controllers/Auth/SendTwoFactorController.php), [VerifyTwoFactorCodeAction](app/Actions/Auth/VerifyTwoFactorCodeAction.php)                                                                                                         |
-| Session registry          | Cookie-bound device sessions: list, show, per-device revoke, revoke-others, fail-closed store handling, activity tracking, and IP location enrichment (`location_city`/`location_country`, fail-open)                                                                                                                                                                                                                  | [SessionIndexController](app/Http/Controllers/Sessions/SessionIndexController.php), [DestroyOtherSessionsController](app/Http/Controllers/Sessions/DestroyOtherSessionsController.php), [RegisterWebSessionAction](app/Actions/Sessions/RegisterWebSessionAction.php) |
-| CORS                      | Env-driven allowed origins; local dev-server defaults                                                                                                                                                                                                                                                                                                                                                                  | `config/cors.php`                                                                                                                                                                                                                                                     |
-| Input validation          | FormRequests; `422` envelope via `ApiResponse`                                                                                                                                                                                                                                                                                                                                                                         | [app/Support/ApiResponse.php](app/Support/ApiResponse.php)                                                                                                                                                                                                            |
-| Request correlation       | `X-Request-ID` accepted (or W3C `traceparent` trace ID, else fresh UUID) on every response; threaded through logs and audit rows                                                                                                                                                                                                                                                                                       | [EnsureRequestId](app/Http/Middleware/EnsureRequestId.php), [RequestId](app/Support/RequestId.php)                                                                                                                                                                    |
-| XSS hardening             | Plain-text attribute sanitisation on name updates and token names                                                                                                                                                                                                                                                                                                                                                      | [SanitisesPlainTextAttributes](app/Http/Requests/Concerns/SanitisesPlainTextAttributes.php)                                                                                                                                                                           |
-| API documentation         | Scalar UI at `/api/docs`; optional HTTP Basic Auth                                                                                                                                                                                                                                                                                                                                                                     | [routes/web.php](routes/web.php), [EnsureCanViewApiDocs](app/Http/Middleware/EnsureCanViewApiDocs.php)                                                                                                                                                                |
-| Debug tooling             | Telescope behind `viewTelescope` gate (Admin only, local only)                                                                                                                                                                                                                                                                                                                                                         | [AppServiceProvider](app/Providers/AppServiceProvider.php)                                                                                                                                                                                                            |
+| Area                      | Implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Where                                                                                                                                                                                                                                                                 |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Authentication            | Sanctum bearer tokens (90-day default expiry)                                                                                                                                                                                                                                                                                                                                                                                                                                             | [routes/api.php](routes/api.php) (`auth:sanctum`), `config/api.php`                                                                                                                                                                                                   |
+| Authorisation             | Spatie permissions + Policies                                                                                                                                                                                                                                                                                                                                                                                                                                                             | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/)                                                                                                                                                                                            |
+| Rate limiting             | 500 req/min API; 5 req/min auth (email+IP, plus a 10/min per-account login budget; split per-IP ceilings - 20 login, 10 register); 5 req/min two-factor send/verify (IP ceiling 20) and 60 req/min two-factor status polling; 3 req/min verification resend; dedicated User+IP buckets for password change and session revokes; 10 req/min token and API client creation (per Admin); 10 req/min webhook writes (per Admin); 30 req/min public status page and 60 req/min health (per IP) | `config/api.php`, [AppServiceProvider](app/Providers/AppServiceProvider.php)                                                                                                                                                                                          |
+| Account recovery          | Broker-based reset link with enumeration-neutral responses; reset rotates every credential                                                                                                                                                                                                                                                                                                                                                                                                | [ForgotPasswordController](app/Http/Controllers/Auth/ForgotPasswordController.php), [ResetUserPasswordAction](app/Actions/Auth/ResetUserPasswordAction.php)                                                                                                           |
+| Two-factor authentication | Email OTP with pending challenges, stateless `two_factor_token` support, and per-route throttles                                                                                                                                                                                                                                                                                                                                                                                          | [SendTwoFactorController](app/Http/Controllers/Auth/SendTwoFactorController.php), [VerifyTwoFactorCodeAction](app/Actions/Auth/VerifyTwoFactorCodeAction.php)                                                                                                         |
+| Session registry          | Cookie-bound device sessions: list, show, per-device revoke, revoke-others, fail-closed store handling, activity tracking, and IP location enrichment (`location_city`/`location_country`, fail-open)                                                                                                                                                                                                                                                                                     | [SessionIndexController](app/Http/Controllers/Sessions/SessionIndexController.php), [DestroyOtherSessionsController](app/Http/Controllers/Sessions/DestroyOtherSessionsController.php), [RegisterWebSessionAction](app/Actions/Sessions/RegisterWebSessionAction.php) |
+| CORS                      | Env-driven allowed origins; local dev-server defaults                                                                                                                                                                                                                                                                                                                                                                                                                                     | `config/cors.php`                                                                                                                                                                                                                                                     |
+| Input validation          | FormRequests; `422` envelope via `ApiResponse`                                                                                                                                                                                                                                                                                                                                                                                                                                            | [app/Support/ApiResponse.php](app/Support/ApiResponse.php)                                                                                                                                                                                                            |
+| Request correlation       | `X-Request-ID` accepted (or W3C `traceparent` trace ID, else fresh UUID) on every response; threaded through logs and audit rows                                                                                                                                                                                                                                                                                                                                                          | [EnsureRequestId](app/Http/Middleware/EnsureRequestId.php), [RequestId](app/Support/RequestId.php)                                                                                                                                                                    |
+| XSS hardening             | Plain-text attribute sanitisation on name updates and token names                                                                                                                                                                                                                                                                                                                                                                                                                         | [SanitisesPlainTextAttributes](app/Http/Requests/Concerns/SanitisesPlainTextAttributes.php)                                                                                                                                                                           |
+| API documentation         | Scalar UI at `/api/docs`; optional HTTP Basic Auth                                                                                                                                                                                                                                                                                                                                                                                                                                        | [routes/web.php](routes/web.php), [EnsureCanViewApiDocs](app/Http/Middleware/EnsureCanViewApiDocs.php)                                                                                                                                                                |
+| Debug tooling             | Telescope behind `viewTelescope` gate (Admin only, local only)                                                                                                                                                                                                                                                                                                                                                                                                                            | [AppServiceProvider](app/Providers/AppServiceProvider.php)                                                                                                                                                                                                            |
 
 Report vulnerabilities privately before opening a public issue - see
 [SECURITY.md](SECURITY.md). Disclosure contact details are served at
 [`/.well-known/security.txt`](public/.well-known/security.txt) (RFC 9116).
+
+<a id="architecture"></a>
 
 ## 🏗 Architecture
 
@@ -709,6 +757,8 @@ Shared helpers: [app/Support/](app/Support/) (`ApiResponse`, `ApiDateTime`, `Ind
 
 Copy [UserIndexController](app/Http/Controllers/Users/UserIndexController.php) as a
 template - only allow-lists and filter logic change per resource.
+
+<a id="file-structure"></a>
 
 ## 📁 File Structure
 
@@ -768,13 +818,15 @@ tests/
 ```
 
 Trait coverage uses **real hosts** (feature tests and resource unit tests), not
-`tests/Support/` harness stubs. See [Testing](#-testing).
+`tests/Support/` harness stubs. See [Testing](#testing).
 
 </details>
 
+<a id="quality-gates"></a>
+
 ## ✅ Quality Gates
 
-Local (Sail - matches PHP 8.5 when host PHP is older):
+Run locally (Sail - matches PHP 8.5 when host PHP is older):
 
 ```bash
 ./vendor/bin/sail composer lint          # Pint (--test)
@@ -797,9 +849,10 @@ against a live instance:
 ./vendor/bin/sail composer ci
 ```
 
-It does **not** cover Zizmor, `actionlint`, the Renovate config, or the live pen test -
-those are the remaining CI jobs. See [docs/testing.md](docs/testing.md) for all twelve
-steps, which of them run on the host rather than in Sail, and what each one writes.
+It does **not** cover Zizmor, `actionlint`, the Renovate config, or the live pen test.
+The first three are separate CI jobs; the live pen test (step 12) runs locally only.
+See [docs/testing.md](docs/testing.md) for all twelve steps, which of them run on the
+host rather than in Sail, and what each one writes.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, a Markdown link check,
 Larastan, PHPUnit with coverage, `composer audit`, OpenAPI example verification, Semgrep,
@@ -842,9 +895,11 @@ Two consequences worth knowing:
   so there is nothing to hash-pin. Reproducibility comes from a digest-pinned
   `container: image@sha256:...`, which is what the `unpinned-images` Zizmor audit scores.
 
+<a id="testing"></a>
+
 ## 🧪 Testing
 
-**Run it:** `./vendor/bin/sail composer test` for the suite, or step 4 in
+**Run It:** `./vendor/bin/sail composer test` for the suite, or step 4 in
 [docs/testing.md](docs/testing.md) for the full gate list with the coverage floor. Use Sail,
 not a host `php` - the project requires `^8.5`.
 
@@ -855,7 +910,7 @@ not a host `php` - the project requires `^8.5`.
 - [tests/Unit/Queries/](tests/Unit/Queries/) - query builder state (`columns`, `orders`,
   `wheres`)
 - [tests/Unit/Services/](tests/Unit/Services/) - user-agent parser, health checks and
-  registry, permission catalog, CSP report parser
+  registry, permission catalogue, CSP report parser
 - [tests/Unit/Rules/](tests/Unit/Rules/) - custom validation rules (E.164)
 - [tests/Unit/Actions/](tests/Unit/Actions/) - pure logic actions (CSP report logging)
 - [tests/Unit/Providers/](tests/Unit/Providers/) - default password policy
@@ -882,6 +937,8 @@ The full run order, which steps run on the host rather than in Sail, what each g
 writes to disk or the database, the coverage-floor mechanics, and the 51-section
 adversarial pen test are documented in [docs/testing.md](docs/testing.md).
 
+<a id="whats-not-included"></a>
+
 ## 🚫 What's Not Included
 
 This starter deliberately omits features you would add per product:
@@ -903,6 +960,26 @@ than fixed; the scale paths are in [docs/performance.md](docs/performance.md):
 - `per_page` is capped at **100**; larger values return `422`
 - `filter[search]` builds `LIKE '%term%'` predicates that cannot use a B-tree index, so search scans the current scope
 - Admin (`users.list-all`) index runs a full-table `COUNT(*)` per page; offset pagination holds until `users` reaches low millions
+
+<a id="getting-help"></a>
+
+## 🆘 Getting Help
+
+Work down the list; each step clears the common cases before you open a ticket.
+
+1. **Docs First:** read the doc the error points at - [Quick Start](#quick-start) for setup,
+   [docs/testing.md](docs/testing.md) for a failing gate, [docs/releasing.md](docs/releasing.md)
+   for a release, and [docs/permissions.md](docs/permissions.md) for an unexpected `403`.
+2. **Known Limitations:** the `per_page` cap, search cost, and admin index count are documented
+   above, not bugs.
+3. **Existing Issues:** search the exact error text at
+   [github.com/Aontaigh/laravel-api-skeleton/issues](https://github.com/Aontaigh/laravel-api-skeleton/issues).
+4. **Open an Issue:** include the failing command, its full output, and your PHP and Docker
+   versions if the first three steps did not resolve it.
+5. **Security Only:** report privately per [SECURITY.md](SECURITY.md); never open a public issue
+   for a vulnerability.
+
+<a id="license"></a>
 
 ## 📄 License
 

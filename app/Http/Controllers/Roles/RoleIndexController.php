@@ -68,6 +68,8 @@ final class RoleIndexController
 
         $filters = new RoleFilters(
             search: $request->searchTerm(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

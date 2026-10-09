@@ -70,6 +70,7 @@ final class CommaSeparatedListTest extends UnitTestCase
             'spaces after commas' => ['id, name, email', ['id', 'name', 'email']],
             'empty segments skipped' => ['id,,name', ['id', 'name']],
             'single value' => ['team', ['team']],
+            'zero token kept' => ['0,1', ['0', '1']],
             'injection-shaped segment without commas' => ["'; DROP TABLE users;--", ["'; DROP TABLE users;--"]],
             'unicode preserved' => ['id,naïve', ['id', 'naïve']],
         ];

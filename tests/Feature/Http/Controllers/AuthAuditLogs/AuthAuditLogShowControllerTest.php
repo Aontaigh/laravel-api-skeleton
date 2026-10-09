@@ -6,6 +6,7 @@ namespace Tests\Feature\Http\Controllers\AuthAuditLogs;
 
 use App\Enums\AuditOutcome;
 use App\Enums\AuthAuditEvent;
+use App\Enums\ClientIneligibilityReason;
 use App\Http\Controllers\AuthAuditLogs\AuthAuditLogShowController;
 use App\Http\Requests\AuthAuditLogs\AuthAuditLogShowRequest;
 use App\Http\Resources\AuthAuditLogResource;
@@ -179,6 +180,89 @@ final class AuthAuditLogShowControllerTest extends TestCase
     }
 
     /**
+     * Serialise the refusal reason and honour sparse fieldsets for it.
+     *
+     * `outcome: refused` alone cannot distinguish which policy declined an exchange, so the reason
+     * is what makes the row actionable during an incident. It was persisted but unreachable until
+     * it was added to both `AuthAuditLogResource` and `ALLOWED_FIELDS`; this test fails if either
+     * drops it again.
+     */
+    #[Test]
+    public function it_serialises_the_client_ineligibility_reason(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $log = AuthAuditLog::factory()->create([
+            'outcome' => AuditOutcome::Refused,
+            'client_ineligibility_reason' => ClientIneligibilityReason::SuspendedOwner,
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson("/api/audit-logs/{$log->id}");
+
+        /** @var TestResponse<JsonResponse> $sparse */
+        $sparse = $this->actingAs($admin)->getJson(
+            "/api/audit-logs/{$log->id}?fields[auth_audit_logs]=id,client_ineligibility_reason",
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.outcome', 'refused');
+        $this->assertSame(
+            ClientIneligibilityReason::SuspendedOwner->value,
+            $response->json('data.client_ineligibility_reason'),
+        );
+
+        $sparse->assertOk();
+
+        /** @var array<string, mixed> $sparsePayload */
+        $sparsePayload = $sparse->json('data');
+        $this->assertSame(
+            ['id', 'client_ineligibility_reason'],
+            array_keys($sparsePayload),
+            'Selecting the reason must narrow the payload to it plus the primary key.',
+        );
+    }
+
+    /**
+     * Serialise a null refusal reason without failing.
+     *
+     * Every outcome other than `refused` records no reason, so the Resource has to tolerate null
+     * rather than assuming the column is always populated.
+     */
+    #[Test]
+    public function it_serialises_a_null_refusal_reason_on_a_non_refused_row(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        $log = AuthAuditLog::factory()->create([
+            'outcome' => AuditOutcome::Failed,
+            'client_ineligibility_reason' => null,
+        ]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson("/api/audit-logs/{$log->id}");
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.outcome', 'failed');
+        $this->assertNull(
+            $response->json('data.client_ineligibility_reason'),
+            'A non-refused row carries no reason.',
+        );
+    }
+
+    /**
      * Serialise the outcome on the audit log row and honour sparse fieldsets
      * for it.
      *
@@ -312,6 +396,38 @@ final class AuthAuditLogShowControllerTest extends TestCase
 
         // Assert
 
+        $response->assertForbidden();
+    }
+
+    /**
+     * Refuse a service account that holds the permission itself.
+     *
+     * The show endpoint runs the same `isAdminViewer()` guard as the index, and it deserves the
+     * same pin: without the permission granted first, the Service role matrix produces the 403 on
+     * its own and the guard could be deleted without a test failing.
+     */
+    #[Test]
+    public function it_refuses_a_service_account_even_when_the_permission_is_mis_assigned(): void
+    {
+        // Arrange
+
+        /** @var User $serviceUser */
+        $serviceUser = User::factory()->serviceAccount()->create();
+        $serviceUser->givePermissionTo(AuthAuditLogPolicy::LIST_PERMISSION);
+
+        $log = AuthAuditLog::factory()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($serviceUser)->getJson("/api/audit-logs/{$log->id}");
+
+        // Assert
+
+        $this->assertTrue(
+            $serviceUser->can(AuthAuditLogPolicy::LIST_PERMISSION),
+            'The permission must be held, otherwise the refusal proves nothing.',
+        );
         $response->assertForbidden();
     }
 

@@ -50,5 +50,13 @@ final class TokenFilterQuery
                 [$pattern],
             );
         }
+
+        if ($filters->from !== null) {
+            $query->where(TokenQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where(TokenQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

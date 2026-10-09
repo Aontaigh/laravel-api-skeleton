@@ -168,7 +168,8 @@ trait ParsesCommaListQueryParam
      * `validateFilterKeys` records the hint for an unknown key, which covers a typo but not a
      * value outside the allow-list: a `422` naming one bad value would otherwise leave the caller
      * with no list of what was accepted, and the rule requires every rejected whitelisted query
-     * param to help the caller self-correct without reading OpenAPI.
+     * param to help the caller self-correct without reading OpenAPI. One hint serves every
+     * rejected key, because the supported set is the same for all of them.
      *
      * @param  Validator $validator the validator under extension
      * @return void
@@ -177,9 +178,13 @@ trait ParsesCommaListQueryParam
     {
         $validator->after(function (Validator $check): void {
             foreach (array_keys($this->commaListFilterDefinitions()) as $key) {
-                if ($check->errors()->has($key)) {
-                    $this->recordAllowListHint('filter', $this->allowedFilterKeys());
+                if (! $check->errors()->has($key)) {
+                    continue;
                 }
+
+                $this->recordAllowListHint('filter', $this->allowedFilterKeys());
+
+                return;
             }
         });
     }

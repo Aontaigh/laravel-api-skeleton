@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns\Webhooks;
 
+use App\Http\Requests\Concerns\AppliesDateRangeFilters;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
 use App\Http\Requests\Concerns\ParsesSortQueryParam;
@@ -24,6 +25,7 @@ trait AppliesWebhookEndpointFilters
     |--------------------------------------------------------------------------
     */
 
+    use AppliesDateRangeFilters;
     use ParsesFieldsQueryParam;
     use ParsesSearchQueryParam;
     use ParsesSortQueryParam;
@@ -61,6 +63,7 @@ trait AppliesWebhookEndpointFilters
             'filter' => ['sometimes', 'array'],
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
+            ...$this->dateRangeFilterRules('filter.from', 'filter.to'),
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => [
                 'sometimes',
@@ -123,7 +126,7 @@ trait AppliesWebhookEndpointFilters
      */
     protected function allowedFilterKeys(): array
     {
-        return ['search'];
+        return ['search', 'from', 'to'];
     }
 
     /**

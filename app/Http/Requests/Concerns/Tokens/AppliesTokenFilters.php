@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns\Tokens;
 
+use App\Http\Requests\Concerns\AppliesDateRangeFilters;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
@@ -28,6 +29,7 @@ trait AppliesTokenFilters
     |--------------------------------------------------------------------------
     */
 
+    use AppliesDateRangeFilters;
     use ParsesFieldsQueryParam;
     use ParsesIncludeQueryParam;
     use ParsesSearchQueryParam;
@@ -66,6 +68,7 @@ trait AppliesTokenFilters
             'filter' => ['sometimes', 'array'],
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
+            ...$this->dateRangeFilterRules('filter.from', 'filter.to'),
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => [
                 'sometimes',
@@ -129,7 +132,7 @@ trait AppliesTokenFilters
      */
     protected function allowedFilterKeys(): array
     {
-        return ['search'];
+        return ['search', 'from', 'to'];
     }
 
     /**

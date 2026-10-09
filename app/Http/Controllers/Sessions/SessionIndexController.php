@@ -70,6 +70,8 @@ final class SessionIndexController
             listsAllUsers: $request->listsAllUsers(),
             search: $request->searchTerm(),
             userIds: $request->userIdFilters(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

@@ -53,5 +53,13 @@ final class AuthAuditLogFilterQuery
         if ($filters->apiClientIds !== []) {
             $query->whereIn(AuthAuditLogQueryConstraints::TABLE.'.api_client_id', $filters->apiClientIds);
         }
+
+        if ($filters->from !== null) {
+            $query->where(AuthAuditLogQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where(AuthAuditLogQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

@@ -29,20 +29,26 @@ final class WebhookEndpointFilterQuery
      */
     public function apply(Builder $query, WebhookEndpointFilters $filters): void
     {
-        if ($filters->search === null) {
-            return;
+        if ($filters->search !== null) {
+            $pattern = LikePattern::contains($filters->search);
+
+            $query->where(function (Builder $query) use ($pattern): void {
+                $query->whereRaw(
+                    LikePattern::containsWhereClause(WebhookEndpointQueryConstraints::TABLE.'.name'),
+                    [$pattern],
+                )->orWhereRaw(
+                    LikePattern::containsWhereClause(WebhookEndpointQueryConstraints::TABLE.'.url'),
+                    [$pattern],
+                );
+            });
         }
 
-        $pattern = LikePattern::contains($filters->search);
+        if ($filters->from !== null) {
+            $query->where(WebhookEndpointQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
 
-        $query->where(function (Builder $query) use ($pattern): void {
-            $query->whereRaw(
-                LikePattern::containsWhereClause(WebhookEndpointQueryConstraints::TABLE.'.name'),
-                [$pattern],
-            )->orWhereRaw(
-                LikePattern::containsWhereClause(WebhookEndpointQueryConstraints::TABLE.'.url'),
-                [$pattern],
-            );
-        });
+        if ($filters->to !== null) {
+            $query->where(WebhookEndpointQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

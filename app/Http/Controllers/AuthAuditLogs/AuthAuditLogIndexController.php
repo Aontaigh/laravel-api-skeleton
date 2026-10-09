@@ -72,6 +72,8 @@ final class AuthAuditLogIndexController
             events: $request->eventFilters(),
             userIds: $request->userIdFilters(),
             apiClientIds: $request->apiClientIdFilters(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

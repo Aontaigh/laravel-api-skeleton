@@ -76,7 +76,10 @@ final class ShowAppInfoControllerTest extends TestCase
     }
 
     /**
-     * Report a zero lifetime unchanged, meaning Tokens never expire.
+     * Echo the raw configured lifetime unchanged, even at zero.
+     *
+     * The value is the operator's configuration as written; issuance resolves a
+     * zero to the maximum lifetime rather than honouring it as "never expires".
      */
     #[Test]
     public function it_reports_a_zero_lifetime_unchanged(): void

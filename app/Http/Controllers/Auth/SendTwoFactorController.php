@@ -58,7 +58,7 @@ final class SendTwoFactorController
         | Guard
         |--------------------------------------------------------------------------
         |
-        | A code can only be sent while a login is mid-flight. The pending user id
+        | A code can only be sent while a login is mid-flight. The pending User ID
         | comes from the caller's own session or opaque token - never from email
         | input - so there is no enumeration risk in returning a clear expiry
         | message here.

@@ -23,6 +23,7 @@ use Database\Seeders\ApiClientsSeeder;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -133,16 +134,22 @@ final class ClientTokenExchangeControllerTest extends TestCase
     }
 
     /**
-     * Issue a non-expiring token when client token lifetime is disabled.
+     * Cap a client token at the maximum lifetime when the client lifetime is disabled.
+     *
+     * A configured zero asks for a token that never expires; the machine
+     * credential contract forbids that, so the lifetime falls back to the
+     * ceiling and the issued token still ages out.
      */
     #[Test]
-    public function it_issues_a_non_expiring_token_when_client_lifetime_is_zero(): void
+    public function it_caps_a_client_token_at_the_maximum_lifetime_when_client_lifetime_is_zero(): void
     {
         // Arrange
 
+        Carbon::setTestNow('2026-01-15 10:00:00');
+
         config([
             'api.client_token_expiration_days' => 0,
-            'api.token_expiration_days' => 90,
+            'api.token_max_expiration_days' => 366,
         ]);
 
         $plainSecret = 'ClientSecretValue12';
@@ -163,13 +170,15 @@ final class ClientTokenExchangeControllerTest extends TestCase
         // Assert
 
         $response->assertOk();
-        $response->assertJsonPath('data.expires_in', null);
-        $response->assertJsonPath('data.token.expires_at', null);
+        $response->assertJsonPath('data.expires_in', 366 * 24 * 60 * 60);
+        $response->assertJsonPath('data.token.expires_at', '2027-01-16T10:00:00+00:00');
 
         $this->assertDatabaseHas('personal_access_tokens', [
             'tokenable_id' => $client->user_id,
-            'expires_at' => null,
+            'expires_at' => '2027-01-16 10:00:00',
         ]);
+
+        Carbon::setTestNow();
     }
 
     /**
@@ -223,8 +232,9 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $response->assertJsonPath('meta.errors.client_id', ['Invalid Credentials']);
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', 'invalid_client');
+        $response->assertJsonPath('error_description', 'Client Authentication Failed');
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::ClientTokenExchangeFailed->value,
@@ -256,8 +266,9 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $response->assertJsonPath('meta.errors.client_id', ['Invalid Credentials']);
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', 'invalid_grant');
+        $response->assertJsonPath('error_description', 'Client Authentication Failed');
     }
 
     /**
@@ -290,8 +301,9 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $response->assertJsonPath('meta.errors.client_id', ['Invalid Credentials']);
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', 'invalid_grant');
+        $response->assertJsonPath('error_description', 'Client Authentication Failed');
     }
 
     /**
@@ -326,8 +338,9 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $response->assertJsonPath('meta.errors.client_id', ['Invalid Credentials']);
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', 'invalid_grant');
+        $response->assertJsonPath('error_description', 'Client Authentication Failed');
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::ClientTokenExchangeFailed->value,
@@ -364,7 +377,8 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', 'invalid_client');
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::ClientTokenExchangeFailed->value,
@@ -396,19 +410,20 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $response->assertJsonPath('meta.errors.client_id', ['Invalid Credentials']);
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', 'invalid_client');
+        $response->assertJsonPath('error_description', 'Client Authentication Failed');
     }
 
     /**
      * Reject unsupported grant types and missing credential fields.
      *
-     * @param array<string, mixed> $payload          the hostile request body
-     * @param string               $expectedErrorKey the validation key that must error
+     * @param array<string, mixed> $payload      the hostile request body
+     * @param string               $expectedCode the RFC 6749 error code the caller must receive
      */
     #[Test]
     #[DataProvider('invalidPayloadProvider')]
-    public function it_rejects_invalid_exchange_payloads(array $payload, string $expectedErrorKey): void
+    public function it_rejects_invalid_exchange_payloads(array $payload, string $expectedCode): void
     {
         // Act
 
@@ -417,8 +432,85 @@ final class ClientTokenExchangeControllerTest extends TestCase
 
         // Assert
 
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, [$expectedErrorKey]);
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', $expectedCode);
+    }
+
+    /**
+     * Name the parameter the validator actually rejected.
+     *
+     * A hardcoded fallback misreports the ordinary case: an oversized `client_secret` alongside a
+     * valid `client_id` was described as `Missing Or Invalid Parameter: client_id`, sending the
+     * caller to fix the one field it had already got right. Pinned in both directions so the
+     * description cannot drift back to whichever field happens to appear first in the rules.
+     *
+     * @param array<string, mixed> $payload            the request body to reject
+     * @param string               $expectedCode       the RFC 6749 error code the caller must receive
+     * @param string               $expectedParameter  the field the description must name
+     * @param string               $forbiddenParameter the field the description must not blame
+     */
+    #[Test]
+    #[DataProvider('mislabelledParameterProvider')]
+    public function it_names_the_parameter_that_actually_failed(
+        array $payload,
+        string $expectedCode,
+        string $expectedParameter,
+        string $forbiddenParameter,
+    ): void {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/oauth/token', $payload);
+
+        // Assert
+
+        $response->assertBadRequest();
+        $response->assertJsonPath('error', $expectedCode);
+
+        $description = $response->json('error_description');
+
+        $this->assertIsString($description);
+
+        $this->assertStringContainsString($expectedParameter, $description);
+        $this->assertStringNotContainsString(
+            $forbiddenParameter,
+            $description,
+            'The description must not blame a field that passed validation.',
+        );
+    }
+
+    /**
+     * A valid client_id paired with an oversized client_secret, and the mirror image.
+     *
+     * The third element is the field that must NOT be named, so each row also proves the response
+     * does not simply blame whichever credential field happens to come first in the rules.
+     *
+     * @return array<string, array{0: array<string, mixed>, 1: string, 2: string, 3: string}>
+     */
+    public static function mislabelledParameterProvider(): array
+    {
+        return [
+            'oversized client secret with a valid client id' => [
+                [
+                    'grant_type' => 'client_credentials',
+                    'client_id' => 'demo-integration-client',
+                    'client_secret' => str_repeat('x', 256),
+                ],
+                'invalid_request',
+                'client_secret',
+                'client_id',
+            ],
+            'oversized client id' => [
+                [
+                    'grant_type' => 'client_credentials',
+                    'client_id' => str_repeat('y', 256),
+                    'client_secret' => 'valid-secret',
+                ],
+                'invalid_request',
+                'client_id',
+                'client_secret',
+            ],
+        ];
     }
 
     /*
@@ -441,28 +533,28 @@ final class ClientTokenExchangeControllerTest extends TestCase
                     'client_id' => 'demo',
                     'client_secret' => 'secret',
                 ],
-                'grant_type',
+                'unsupported_grant_type',
             ],
             'missing grant type' => [
                 [
                     'client_id' => 'demo',
                     'client_secret' => 'secret',
                 ],
-                'grant_type',
+                'invalid_request',
             ],
             'missing client id' => [
                 [
                     'grant_type' => 'client_credentials',
                     'client_secret' => 'secret',
                 ],
-                'client_id',
+                'invalid_request',
             ],
             'missing client secret' => [
                 [
                     'grant_type' => 'client_credentials',
                     'client_id' => 'demo',
                 ],
-                'client_secret',
+                'invalid_request',
             ],
         ];
     }

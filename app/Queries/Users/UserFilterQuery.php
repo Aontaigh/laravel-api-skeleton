@@ -74,6 +74,14 @@ final class UserFilterQuery
                 $roles->whereIn('name', $filters->roles);
             });
         }
+
+        if ($filters->from !== null) {
+            $query->where('users.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where('users.created_at', '<=', $filters->to);
+        }
     }
 
     /*

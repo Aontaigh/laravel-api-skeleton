@@ -61,5 +61,13 @@ final class SessionFilterQuery
                     );
             });
         }
+
+        if ($filters->from !== null) {
+            $query->where(SessionQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where(SessionQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

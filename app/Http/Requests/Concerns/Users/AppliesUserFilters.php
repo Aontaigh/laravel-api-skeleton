@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns\Users;
 
 use App\Enums\RoleName;
+use App\Http\Requests\Concerns\AppliesDateRangeFilters;
 use App\Http\Requests\Concerns\ParsesCommaListQueryParam;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
@@ -34,6 +35,7 @@ trait AppliesUserFilters
     |--------------------------------------------------------------------------
     */
 
+    use AppliesDateRangeFilters;
     use ParsesCommaListQueryParam;
     use ParsesFieldsQueryParam;
     use ParsesIncludeQueryParam;
@@ -153,6 +155,7 @@ trait AppliesUserFilters
             'filter' => ['sometimes', 'array'],
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
+            ...$this->dateRangeFilterRules('filter.from', 'filter.to'),
             'filter.status' => [
                 'sometimes',
                 'nullable',
@@ -233,7 +236,7 @@ trait AppliesUserFilters
      */
     protected function allowedFilterKeys(): array
     {
-        return ['search', 'status', 'role'];
+        return ['search', 'status', 'role', 'from', 'to'];
     }
 
     /**

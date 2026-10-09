@@ -133,6 +133,29 @@ final class AuthRateLimitKeySafetyTest extends TestCase
 
         // Assert
 
+        $response->assertBadRequest();
+    }
+
+    /**
+     * Answer validation, not a server error, when the two-factor token is an array.
+     *
+     * The throttle middleware builds its key before the FormRequest validates,
+     * so the key builder must degrade a non-string token to the anonymous
+     * bucket and let validation answer.
+     */
+    #[Test]
+    public function it_answers_validation_for_an_array_two_factor_token(): void
+    {
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->postJson('/api/auth/two-factor/verify', [
+            'two_factor_token' => ['not-a-string'],
+            'code' => '123456',
+        ]);
+
+        // Assert
+
         $response->assertUnprocessable();
     }
 }

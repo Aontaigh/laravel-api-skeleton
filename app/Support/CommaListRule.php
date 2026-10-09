@@ -22,6 +22,10 @@ use Illuminate\Validation\Rule;
  * The rule also enforces the list cap, which is why it exists rather than a bare `Rule::in`:
  * without it the cap would have to be a second enforcement path, and one path means one place
  * to get wrong.
+ *
+ * Every invalid part is reported, not just the first, so a caller sending `1,abc,def` can
+ * correct the whole list from one `422` rather than discovering the bad values one round trip
+ * at a time.
  */
 final class CommaListRule implements ValidationRule
 {

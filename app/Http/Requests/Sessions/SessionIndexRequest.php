@@ -90,6 +90,9 @@ final class SessionIndexRequest extends ApiFormRequest
      */
     public function messages(): array
     {
-        return $this->commaListFilterMessages();
+        return array_merge(
+            $this->commaListFilterMessages(),
+            $this->dateRangeFilterMessages('filter.from', 'filter.to'),
+        );
     }
 }

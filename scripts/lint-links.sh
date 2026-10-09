@@ -122,8 +122,8 @@ EXEMPT_LINK_PATTERNS=(
     # compare URLs 404 until `vX.Y.Z` exists on the remote. Both in-flight entries
     # for the release being cut are exempt - the `X.Y.Z` section itself and the
     # `Unreleased` link that points at it.
-    'github\.com/Aontaigh/laravel-api-skeleton/compare/v2\.0\.1\.\.\.v2\.1\.0$'
-    'github\.com/Aontaigh/laravel-api-skeleton/compare/v2\.1\.0\.\.\.HEAD$'
+    'github\.com/Aontaigh/laravel-api-skeleton/compare/v2\.1\.0\.\.\.v3\.0\.0$'
+    'github\.com/Aontaigh/laravel-api-skeleton/compare/v3\.0\.0\.\.\.HEAD$'
 )
 
 # ---------------------------------------------------------------------------

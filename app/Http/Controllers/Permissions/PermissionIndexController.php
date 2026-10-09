@@ -65,6 +65,8 @@ final class PermissionIndexController
 
         $filters = new PermissionFilters(
             search: $request->searchTerm(),
+            from: $request->fromBoundary('filter.from'),
+            to: $request->toBoundary('filter.to'),
         );
 
         $sort = $request->indexSort(

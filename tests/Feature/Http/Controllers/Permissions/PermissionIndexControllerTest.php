@@ -17,6 +17,7 @@ use App\Queries\Permissions\PermissionFilterQuery;
 use App\Queries\Permissions\PermissionQueryConstraints;
 use App\Support\ApiResponse;
 use App\Support\CommaSeparatedList;
+use App\Support\DateBoundaryParser;
 use App\Support\LikePattern;
 use App\Support\QualifiedColumn;
 use Database\Seeders\RolesAndPermissionsSeeder;
@@ -47,6 +48,7 @@ use Tests\TestCase;
 #[CoversClass(CommaSeparatedList::class)]
 #[CoversClass(LikePattern::class)]
 #[CoversClass(QualifiedColumn::class)]
+#[CoversClass(DateBoundaryParser::class)]
 final class PermissionIndexControllerTest extends TestCase
 {
     /*
@@ -276,5 +278,186 @@ final class PermissionIndexControllerTest extends TestCase
             'unsupported fields key' => ['fields[users]=id', 'fields.users'],
             'unsupported fields column' => ['fields[permissions]=guard_name', 'fields.permissions'],
         ];
+    }
+
+    /*
+     * Date Range Tests
+     * ----------------
+     */
+
+    /**
+     * Filter permissions by an inclusive lower bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_from_only(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        Permission::query()->update(['created_at' => '2026-10-01 10:00:00']);
+        Permission::whereIn('id', Permission::query()->limit(2)->pluck('id'))
+            ->update(['created_at' => '2026-10-05 10:00:00']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/permissions?filter[from]=2026-10-05&per_page=100');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount(2, 'data');
+    }
+
+    /**
+     * Filter permissions by an inclusive upper bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_to_only(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        Permission::query()->update(['created_at' => '2026-10-01 10:00:00']);
+        Permission::whereIn('id', Permission::query()->limit(2)->pluck('id'))
+            ->update(['created_at' => '2026-10-05 10:00:00']);
+
+        $total = Permission::query()->count();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/permissions?filter[to]=2026-10-01&per_page=100');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount($total - 2, 'data');
+    }
+
+    /**
+     * Filter permissions by an inclusive range on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_both_bounds(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        Permission::query()->update(['created_at' => '2026-10-03 10:00:00']);
+
+        $total = Permission::query()->count();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/permissions?filter[from]=2026-10-01&filter[to]=2026-10-05&per_page=100');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonCount($total, 'data');
+    }
+
+    /**
+     * Include the whole named day for a bare date upper bound.
+     */
+    #[Test]
+    public function it_includes_the_whole_day_for_a_bare_date_to_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        Permission::query()->update(['created_at' => '2026-10-05 15:00:00']);
+        Permission::query()->limit(1)->update(['created_at' => '2026-10-06 00:00:01']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/permissions?filter[to]=2026-10-05&per_page=100');
+
+        // Assert
+
+        $response->assertOk();
+
+        $total = Permission::query()->count();
+        $response->assertJsonCount($total - 1, 'data');
+    }
+
+    /**
+     * Reject a range whose upper bound precedes its lower bound.
+     */
+    #[Test]
+    public function it_rejects_a_to_bound_before_the_from_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/permissions?filter[from]=2026-10-05&filter[to]=2026-10-01');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.to']);
+    }
+
+    /**
+     * Reject a bound Carbon cannot parse.
+     */
+    #[Test]
+    public function it_rejects_an_unparseable_from_date(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/permissions?filter[from]=not-a-date');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
+    }
+
+    /**
+     * Reject a blank bound instead of narrowing to nothing.
+     *
+     * A blank date is malformed input, not an empty list: unlike a comma list, there is no
+     * "empty date" that could mean absent, so the `date` rule refuses it.
+     */
+    #[Test]
+    public function it_rejects_a_blank_from_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/permissions?filter[from]=');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
     }
 }

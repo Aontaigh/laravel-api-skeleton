@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Requests\Concerns\AuthAuditLogs;
 
 use App\Enums\AuthAuditEvent;
+use App\Http\Requests\Concerns\AppliesDateRangeFilters;
 use App\Http\Requests\Concerns\ParsesCommaListQueryParam;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
@@ -30,6 +31,7 @@ trait AppliesAuthAuditLogFilters
     |--------------------------------------------------------------------------
     */
 
+    use AppliesDateRangeFilters;
     use ParsesCommaListQueryParam;
     use ParsesFieldsQueryParam;
     use ParsesIncludeQueryParam;
@@ -116,6 +118,7 @@ trait AppliesAuthAuditLogFilters
             'filter' => ['sometimes', 'array'],
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
+            ...$this->dateRangeFilterRules('filter.from', 'filter.to'),
             'filter.event' => [
                 'sometimes',
                 'nullable',
@@ -188,7 +191,7 @@ trait AppliesAuthAuditLogFilters
      */
     protected function allowedFilterKeys(): array
     {
-        return ['search', 'event', 'user_id', 'api_client_id'];
+        return ['search', 'event', 'user_id', 'api_client_id', 'from', 'to'];
     }
 
     /**

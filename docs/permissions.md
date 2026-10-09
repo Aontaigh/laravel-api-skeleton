@@ -21,42 +21,42 @@ Policy or request concern.
 
 ## Permissions
 
-| Permission | Grants | Enforced In |
-| --- | --- | --- |
-| `users.list` | Access to `GET /api/users` and `GET /api/users/{user}` | `UserPolicy::viewAny()` and `UserPolicy::view()` |
-| `users.list-all` | List users across every team (not just the viewer's team) | [AppliesUserFilters](../app/Http/Requests/Concerns/Users/AppliesUserFilters.php) → [UserFilterQuery](../app/Queries/Users/UserFilterQuery.php) |
-| `users.view-email` | See and select the `email` column on user records | [AppliesUserFilters](../app/Http/Requests/Concerns/Users/AppliesUserFilters.php) and [UserResource](../app/Http/Resources/UserResource.php) |
-| `users.create` | Create a user via `POST /api/users` | `UserPolicy::create()` |
-| `users.update` | Update a user via `PATCH /api/users/{user}` | `UserPolicy::update()` |
-| `users.assign-role` | Change `role` on `PATCH /api/users/{user}` | `UserPolicy::assignRole()` |
-| `users.reassign-team` | Reassign `team_id` on `PATCH /api/users/{user}` | `UserPolicy::reassignTeam()` |
-| `users.delete` | Soft-delete a user via `DELETE /api/users/{user}` | `UserPolicy::delete()` |
-| `users.restore` | Restore a soft-deleted user via `POST /api/users/{user}/restore` | `UserPolicy::restore()` |
-| `users.force-logout` | Force-logout Users via `POST /api/users/logout` | `UserPolicy::forceLogout()` |
-| `users.suspend` | Suspend or unsuspend a User via `POST /api/users/{user}/suspend` and `POST /api/users/{user}/unsuspend` | `UserPolicy::suspend()` and `UserPolicy::unsuspend()` |
-| `roles.list` | Access to `GET /api/roles` and `GET /api/roles/{role}` | `RolePolicy::viewAny()` and `RolePolicy::view()` |
-| `tokens.list-own` | Access to `GET /api/tokens` (own tokens only) | `PersonalAccessTokenPolicy::viewAny()` |
-| `tokens.create-own` | Access to `POST /api/tokens` | `PersonalAccessTokenPolicy::create()` |
-| `tokens.revoke-own` | Access to `DELETE /api/tokens/{token}` when the token belongs to the caller | `PersonalAccessTokenPolicy::delete()` |
-| `tokens.create-for-user` | Access to `POST /api/users/{user}/tokens` (issue a token for another user) | `PersonalAccessTokenPolicy::createForUser()` |
-| `sessions.list-own` | Access to `GET /api/sessions` (own sessions only) | `WebSessionPolicy::viewAny()` |
-| `sessions.list-all` | List web sessions across every User (not just the caller's) | [AppliesSessionFilters](../app/Http/Requests/Concerns/Sessions/AppliesSessionFilters.php) → [SessionFilterQuery](../app/Queries/Sessions/SessionFilterQuery.php) |
-| `sessions.revoke-own` | Access to `DELETE /api/sessions/{web_session}`, `DELETE /api/sessions/current`, and `DELETE /api/sessions/others` when the sessions belong to the caller | `WebSessionPolicy::delete()` |
-| `sessions.revoke-any` | Revoke any User's web session via `DELETE /api/sessions/{web_session}` | `WebSessionPolicy::delete()` |
-| `api-clients.list` | Access to `GET /api/clients` and `GET /api/clients/{client}` | `ApiClientPolicy::viewAny()` and `ApiClientPolicy::view()` |
-| `api-clients.create` | Access to `POST /api/clients` | `ApiClientPolicy::create()` |
-| `api-clients.update` | Access to `PATCH /api/clients/{client}` and `POST /api/clients/{client}/rotate-secret` | `ApiClientPolicy::update()` |
-| `webhooks.list` | Access to `GET /api/webhook-endpoints`, `GET /api/webhook-endpoints/{webhook_endpoint}`, and `GET /api/webhook-endpoints/{webhook_endpoint}/deliveries` | `WebhookEndpointPolicy::viewAny()` and `WebhookEndpointPolicy::view()` |
-| `webhooks.create` | Access to `POST /api/webhook-endpoints` | `WebhookEndpointPolicy::create()` |
-| `webhooks.update` | Access to `PATCH /api/webhook-endpoints/{webhook_endpoint}`, test pings, and secret rotation | `WebhookEndpointPolicy::update()` |
-| `webhooks.delete` | Access to `DELETE /api/webhook-endpoints/{webhook_endpoint}` | `WebhookEndpointPolicy::delete()` |
-| `api-clients.delete` | Access to `DELETE /api/clients/{client}` | `ApiClientPolicy::delete()` |
-| `audit-logs.list` | Access to `GET /api/audit-logs` and `GET /api/audit-logs/{auth_audit_log}` (Admin role only for now) | `AuthAuditLogPolicy::viewAny()` and `AuthAuditLogPolicy::view()` |
-| `teams.list` | Access to `GET /api/teams` and `GET /api/teams/{team}` | `TeamPolicy::viewAny()` and `TeamPolicy::view()` |
-| `teams.create` | Access to `POST /api/teams` | `TeamPolicy::create()` |
-| `teams.update` | Access to `PATCH /api/teams/{team}` | `TeamPolicy::update()` |
-| `teams.delete` | Access to `DELETE /api/teams/{team}` | `TeamPolicy::delete()` |
-| `permissions.list` | Access to `GET /api/permissions` | `PermissionPolicy::viewAny()` |
+| Permission               | Grants                                                                                                                                                   | Enforced In                                                                                                                                                      |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `users.list`             | Access to `GET /api/users` and `GET /api/users/{user}`                                                                                                   | `UserPolicy::viewAny()` and `UserPolicy::view()`                                                                                                                 |
+| `users.list-all`         | List users across every team (not just the viewer's team)                                                                                                | [AppliesUserFilters](../app/Http/Requests/Concerns/Users/AppliesUserFilters.php) → [UserFilterQuery](../app/Queries/Users/UserFilterQuery.php)                   |
+| `users.view-email`       | See and select the `email` column on user records                                                                                                        | [AppliesUserFilters](../app/Http/Requests/Concerns/Users/AppliesUserFilters.php) and [UserResource](../app/Http/Resources/UserResource.php)                      |
+| `users.create`           | Create a user via `POST /api/users`                                                                                                                      | `UserPolicy::create()`                                                                                                                                           |
+| `users.update`           | Update a user via `PATCH /api/users/{user}`                                                                                                              | `UserPolicy::update()`                                                                                                                                           |
+| `users.assign-role`      | Change `role` on `PATCH /api/users/{user}`                                                                                                               | `UserPolicy::assignRole()`                                                                                                                                       |
+| `users.reassign-team`    | Reassign `team_id` on `PATCH /api/users/{user}`                                                                                                          | `UserPolicy::reassignTeam()`                                                                                                                                     |
+| `users.delete`           | Soft-delete a user via `DELETE /api/users/{user}`                                                                                                        | `UserPolicy::delete()`                                                                                                                                           |
+| `users.restore`          | Restore a soft-deleted user via `POST /api/users/{user}/restore`                                                                                         | `UserPolicy::restore()`                                                                                                                                          |
+| `users.force-logout`     | Force-logout Users via `POST /api/users/logout`                                                                                                          | `UserPolicy::forceLogout()`                                                                                                                                      |
+| `users.suspend`          | Suspend or unsuspend a User via `POST /api/users/{user}/suspend` and `POST /api/users/{user}/unsuspend`                                                  | `UserPolicy::suspend()` and `UserPolicy::unsuspend()`                                                                                                            |
+| `roles.list`             | Access to `GET /api/roles` and `GET /api/roles/{role}`                                                                                                   | `RolePolicy::viewAny()` and `RolePolicy::view()`                                                                                                                 |
+| `tokens.list-own`        | Access to `GET /api/tokens` (own tokens only)                                                                                                            | `PersonalAccessTokenPolicy::viewAny()`                                                                                                                           |
+| `tokens.create-own`      | Access to `POST /api/tokens`                                                                                                                             | `PersonalAccessTokenPolicy::create()`                                                                                                                            |
+| `tokens.revoke-own`      | Access to `DELETE /api/tokens/{token}` when the token belongs to the caller                                                                              | `PersonalAccessTokenPolicy::delete()`                                                                                                                            |
+| `tokens.create-for-user` | Access to `POST /api/users/{user}/tokens` (issue a token for another user)                                                                               | `PersonalAccessTokenPolicy::createForUser()`                                                                                                                     |
+| `sessions.list-own`      | Access to `GET /api/sessions` (own sessions only)                                                                                                        | `WebSessionPolicy::viewAny()`                                                                                                                                    |
+| `sessions.list-all`      | List web sessions across every User (not just the caller's)                                                                                              | [AppliesSessionFilters](../app/Http/Requests/Concerns/Sessions/AppliesSessionFilters.php) → [SessionFilterQuery](../app/Queries/Sessions/SessionFilterQuery.php) |
+| `sessions.revoke-own`    | Access to `DELETE /api/sessions/{web_session}`, `DELETE /api/sessions/current`, and `DELETE /api/sessions/others` when the sessions belong to the caller | `WebSessionPolicy::delete()`                                                                                                                                     |
+| `sessions.revoke-any`    | Revoke any User's web session via `DELETE /api/sessions/{web_session}`                                                                                   | `WebSessionPolicy::delete()`                                                                                                                                     |
+| `api-clients.list`       | Access to `GET /api/clients` and `GET /api/clients/{client}`                                                                                             | `ApiClientPolicy::viewAny()` and `ApiClientPolicy::view()`                                                                                                       |
+| `api-clients.create`     | Access to `POST /api/clients`                                                                                                                            | `ApiClientPolicy::create()`                                                                                                                                      |
+| `api-clients.update`     | Access to `PATCH /api/clients/{client}` and `POST /api/clients/{client}/rotate-secret`                                                                   | `ApiClientPolicy::update()`                                                                                                                                      |
+| `webhooks.list`          | Access to `GET /api/webhook-endpoints`, `GET /api/webhook-endpoints/{webhook_endpoint}`, and `GET /api/webhook-endpoints/{webhook_endpoint}/deliveries`  | `WebhookEndpointPolicy::viewAny()` and `WebhookEndpointPolicy::view()`                                                                                           |
+| `webhooks.create`        | Access to `POST /api/webhook-endpoints`                                                                                                                  | `WebhookEndpointPolicy::create()`                                                                                                                                |
+| `webhooks.update`        | Access to `PATCH /api/webhook-endpoints/{webhook_endpoint}`, test pings, and secret rotation                                                             | `WebhookEndpointPolicy::update()`                                                                                                                                |
+| `webhooks.delete`        | Access to `DELETE /api/webhook-endpoints/{webhook_endpoint}`                                                                                             | `WebhookEndpointPolicy::delete()`                                                                                                                                |
+| `api-clients.delete`     | Access to `DELETE /api/clients/{client}`                                                                                                                 | `ApiClientPolicy::delete()`                                                                                                                                      |
+| `audit-logs.list`        | Access to `GET /api/audit-logs` and `GET /api/audit-logs/{auth_audit_log}` (Admin role only for now)                                                     | `AuthAuditLogPolicy::viewAny()` and `AuthAuditLogPolicy::view()`                                                                                                 |
+| `teams.list`             | Access to `GET /api/teams` and `GET /api/teams/{team}`                                                                                                   | `TeamPolicy::viewAny()` and `TeamPolicy::view()`                                                                                                                 |
+| `teams.create`           | Access to `POST /api/teams`                                                                                                                              | `TeamPolicy::create()`                                                                                                                                           |
+| `teams.update`           | Access to `PATCH /api/teams/{team}`                                                                                                                      | `TeamPolicy::update()`                                                                                                                                           |
+| `teams.delete`           | Access to `DELETE /api/teams/{team}`                                                                                                                     | `TeamPolicy::delete()`                                                                                                                                           |
+| `permissions.list`       | Access to `GET /api/permissions`                                                                                                                         | `PermissionPolicy::viewAny()`                                                                                                                                    |
 
 ### Notes
 
@@ -202,10 +202,10 @@ Rows written before the column existed stay `null`.
 
 #### `GET /api/permissions`
 
-Read-only catalog of every Spatie permission string the application registers.
+Read-only catalogue of every Spatie permission string the application registers.
 Interactive Users who create Personal Access Tokens (`permissions.list` on Admin,
 Manager, and User) use this to populate ability pickers. Results are scoped to
-the `web` guard and validated against the same catalog
+the `web` guard and validated against the same catalogue
 [PermissionAbilityCatalog](../app/Services/Permissions/PermissionAbilityCatalog.php)
 enforces on token and API client create. Service accounts cannot list permissions.
 
@@ -265,8 +265,16 @@ password login:
   `client_secret` is returned once on create.
 - Client abilities must be scoped: the unrestricted wildcard (`['*']`) is refused
   on create and update. A machine identity must never hold every permission. Human-side
-  tokens (login sessions and self-service `POST /api/tokens`) keep `['*']` semantics
-  by design - authorisation runs through Gate + Spatie policies, not `tokenCan`.
+  authorisation runs through Gate + Spatie policies, not `tokenCan`: login and
+  session tokens hold `['*']`, while self-service `POST /api/tokens` may narrow a
+  token to any subset of the registered permissions - and a scoped token can never
+  mint a broader one. Consuming apps deliberately fix human tokens to the owner's
+  full grant instead, recorded here so the divergence is a decision rather than
+  drift; the cost is that a User cannot hand a script a deliberately narrow token,
+  so any leaked human token is account-wide. Every token expires: the ceiling is
+  `API_TOKEN_MAX_EXPIRATION_DAYS` (default **366**), an explicit `null` or a later
+  date answers `422`, and expired rows are pruned daily by `sanctum:prune-expired`
+  (see [README](../README.md#tokens)).
 - Secret rotation (`POST /api/clients/{client}/rotate-secret`) does **not** revoke
   outstanding bearer tokens - they stay valid until natural expiry or deactivation
   (OAuth2 client-credentials semantics).
@@ -281,28 +289,28 @@ The compromise runbook for a leaked integration secret is therefore:
 
 After `migrate:fresh --seed`, a demo client is available:
 
-| `client_id` | `client_secret` (local default) |
-| --- | --- |
-| `demo-integration-client` | `DemoClientSecret12` |
+| `client_id`               | `client_secret` (local default) |
+| ------------------------- | ------------------------------- |
+| `demo-integration-client` | `DemoClientSecret12`            |
 
 ## Roles
 
-| Role | Permissions |
-| --- | --- |
-| **Admin** | All permissions |
+| Role        | Permissions                                                                                                                                                                                           |
+| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Admin**   | All permissions                                                                                                                                                                                       |
 | **Manager** | `users.list`, `users.update`, `users.delete`, `roles.list`, `teams.list`, `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list`, `sessions.list-own`, `sessions.revoke-own` |
-| **User** | `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list`, `sessions.list-own`, `sessions.revoke-own` |
-| **Service** | `users.list`, `users.list-all`, `users.view-email`, `roles.list` (machine identity only - no interactive login) |
+| **User**    | `tokens.list-own`, `tokens.create-own`, `tokens.revoke-own`, `permissions.list`, `sessions.list-own`, `sessions.revoke-own`                                                                           |
+| **Service** | `users.list`, `users.list-all`, `users.view-email`, `roles.list` (machine identity only - no interactive login)                                                                                       |
 
 ## Seeded Accounts
 
 After `migrate:fresh --seed`:
 
-| Email | Role |
-| --- | --- |
-| `admin@example.com` | Admin |
-| `manager@example.com` | Manager |
-| `test@example.com` | User |
+| Email                           | Role                      |
+| ------------------------------- | ------------------------- |
+| `admin@example.com`             | Admin                     |
+| `manager@example.com`           | Manager                   |
+| `test@example.com`              | User                      |
 | `integrations@clients.internal` | Service (demo API client) |
 
 Demo client credentials: `client_id` `demo-integration-client`, secret `DemoClientSecret12`

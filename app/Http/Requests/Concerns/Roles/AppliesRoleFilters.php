@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Http\Requests\Concerns\Roles;
 
+use App\Http\Requests\Concerns\AppliesDateRangeFilters;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesIncludeQueryParam;
 use App\Http\Requests\Concerns\ParsesSearchQueryParam;
@@ -27,6 +28,7 @@ trait AppliesRoleFilters
     |--------------------------------------------------------------------------
     */
 
+    use AppliesDateRangeFilters;
     use ParsesFieldsQueryParam;
     use ParsesIncludeQueryParam;
     use ParsesSearchQueryParam;
@@ -75,6 +77,7 @@ trait AppliesRoleFilters
             'filter' => ['sometimes', 'array'],
             'fields' => ['sometimes', 'array'],
             ...$this->searchFilterRules(),
+            ...$this->dateRangeFilterRules('filter.from', 'filter.to'),
             'page' => ['sometimes', 'integer', 'min:1'],
             'per_page' => [
                 'sometimes',
@@ -139,7 +142,7 @@ trait AppliesRoleFilters
      */
     protected function allowedFilterKeys(): array
     {
-        return ['search'];
+        return ['search', 'from', 'to'];
     }
 
     /**

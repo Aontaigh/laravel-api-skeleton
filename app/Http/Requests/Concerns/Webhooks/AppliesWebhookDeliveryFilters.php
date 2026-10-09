@@ -6,6 +6,7 @@ namespace App\Http\Requests\Concerns\Webhooks;
 
 use App\Enums\WebhookDeliveryStatus;
 use App\Enums\WebhookEvent;
+use App\Http\Requests\Concerns\AppliesDateRangeFilters;
 use App\Http\Requests\Concerns\ParsesCommaListQueryParam;
 use App\Http\Requests\Concerns\ParsesFieldsQueryParam;
 use App\Http\Requests\Concerns\ParsesSortQueryParam;
@@ -27,6 +28,7 @@ trait AppliesWebhookDeliveryFilters
     |--------------------------------------------------------------------------
     */
 
+    use AppliesDateRangeFilters;
     use ParsesCommaListQueryParam;
     use ParsesFieldsQueryParam;
     use ParsesSortQueryParam;
@@ -86,6 +88,7 @@ trait AppliesWebhookDeliveryFilters
     {
         return [
             'filter' => ['sometimes', 'array'],
+            ...$this->dateRangeFilterRules('filter.from', 'filter.to'),
             'filter.event' => [
                 'sometimes',
                 'nullable',
@@ -164,7 +167,7 @@ trait AppliesWebhookDeliveryFilters
      */
     protected function allowedFilterKeys(): array
     {
-        return ['event', 'status'];
+        return ['event', 'status', 'from', 'to'];
     }
 
     /**

@@ -21,8 +21,8 @@ This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 - [ ] 4. Release commit pushed to `main`, CI green **on that commit**
 - [ ] 5. Tag `vX.Y.Z` on the CI-green commit and push
 - [ ] 6. GitHub release published per [GitHub release format](#github-release-format) (emoji
-  section headings, unwrapped bullets, **Full Changelog** footer - do not paste
-  `CHANGELOG.md` verbatim)
+      section headings, unwrapped bullets, **Full Changelog** footer - do not paste
+      `CHANGELOG.md` verbatim)
 
 ## Release Flow
 
@@ -42,12 +42,12 @@ The `/health` endpoint reports the app version from `config('app.version')`. Tha
 value defaults to the **`version` field in `composer.json`** - not a hard-coded
 fallback in `config/app.php`. Keep these in sync on every release:
 
-| File | What to Update |
-| --- | --- |
-| [`composer.json`](../composer.json) | `"version": "X.Y.Z"` - **source of truth** |
-| [`docs/openapi.yaml`](../docs/openapi.yaml) | `info.version`, the `HealthSuccess` example, and the `HealthData.version` schema example |
+| File                                                          | What to Update                                                                                                                                               |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [`composer.json`](../composer.json)                           | `"version": "X.Y.Z"` - **source of truth**                                                                                                                   |
+| [`docs/openapi.yaml`](../docs/openapi.yaml)                   | `info.version`, the `HealthSuccess` example, and the `HealthData.version` schema example                                                                     |
 | [`.env.example`](../.env.example) and [`.env.ci`](../.env.ci) | Commented `# APP_VERSION=X.Y.Z` placeholder in the Application section (documents the optional override; keep in sync with `composer.json` on every release) |
-| Git tag | `vX.Y.Z` (must match composer version without the `v` prefix) |
+| Git tag                                                       | `vX.Y.Z` (must match composer version without the `v` prefix)                                                                                                |
 
 `APP_VERSION` in `.env` is an optional override for deployed environments. Local
 dev and CI do not need it when `composer.json` is current. The commented
@@ -83,14 +83,14 @@ headings are for the GitHub release only.
 Local (Sail when host PHP is not 8.5):
 
 ```bash
-./vendor/bin/sail composer ci
 ./vendor/bin/sail artisan migrate:fresh --seed --force
-bash scripts/verify-openapi-examples.sh
+./vendor/bin/sail composer ci
 ```
 
-`composer ci` runs Pint, Larastan, Semgrep, PHPUnit with the 90% coverage gate,
-app version sync (`composer verify:version`), and `composer audit`. OpenAPI example verification
-is a **separate** CI job - run it locally before tagging when API or docs changed.
+`composer ci` runs Pint, the Markdown link check, Larastan, Semgrep, PHPUnit with the
+90% coverage gate, OpenAPI example verification, app version sync
+(`composer verify:version`), and `composer audit`. OpenAPI verification replays every
+documented example against a served, seeded app, so seed before running the chain.
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
 Sail port notes when Docker ports on your machine are already in use.
@@ -121,8 +121,9 @@ publisher token needs push on `main` and release creation, so verify
 `gh auth status` before step 3 rather than at the release step.
 
 CI must be green on the commit you are about to tag. The **All Quality Gates** summary
-job must pass - Pint, app version sync, Larastan, PHPUnit + coverage, Security Audit,
-Semgrep, Zizmor, and OpenAPI Examples.
+job must pass - Pint (with app version sync), Link Check, Larastan, PHPUnit + coverage,
+Security Audit, OpenAPI Examples, Semgrep, Zizmor, and Lint Workflows (`actionlint` and
+the Renovate config).
 
 ## 4. Tag the CI-Green Commit
 
@@ -146,14 +147,14 @@ copy of `CHANGELOG.md` - they follow a separate layout so they render cleanly on
 
 ### GitHub Release Format
 
-| Rule | `CHANGELOG.md` | GitHub Release |
-| --- | --- | --- |
-| Version heading | `## [1.14.0] - 2026-09-11` | **Omit** - the tag title (`v1.14.0`) is the heading |
-| Section headings | `### Added` (plain) | `### ✅ Added` (emoji + Title Case) |
-| Section headings | `### Changed` | `### 🔄 Changed` |
-| Section headings | `### Fixed` | `### 🐛 Fixed` |
-| Section headings | `### Removed` | `### ❌ Removed` |
-| Footer | Compare link in file footer | `**Full Changelog**` block at the end of the notes (see below) |
+| Rule             | `CHANGELOG.md`              | GitHub Release                                                 |
+| ---------------- | --------------------------- | -------------------------------------------------------------- |
+| Version heading  | `## [1.14.0] - 2026-09-11`  | **Omit** - the tag title (`v1.14.0`) is the heading            |
+| Section headings | `### Added` (plain)         | `### ✅ Added` (emoji + Title Case)                            |
+| Section headings | `### Changed`               | `### 🔄 Changed`                                               |
+| Section headings | `### Fixed`                 | `### 🐛 Fixed`                                                 |
+| Section headings | `### Removed`               | `### ❌ Removed`                                               |
+| Footer           | Compare link in file footer | `**Full Changelog**` block at the end of the notes (see below) |
 
 Use **only** the emoji section headings above. Do not publish plain `## Added` /
 `## Changed` headings or paste the Keep a Changelog version line into the release body.
@@ -179,7 +180,7 @@ End every release **after `v1.0.0`** with a horizontal rule and compare link:
 The initial `v1.0.0` release has no prior tag, so it ends after the last bullet with no
 footer.
 
-### Example (patch release)
+### Example (Patch Release)
 
 ```markdown
 ### 🔄 Changed

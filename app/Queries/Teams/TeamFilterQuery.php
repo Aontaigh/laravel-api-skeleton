@@ -37,5 +37,13 @@ final class TeamFilterQuery
                 [$pattern],
             );
         }
+
+        if ($filters->from !== null) {
+            $query->where(TeamQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where(TeamQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

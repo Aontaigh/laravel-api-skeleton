@@ -158,7 +158,7 @@ final class ApiValidationTest extends TestCase
         $this->assertSame(AllowListValidation::sorted(UserQueryConstraints::ALLOWED_INCLUDES), $allowed['include'] ?? null);
         $this->assertSame(['created_at', 'email', 'id', 'name', 'phone'], $allowed['fields.users'] ?? null);
         $this->assertSame(
-            AllowListValidation::sorted(['search', 'status', 'role']),
+            AllowListValidation::sorted(['search', 'status', 'role', 'from', 'to']),
             $allowed['filter'] ?? null,
         );
     }

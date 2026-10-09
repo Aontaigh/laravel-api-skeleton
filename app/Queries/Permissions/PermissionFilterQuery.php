@@ -43,5 +43,13 @@ final class PermissionFilterQuery
                 [$pattern],
             );
         }
+
+        if ($filters->from !== null) {
+            $query->where(PermissionQueryConstraints::TABLE.'.created_at', '>=', $filters->from);
+        }
+
+        if ($filters->to !== null) {
+            $query->where(PermissionQueryConstraints::TABLE.'.created_at', '<=', $filters->to);
+        }
     }
 }

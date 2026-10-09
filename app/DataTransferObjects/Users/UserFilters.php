@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DataTransferObjects\Users;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 /**
  * Validated filter inputs for User list queries.
@@ -23,12 +24,14 @@ final readonly class UserFilters
      * `$viewer` is required: row scoping is derived from it, so allowing
      * null would let a caller silently produce an unscoped result set.
      *
-     * @param User         $viewer        the authenticated User (drives row scoping)
-     * @param bool         $listsAllTeams whether the viewer may see every Team, not just their own
-     * @param string|null  $search        optional name/email search term
-     * @param bool         $canViewEmails whether the viewer may read User emails
-     * @param list<string> $statuses      optional account status filters (`active`, `suspended`, or `deleted`)
-     * @param list<string> $roles         optional role name filters (`Admin`, `Manager`, `User`, or `Service`)
+     * @param User                 $viewer        the authenticated User (drives row scoping)
+     * @param bool                 $listsAllTeams whether the viewer may see every Team, not just their own
+     * @param string|null          $search        optional name/email search term
+     * @param bool                 $canViewEmails whether the viewer may read User emails
+     * @param list<string>         $statuses      optional account status filters (`active`, `suspended`, or `deleted`)
+     * @param list<string>         $roles         optional role name filters (`Admin`, `Manager`, `User`, or `Service`)
+     * @param CarbonImmutable|null $from          optional inclusive `created_at` lower bound
+     * @param CarbonImmutable|null $to            optional inclusive `created_at` upper bound
      */
     public function __construct(
         public User $viewer,
@@ -37,5 +40,7 @@ final readonly class UserFilters
         public bool $canViewEmails = false,
         public array $statuses = [],
         public array $roles = [],
+        public ?CarbonImmutable $from = null,
+        public ?CarbonImmutable $to = null,
     ) {}
 }

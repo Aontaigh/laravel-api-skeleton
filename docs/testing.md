@@ -18,20 +18,20 @@ The unit suite runs with `QUEUE_CONNECTION=sync` (set in `phpunit.xml`), so
 queued listeners (audit writes, notifications) execute inline and are
 assertable without a worker.
 
-### What a fresh seed gives you
+### What a Fresh Seed Gives You
 
 `migrate:fresh --seed` starts from a known, deliberately small state: **4
 Users, 1 API client, 4 Roles, and 0 Auth Audit Logs, Web Sessions, or Webhook
 Endpoints.** Two things about that state surprise people:
 
-- **A User has no `status` attribute.** `filter[status]` is *derived* from
+- **A User has no `status` attribute.** `filter[status]` is _derived_ from
   `suspended_at` and `deleted_at`, which is why a seeded User reads back with
   no status: it is active because both columns are null, not because a column
   says so. The filter's three values map to those columns - `active` is
   `suspended_at` null and not trashed, `suspended` is `suspended_at` set and
   not trashed, `deleted` is trashed (and needs `deleted` in the list before the
   query drops its soft-delete scope).
-- **The empty tables are the point.** Several probes assert on the *absence* of
+- **The empty tables are the point.** Several probes assert on the _absence_ of
   rows, so seeding extra Auth Audit Logs by hand can make a probe fail for a
   reason unrelated to the probe. Add fixtures only when a probe asks for them.
 
@@ -39,14 +39,14 @@ CI seeds with `artisan migrate --force --seed` rather than `migrate:fresh`,
 because a CI database is already empty. Locally, `migrate:fresh` is what
 guarantees the state above.
 
-### Two network namespaces, one port number
+### Two Network Namespaces, One Port Number
 
 This trips up nearly everyone, including agents:
 
-| Where You Run It | Base URL | Why |
-| --- | --- | --- |
-| **On the host** (`curl`, a browser, `httpClient`) | `http://localhost:$APP_PORT/api` | `compose.yaml` publishes the container's port 80 as host port `${APP_PORT:-80}`, so read the real one from your `.env` |
-| **Inside Sail** (`sail exec ... curl`, and everything in `scripts/pen-test-auth.sh`) | `http://localhost/api` | port 80 is nginx *inside* the container, always - `APP_PORT` never affects it |
+| Where You Run It                                                                     | Base URL                         | Why                                                                                                                    |
+| ------------------------------------------------------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| **On the host** (`curl`, a browser, `httpClient`)                                    | `http://localhost:$APP_PORT/api` | `compose.yaml` publishes the container's port 80 as host port `${APP_PORT:-80}`, so read the real one from your `.env` |
+| **Inside Sail** (`sail exec ... curl`, and everything in `scripts/pen-test-auth.sh`) | `http://localhost/api`           | port 80 is nginx _inside_ the container, always - `APP_PORT` never affects it                                          |
 
 A fresh clone ships `APP_URL=http://localhost` and no `APP_PORT`, so both rows
 resolve to port 80. If you remapped ports to free up 80 (see the port-collision
@@ -85,21 +85,21 @@ code loads, so `php scripts/...` on the host is not interchangeable with
 `./vendor/bin/sail php scripts/...`. Switch the host runtime (`herd use php@8.5`,
 `asdf local php 8.5`) if you would rather not use Sail.
 
-| Step | Run It | Command | Checks | Pass Condition |
-| --- | --- | --- | --- | --- |
-| 1 | Sail | `./vendor/bin/sail composer lint` | Pint style check (`lint:fix` to auto-fix) | Exit 0 |
-| 1b | Sail | `./vendor/bin/sail composer lint:links` | Markdown link and anchor resolution | `Link Lint Passed` |
-| 2 | Sail | `./vendor/bin/sail composer analyse` | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors` |
-| 3 | Sail | `./vendor/bin/sail composer test` | Full PHPUnit suite (unit + feature) | All pass |
-| 4 | Sail | `./vendor/bin/sail composer test:coverage:check` | Step 3 plus the 90% line-coverage gate over `app/` | `Coverage Gate Passed` |
-| 5 | Sail | `./vendor/bin/sail composer verify:version` | `composer.json`, `package.json`, and the App version agree | `is in Sync` |
-| 6 | Sail | `./vendor/bin/sail composer audit --locked` | Known Composer advisories | `No security vulnerability advisories found` |
-| 7 | **host** | `bash scripts/semgrep.sh` | SAST with Laravel security rules | `0 findings` |
-| 8 | host | `docker run --rm -v "$PWD:/repo:ro" "$ZIZMOR_IMAGE" --config /repo/.github/zizmor.yml /repo/.github/workflows/` | GitHub Actions workflow audit, scoped to `.github/workflows/` | Exit 0 |
-| 9 | host | `docker run --rm -v "$PWD:/repo:ro" -w /repo "$ACTIONLINT_IMAGE"` | Workflow syntax (`actionlint`) | No output |
-| 10 | host | `npx --yes -p renovate renovate-config-validator` | `renovate.json` schema | Exit 0 |
-| 11 | Sail, seeded DB | `./vendor/bin/sail composer verify:openapi` | Replays every example in [openapi.yaml](openapi.yaml) against a live app | `All OpenAPI Examples Verified` |
-| 12 | Sail, seeded DB | `bash scripts/pen-test-auth.sh` | Live adversarial HTTP probes (see below) | `Fail: 0` |
+| Step | Run It          | Command                                                                                                         | Checks                                                                                             | Pass Condition                                    |
+| ---- | --------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 1    | Sail            | `./vendor/bin/sail composer lint`                                                                               | Pint style check (`lint:fix` to auto-fix)                                                          | Exit 0                                            |
+| 1b   | Sail            | `./vendor/bin/sail composer lint:links`                                                                         | Markdown link and anchor resolution                                                                | `Link Lint Passed`                                |
+| 2    | Sail            | `./vendor/bin/sail composer analyse`                                                                            | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors`                                       |
+| 3    | Sail            | `./vendor/bin/sail composer test`                                                                               | Full PHPUnit suite (unit + feature)                                                                | All pass                                          |
+| 4    | Sail            | `./vendor/bin/sail composer test:coverage:check`                                                                | Step 3 plus the 90% line-coverage gate over `app/`                                                 | `Coverage Gate Passed`, and `PHPUnit Warnings: 0` |
+| 5    | Sail            | `./vendor/bin/sail composer verify:version`                                                                     | `composer.json`, `package.json`, and the App version agree                                         | `is in Sync`                                      |
+| 6    | Sail            | `./vendor/bin/sail composer audit --locked`                                                                     | Known Composer advisories                                                                          | `No security vulnerability advisories found`      |
+| 7    | **host**        | `bash scripts/semgrep.sh`                                                                                       | SAST with Laravel security rules                                                                   | `0 findings`                                      |
+| 8    | host            | `docker run --rm -v "$PWD:/repo:ro" "$ZIZMOR_IMAGE" --config /repo/.github/zizmor.yml /repo/.github/workflows/` | GitHub Actions workflow audit, scoped to `.github/workflows/`                                      | Exit 0                                            |
+| 9    | host            | `docker run --rm -v "$PWD:/repo:ro" -w /repo "$ACTIONLINT_IMAGE"`                                               | Workflow syntax (`actionlint`)                                                                     | No output                                         |
+| 10   | host            | `npx --yes -p renovate renovate-config-validator`                                                               | `renovate.json` schema                                                                             | Exit 0                                            |
+| 11   | Sail, seeded DB | `./vendor/bin/sail composer verify:openapi`                                                                     | Replays every example in [openapi.yaml](openapi.yaml) against a live app                           | `All OpenAPI Examples Verified`                   |
+| 12   | Sail, seeded DB | `bash scripts/pen-test-auth.sh`                                                                                 | Live adversarial HTTP probes (see below)                                                           | `Fail: 0`                                         |
 
 Steps 8 to 10 run on the host because each needs a Docker CLI the app container does
 not have; step 7 runs there for the same reason, as the Semgrep engine is an image.
@@ -112,14 +112,14 @@ Zizmor needs both the pinned image and CI's scope to reproduce CI:
 - **Scope it to `.github/workflows/`.** Pointing it at the repository root also reports
   findings from the vendored toolkit and exits non-zero.
 
-CI runs all twelve as ten jobs. `All Quality Gates` is a summary job that fails when
-any other job fails, is cancelled, or is skipped - so a cancelled job fails the build
-even though nothing was reported as broken.
+CI runs eleven of the twelve steps as nine parallel jobs, behind one `All Quality Gates`
+summary job. `All Quality Gates` fails when any other job fails, is cancelled, or is
+skipped - so a cancelled job fails the build even though nothing was reported as broken.
 
 `composer ci` chains `lint`, `lint:links`, `analyse`, `semgrep`, `test:coverage:check`,
 `verify:openapi`, `verify:version`, and `composer audit --locked`. It does **not** cover
-Zizmor, `actionlint`, the Renovate config, or the live pen test, so it is a pre-flight
-check rather than a full substitute for CI.
+Zizmor, `actionlint`, or the Renovate config, and the live pen test (step 12) runs
+locally only - so it is a pre-flight check rather than a full substitute for CI.
 
 > [!IMPORTANT]
 > `composer ci` includes `verify:openapi`, which needs a running app and a seeded
@@ -161,29 +161,29 @@ check rather than a full substitute for CI.
 Two suites, one rule each: **unit tests never touch the database, feature tests
 always do.**
 
-| Suite | Base Class | Database | Covers |
-| --- | --- | --- | --- |
-| `tests/Unit/` | [UnitTestCase](../tests/UnitTestCase.php) | Forbidden - any query fails the test at teardown | Query builders, Support parsers, DTOs, checks, notification mail bodies |
-| `tests/Feature/` | [TestCase](../tests/TestCase.php) with `RefreshDatabase` | Real MySQL (`testing` database) | HTTP endpoints, Actions, middleware, console commands, queued listeners |
+| Suite            | Base Class                                               | Database                                         | Covers                                                                  |
+| ---------------- | -------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------- |
+| `tests/Unit/`    | [UnitTestCase](../tests/UnitTestCase.php)                | Forbidden - any query fails the test at teardown | Query builders, Support parsers, DTOs, checks, notification mail bodies |
+| `tests/Feature/` | [TestCase](../tests/TestCase.php) with `RefreshDatabase` | Real MySQL (`testing` database)                  | HTTP endpoints, Actions, middleware, console commands, queued listeners |
 
 ## What the Suite Covers
 
-| Area | Where | What Is Exercised |
-| --- | --- | --- |
-| HTTP endpoints | `tests/Feature/Http/Controllers/` | Every route in [routes/api.php](../routes/api.php): auth, two-factor, password reset, email verification, sessions, users, tokens, API clients, audit logs, roles, permissions, teams, webhooks, CSP reports, app-info, system status |
-| Actions | `tests/Feature/Actions/` | Registration, credential finalisation, token creation, session revocation, password change, user and team admin - against the real database |
-| Middleware | `tests/Feature/Http/Middleware/` | Session-version gate, account-active gate, session-activity touch, security headers |
-| Console commands | `tests/Feature/Console/Commands/` | `health:record` persistence |
-| Authorisation | `tests/Feature/Authorization/`, `tests/Feature/Policies/` | Every Policy decision path and role matrix row |
-| Listeners | `tests/Feature/Listeners/` | Exactly-once audit persistence and OTP dispatch |
-| Models and Support | `tests/Feature/Models/`, `tests/Feature/Support/` | Scopes, casts, envelope helpers |
-| Query layer | `tests/Unit/Queries/` | Sort, filter, include, and sparse-fieldset state - no database |
-| Services and DTOs | `tests/Unit/Services/`, `tests/Unit/DataTransferObjects/` | User-agent parser, health checks and registry, permission catalog, CSP report parser |
-| Support | `tests/Unit/Support/` | Parse grammar, E.164 phones, input bounds |
-| Notifications | `tests/Unit/Notifications/` | Reset-link, password-changed, verification, and two-factor mail bodies, config-driven destinations |
-| Resources | `tests/Unit/Http/Resources/` | Sparse fieldsets and serialisation branches |
-| Rules | `tests/Unit/Rules/` | Custom validation rules against hostile input |
-| Providers | `tests/Unit/Providers/` | Default password policy |
+| Area               | Where                                                     | What Is Exercised                                                                                                                                                                                                                     |
+| ------------------ | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| HTTP endpoints     | `tests/Feature/Http/Controllers/`                         | Every route in [routes/api.php](../routes/api.php): auth, two-factor, password reset, email verification, sessions, users, tokens, API clients, audit logs, roles, permissions, teams, webhooks, CSP reports, app-info, system status |
+| Actions            | `tests/Feature/Actions/`                                  | Registration, credential finalisation, token creation, session revocation, password change, user and team admin - against the real database                                                                                           |
+| Middleware         | `tests/Feature/Http/Middleware/`                          | Session-version gate, account-active gate, session-activity touch, security headers                                                                                                                                                   |
+| Console commands   | `tests/Feature/Console/Commands/`                         | `health:record` persistence                                                                                                                                                                                                           |
+| Authorisation      | `tests/Feature/Authorization/`, `tests/Feature/Policies/` | Every Policy decision path and role matrix row                                                                                                                                                                                        |
+| Listeners          | `tests/Feature/Listeners/`                                | Exactly-once audit persistence and OTP dispatch                                                                                                                                                                                       |
+| Models and Support | `tests/Feature/Models/`, `tests/Feature/Support/`         | Scopes, casts, envelope helpers                                                                                                                                                                                                       |
+| Query layer        | `tests/Unit/Queries/`                                     | Sort, filter, include, and sparse-fieldset state - no database                                                                                                                                                                        |
+| Services and DTOs  | `tests/Unit/Services/`, `tests/Unit/DataTransferObjects/` | User-agent parser, health checks and registry, permission catalogue, CSP report parser                                                                                                                                                |
+| Support            | `tests/Unit/Support/`                                     | Parse grammar, E.164 phones, input bounds                                                                                                                                                                                             |
+| Notifications      | `tests/Unit/Notifications/`                               | Reset-link, password-changed, verification, and two-factor mail bodies, config-driven destinations                                                                                                                                    |
+| Resources          | `tests/Unit/Http/Resources/`                              | Sparse fieldsets and serialisation branches                                                                                                                                                                                           |
+| Rules              | `tests/Unit/Rules/`                                       | Custom validation rules against hostile input                                                                                                                                                                                         |
+| Providers          | `tests/Unit/Providers/`                                   | Default password policy                                                                                                                                                                                                               |
 
 ## Layout
 
@@ -200,7 +200,7 @@ tests/
 │   ├── Listeners/        # Queued listener behaviour (audit, OTP dispatch)
 │   ├── Models/           # Model scopes, casts, and helpers
 │   ├── Policies/         # Policy decision paths
-│   ├── Services/         # Permission catalog
+│   ├── Services/         # Permission catalogue
 │   └── Support/          # Envelope and auth support helpers
 └── Unit/
     ├── Actions/          # Token and auth units, no database
@@ -211,7 +211,7 @@ tests/
     ├── Providers/        # Default password policy
     ├── Queries/          # Query builder state per resource
     ├── Rules/            # Custom validation rules
-    ├── Services/         # User-agent parser, health checks and registry, permission catalog
+    ├── Services/         # User-agent parser, health checks and registry, permission catalogue
     └── Support/          # Parsers, E.164 phones, input bounds, security headers
 ```
 
@@ -228,9 +228,10 @@ abuse, security.txt, webhook management, client secret rotation, live role and
 ability drift (scoped PATs, admin-issued tokens, machine-token revocation),
 credential lifecycle edges (reset broker vs role change, deactivation, ability
 reorder), retired flat auth paths, and comma-separated list filters (any-of
-  semantics, per-filter caps, non-canonical key forms, allow-list hints,
-  per-value rejection, and authorising scope). 51 sections print `PASS` /
+semantics, per-filter caps, non-canonical key forms, allow-list hints,
+per-value rejection, and authorising scope). 51 sections print `PASS` /
 `FAIL` / `WARN` lines and the script exits non-zero on any failure.
+
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed
 bash scripts/pen-test-auth.sh
@@ -239,7 +240,7 @@ bash scripts/pen-test-auth.sh
 > [!IMPORTANT]
 > `migrate:fresh --seed` wipes the local database.
 
-### One probe is expected to flake
+### One Probe Is Expected to Flake
 
 **Section 23, `Timing Side-Channel (Rough)`, is a single-sample measurement and
 will intermittently report `FAIL` or `WARN`.** It times one login attempt for an
@@ -254,7 +255,7 @@ WARN  Timing side-channel - ratio > 3x may aid enumeration
 On a cold container, a first request paying autoload cost against a warm one, or
 another process competing for CPU, is enough to trip that ratio. It is a load
 artefact, not a regression: re-run the script and it usually passes, and a
-sustained ratio *is* worth investigating.
+sustained ratio _is_ worth investigating.
 
 The right fix is for the probe to take the median of several samples per side
 rather than one, which would make it a reliable signal instead of noise. Until
@@ -278,6 +279,76 @@ never booted in `testing`). Note that `composer test` does not refresh the
 coverage artefact - run `test:coverage:check` (or `test:coverage`) before
 reading the percentage. When new code lands without covering its rejection
 paths, the gate fails; that is the intended friction.
+
+### `#[CoversClass]` On a Trait Fails the Coverage Run
+
+**A plain suite run will be green while the coverage run fails.** PHPUnit
+reports `OK, but there were issues!` followed by one warning per affected test,
+and exits non-zero, so `test:coverage:check` cannot pass:
+
+```
+OK, but there were issues!
+Tests: 1394, Assertions: 5613, PHPUnit Warnings: 301.
+
+301 tests triggered 301 PHPUnit warnings:
+  Class App\Http\Requests\Concerns\AppliesDateRangeFilters is not a valid target
+  for code coverage
+```
+
+**Why.** PHPUnit maps each `#[CoversClass]` to a coverage _target_. A trait is
+not a resolvable target for that attribute - it needs `#[CoversTrait]` - so
+`Mapper::mapTarget()` throws and PHPUnit downgrades it to a warning. The
+attribution for every **other** class listed in the same file collapses with it,
+which is why unrelated DTOs and Actions then report `0%` on classes the suite
+plainly executes. The report is mis-attributed, not truncated, and the file list
+looks implausible precisely because the runs are otherwise green.
+
+**The fix is to drop the attribute.** On a feature test, list the classes the
+HTTP path actually runs - the controller, its FormRequest, the DTO, the Resource,
+the Policy, the Query classes - and do not name the concern:
+
+```php
+// incorrect - a trait is not a target for CoversClass
+#[CoversClass(AppliesDateRangeFilters::class)]
+#[CoversClass(UserIndexController::class)]
+
+// correct - every real class on the path, no trait
+#[CoversClass(UserIndexController::class)]
+#[CoversClass(UserIndexRequest::class)]
+#[CoversClass(UserFilterQuery::class)]
+#[CoversClass(UserFilters::class)]
+```
+
+Interfaces have the same constraint and the same fix.
+
+**How to spot it in review.** Coverage is per-run, so a plain `composer test`
+will not show this. Read the coverage run's summary line, not just its exit code:
+`PHPUnit Warnings: N` with `N > 0` is a failure even when the tests all pass.
+When auditing coverage that looks wrongly low, check for
+`is not a valid target for code coverage` in the output before suspecting PCOV,
+Xdebug, or the container.
+
+### The Coverage Run Can Exceed Composer's 300-Second Timeout
+
+`composer test:coverage` is a nested Composer script, so Composer's default
+`process-timeout` of 300 seconds applies to it. A suite that takes ~200 seconds
+plain can exceed 300 under coverage, and Composer then kills the child process:
+
+```
+The process "'/usr/bin/php8.5' ... '/usr/bin/composer' test:coverage" exceeded
+the timeout of 300 seconds.
+```
+
+**This looks exactly like a coverage bug and is not one.** The killed run leaves
+a partial `storage/coverage/clover.xml`, and two runs are byte-identical because
+they die at the same point. The tell is the wording: a genuine coverage failure
+reports `Tests: N failed` or a threshold message, whereas a timeout reports
+`exceeded the timeout of N seconds`.
+
+Check the reported duration against the timeout before investigating the driver.
+If the suite has grown past the limit, raise `process-timeout` in
+[composer.json](../composer.json) or cut the runtime, so a slow run does not fail
+for a reason unrelated to what the gate measures.
 
 ## Documentation Sync
 

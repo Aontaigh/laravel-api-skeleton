@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\DataTransferObjects\Tokens;
 
 use App\Models\User;
+use Carbon\CarbonImmutable;
 
 /**
  * Validated filter inputs for Token list queries.
@@ -23,11 +24,15 @@ final readonly class TokenFilters
      * `$viewer` is required: row scoping is derived from it, so allowing
      * null would let a caller silently produce an unscoped result set.
      *
-     * @param User        $viewer the authenticated User (drives row scoping)
-     * @param string|null $search optional name search term
+     * @param User                 $viewer the authenticated User (drives row scoping)
+     * @param string|null          $search optional name search term
+     * @param CarbonImmutable|null $from   optional inclusive `created_at` lower bound
+     * @param CarbonImmutable|null $to     optional inclusive `created_at` upper bound
      */
     public function __construct(
         public User $viewer,
         public ?string $search = null,
+        public ?CarbonImmutable $from = null,
+        public ?CarbonImmutable $to = null,
     ) {}
 }
