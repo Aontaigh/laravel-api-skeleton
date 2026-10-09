@@ -75,9 +75,13 @@ Schedule::command('health:record')
 | broader retention decision below. Scheduled a little after the GeoIP
 | refresh so the two housekeeping jobs never contend for the same window.
 |
+| `--hours=0` sweeps every row already expired at run time: the command's
+| 24-hour default would leave a token that expired earlier the same day in
+| the table through this run, where an admin list still reads it as live.
+|
 */
 
-Schedule::command('sanctum:prune-expired')
+Schedule::command('sanctum:prune-expired --hours=0')
     ->dailyAt('03:45')
     ->timezone('UTC')
     ->withoutOverlapping();

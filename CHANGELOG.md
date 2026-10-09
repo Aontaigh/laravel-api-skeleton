@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Expired Tokens Survived the Daily Sweep:** `sanctum:prune-expired` was scheduled without `--hours=0`, so the command's 24-hour default left a Personal Access Token that expired earlier the same day in the table through that run - still reading as live in an admin list until the next one. The scheduled command now passes `--hours=0`, and `tests/Feature/Console/ScheduledTokenPruningTest.php` asserts the flag so it cannot be dropped silently. Found while verifying the same pattern in the Integrations Hub release
+
 ## [3.0.1] - 2026-10-09
 
 ### Changed
