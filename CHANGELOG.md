@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.2] - 2026-10-09
+
 ### Fixed
 
 - **Expired Tokens Survived the Daily Sweep:** `sanctum:prune-expired` was scheduled without `--hours=0`, so the command's 24-hour default left a Personal Access Token that expired earlier the same day in the table through that run - still reading as live in an admin list until the next one. The scheduled command now passes `--hours=0`, and `tests/Feature/Console/ScheduledTokenPruningTest.php` asserts the flag so it cannot be dropped silently. Found while verifying the same pattern in the Integrations Hub release
@@ -897,7 +899,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.2...HEAD
+[3.0.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.1...v2.1.0
