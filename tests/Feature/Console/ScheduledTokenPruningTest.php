@@ -6,6 +6,7 @@ namespace Tests\Feature\Console;
 
 use Illuminate\Console\Scheduling\Event as ScheduledEvent;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Support\Facades\Artisan;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
@@ -33,9 +34,11 @@ final class ScheduledTokenPruningTest extends TestCase
     {
         // Act
 
-        $this->artisan('schedule:list')->assertSuccessful();
+        $exitCode = Artisan::call('schedule:list');
 
         // Assert
+
+        $this->assertSame(0, $exitCode);
 
         $commands = array_map(
             static fn (ScheduledEvent $event): string => (string) $event->command,
