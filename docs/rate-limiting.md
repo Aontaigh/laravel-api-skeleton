@@ -25,12 +25,12 @@ address itself is resolved through the trusted-proxy configuration - see
 
 ## Standards
 
-| Source | What It Requires | How This API Meets It |
-| ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/)                | A limit on how often a client may call the API within a defined timeframe, keyed on client identity; stricter limits on sensitive endpoints; allowances documented and configurable | The `throttle:api` baseline covers the authenticated group, every credential surface carries a stricter per-endpoint limiter, keys are built from the identity plus the address, login also carries an address-independent per-account bucket, and every allowance is read from `config/api.php` and listed in [`.env.example`](../.env.example) |
-| [RFC 9110 Section 15.5.30](https://www.rfc-editor.org/rfc/rfc9110.html#name-429-too-many-requests)                                                          | `429 Too Many Requests` is the status for a client that sent too many requests in a given time                                                                         | Every limiter answers `429`, rendered as the standard API envelope with `message: "Too Many Requests"`                                                                                                                                                                                                                      |
-| [RFC 9110 Section 10.2.3](https://www.rfc-editor.org/rfc/rfc9110.html#name-retry-after)                                                                     | `Retry-After` tells a client how long to wait before retrying                                                                                                           | Sent on every `429`: `ApiExceptionRenderer::renderThrottle()` copies the headers the framework built on the exception onto the envelope, so `Retry-After` (and `X-RateLimit-Reset`) survive                                                                                                                                    |
-| [draft-ietf-httpapi-ratelimit-headers](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/)                                              | Would standardise `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`                                                                                      | The de-facto `X-RateLimit-Limit` and `X-RateLimit-Remaining` are sent on every response that passes a limiter and on the `429`; the draft's names are not sent                                                                                                                                                                 |
+| Source                                                                                                                                       | What It Requires                                                                                                                                                                    | How This API Meets It                                                                                                                                                                                                                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| [OWASP API4:2023 Unrestricted Resource Consumption](https://owasp.org/API-Security/editions/2023/en/0xa4-unrestricted-resource-consumption/) | A limit on how often a client may call the API within a defined timeframe, keyed on client identity; stricter limits on sensitive endpoints; allowances documented and configurable | The `throttle:api` baseline covers the authenticated group, every credential surface carries a stricter per-endpoint limiter, keys are built from the identity plus the address, login also carries an address-independent per-account bucket, and every allowance is read from `config/api.php` and listed in [`.env.example`](../.env.example) |
+| [RFC 9110 Section 15.5.30](https://www.rfc-editor.org/rfc/rfc9110.html#name-429-too-many-requests)                                           | `429 Too Many Requests` is the status for a client that sent too many requests in a given time                                                                                      | Every limiter answers `429`, rendered as the standard API envelope with `message: "Too Many Requests"`                                                                                                                                                                                                                                           |
+| [RFC 9110 Section 10.2.3](https://www.rfc-editor.org/rfc/rfc9110.html#name-retry-after)                                                      | `Retry-After` tells a client how long to wait before retrying                                                                                                                       | Sent on every `429`: `ApiExceptionRenderer::renderThrottle()` copies the headers the framework built on the exception onto the envelope, so `Retry-After` (and `X-RateLimit-Reset`) survive                                                                                                                                                      |
+| [draft-ietf-httpapi-ratelimit-headers](https://datatracker.ietf.org/doc/draft-ietf-httpapi-ratelimit-headers/)                               | Would standardise `RateLimit-Limit`, `RateLimit-Remaining`, and `RateLimit-Reset`                                                                                                   | The de-facto `X-RateLimit-Limit` and `X-RateLimit-Remaining` are sent on every response that passes a limiter and on the `429`; the draft's names are not sent                                                                                                                                                                                   |
 
 ---
 
@@ -94,13 +94,13 @@ fresh bucket with every request, so the limit would be unenforceable rather than
 merely imprecise. Every address-derived key therefore runs the address through
 `App\Support\IpAddress::normalise()`:
 
-| Input | Normalised To | Why |
-| --- | --- | --- |
-| `203.0.113.7` | `203.0.113.7` | IPv4 is returned unchanged: one address is one subscriber |
-| `2001:DB8::1` | `2001:db8::/64` | IPv6 collapses to its `/64` network, and the text form is canonicalised |
-| `2001:db8::dead:beef` | `2001:db8::/64` | A second host in the same `/64` shares the bucket |
-| `2001:db8:0:1::1` | `2001:db8:0:1::/64` | A host in the next `/64` gets its own bucket |
-| `::ffff:203.0.113.7` | `203.0.113.7` | An IPv4-mapped address is unwrapped, or every mapped caller would share `::/64` |
+| Input                 | Normalised To       | Why                                                                             |
+| --------------------- | ------------------- | ------------------------------------------------------------------------------- |
+| `203.0.113.7`         | `203.0.113.7`       | IPv4 is returned unchanged: one address is one subscriber                       |
+| `2001:DB8::1`         | `2001:db8::/64`     | IPv6 collapses to its `/64` network, and the text form is canonicalised         |
+| `2001:db8::dead:beef` | `2001:db8::/64`     | A second host in the same `/64` shares the bucket                               |
+| `2001:db8:0:1::1`     | `2001:db8:0:1::/64` | A host in the next `/64` gets its own bucket                                    |
+| `::ffff:203.0.113.7`  | `203.0.113.7`       | An IPv4-mapped address is unwrapped, or every mapped caller would share `::/64` |
 
 The `/64` split is where the address's subnet prefix ends and its interface
 identifier begins ([RFC 4291 section 2.5.1](https://www.rfc-editor.org/rfc/rfc4291#section-2.5.1)),
@@ -118,15 +118,15 @@ case depends on an address being routable.
 
 The baseline is a per-identity floor that applies to every authenticated route.
 
-| Property | Value |
-| --- | --- |
-| Laravel name | `api` |
-| Attached to | the authenticated route group (`routes/api.php`) |
-| Key | the User ID; the caller's normalised address for a guest |
-| Default | 500 requests per minute |
-| Env var | `API_RATE_LIMIT_PER_MINUTE` |
-| Config key | `api.rate_limit_per_minute` |
-| Defined in | `AppServiceProvider::configureApiRateLimiting()` |
+| Property     | Value                                                    |
+| ------------ | -------------------------------------------------------- |
+| Laravel name | `api`                                                    |
+| Attached to  | the authenticated route group (`routes/api.php`)         |
+| Key          | the User ID; the caller's normalised address for a guest |
+| Default      | 500 requests per minute                                  |
+| Env var      | `API_RATE_LIMIT_PER_MINUTE`                              |
+| Config key   | `api.rate_limit_per_minute`                              |
+| Defined in   | `AppServiceProvider::configureApiRateLimiting()`         |
 
 ### Why 500 Per Minute Is Generous
 
@@ -149,24 +149,24 @@ the anti-abuse intent, and the separate per-address ceiling stops one address
 hammering many different accounts. Every `address` below is the normalised form
 from [IPv6 Callers](#ipv6-callers).
 
-| Limiter | Routes | Key | Allowance | Env Vars |
-| --- | --- | --- | --- | --- |
-| `api-auth-login` | `POST /auth/login`, `POST /auth/login/remember` | `email\|address`, plus a per-account bucket keyed on the e-mail alone, plus the address ceiling | 5/min, account 10/min, ceiling 20/min | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_LOGIN_ACCOUNT_RATE_LIMIT_PER_MINUTE`, `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` |
-| `api-auth-register` | `POST /auth/register` | `email\|address` plus the address ceiling | 5/min, ceiling 10/min | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE` |
-| `api-auth-password` | `POST /auth/forgot-password`, `POST /auth/reset-password` | `email\|address` plus the address ceiling | 5/min, ceiling 20/min | `API_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE`, `API_PASSWORD_RESET_IP_CEILING_PER_MINUTE` |
-| `api-client-auth` | `POST /oauth/token` | `client_id\|address` plus the address ceiling | 5/min, ceiling 20/min | `API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, `API_CLIENT_AUTH_IP_CEILING_PER_MINUTE` |
-| `api-auth-two-factor-send` | `POST /auth/two-factor/send` | hashed token or session ID plus the address, plus the address ceiling | 5/min, ceiling 20/min | `API_TWO_FACTOR_SEND_RATE_LIMIT_PER_MINUTE`, `API_TWO_FACTOR_SEND_IP_CEILING_PER_MINUTE` |
-| `api-auth-two-factor-verify` | `POST /auth/two-factor/verify` | hashed token or session ID plus the address, plus the address ceiling | 5/min, ceiling 20/min | `API_TWO_FACTOR_VERIFY_RATE_LIMIT_PER_MINUTE`, `API_TWO_FACTOR_VERIFY_IP_CEILING_PER_MINUTE` |
-| `api-auth-two-factor-status` | `GET /auth/two-factor/status` | hashed token or session ID plus the address, plus the address ceiling | 60/min, ceiling 60/min | `API_TWO_FACTOR_STATUS_RATE_LIMIT_PER_MINUTE`, `API_TWO_FACTOR_STATUS_IP_CEILING_PER_MINUTE` |
-| `auth-verification` | `POST /auth/email/resend` | User ID plus the address | 3/min | `API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE` |
-| `email-verify` | `GET /auth/email/verify/{id}/{hash}` | the address ceiling only | ceiling 15/min | `API_EMAIL_VERIFY_IP_CEILING_PER_MINUTE` |
-| `auth-password-change` | `PATCH /me/password` | User ID plus the address, plus the address ceiling | 5/min, ceiling 15/min | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE` |
-| `auth-sessions-revoke` | `DELETE /sessions/current`, `DELETE /sessions/others`, `DELETE /sessions/{web_session}` | User ID plus the address, plus the address ceiling | 5/min, ceiling 15/min | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE` |
-| `api-tokens` | `POST /tokens`, `POST /users/{user}/tokens` | the User ID; the caller's address for a guest | 10/min | `API_TOKEN_RATE_LIMIT_PER_MINUTE` |
-| `api-webhooks` | the outbound-emitting webhook routes (create, test ping, rotate secret) | the User ID; the caller's address for a guest | 10/min | `API_WEBHOOK_RATE_LIMIT_PER_MINUTE` |
-| `api-status` | `GET /status`, `GET /app-info` | the address | 30/min | `API_STATUS_RATE_LIMIT_PER_MINUTE` |
-| `health` | `GET /health` (the `web` group) | the address | 60/min | `API_HEALTH_RATE_LIMIT_PER_MINUTE` |
-| `csp-reports` | `POST /csp-reports` | the address ceiling only | ceiling 60/min | `API_CSP_REPORT_IP_CEILING_PER_MINUTE` |
+| Limiter                      | Routes                                                                                  | Key                                                                                             | Allowance                             | Env Vars                                                                                                                 |
+| ---------------------------- | --------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `api-auth-login`             | `POST /auth/login`, `POST /auth/login/remember`                                         | `email\|address`, plus a per-account bucket keyed on the e-mail alone, plus the address ceiling | 5/min, account 10/min, ceiling 20/min | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_LOGIN_ACCOUNT_RATE_LIMIT_PER_MINUTE`, `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` |
+| `api-auth-register`          | `POST /auth/register`                                                                   | `email\|address` plus the address ceiling                                                       | 5/min, ceiling 10/min                 | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE`                                              |
+| `api-auth-password`          | `POST /auth/forgot-password`, `POST /auth/reset-password`                               | `email\|address` plus the address ceiling                                                       | 5/min, ceiling 20/min                 | `API_PASSWORD_RESET_RATE_LIMIT_PER_MINUTE`, `API_PASSWORD_RESET_IP_CEILING_PER_MINUTE`                                   |
+| `api-client-auth`            | `POST /oauth/token`                                                                     | `client_id\|address` plus the address ceiling                                                   | 5/min, ceiling 20/min                 | `API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, `API_CLIENT_AUTH_IP_CEILING_PER_MINUTE`                                         |
+| `api-auth-two-factor-send`   | `POST /auth/two-factor/send`                                                            | hashed token or session ID plus the address, plus the address ceiling                           | 5/min, ceiling 20/min                 | `API_TWO_FACTOR_SEND_RATE_LIMIT_PER_MINUTE`, `API_TWO_FACTOR_SEND_IP_CEILING_PER_MINUTE`                                 |
+| `api-auth-two-factor-verify` | `POST /auth/two-factor/verify`                                                          | hashed token or session ID plus the address, plus the address ceiling                           | 5/min, ceiling 20/min                 | `API_TWO_FACTOR_VERIFY_RATE_LIMIT_PER_MINUTE`, `API_TWO_FACTOR_VERIFY_IP_CEILING_PER_MINUTE`                             |
+| `api-auth-two-factor-status` | `GET /auth/two-factor/status`                                                           | hashed token or session ID plus the address, plus the address ceiling                           | 60/min, ceiling 60/min                | `API_TWO_FACTOR_STATUS_RATE_LIMIT_PER_MINUTE`, `API_TWO_FACTOR_STATUS_IP_CEILING_PER_MINUTE`                             |
+| `auth-verification`          | `POST /auth/email/resend`                                                               | User ID plus the address                                                                        | 3/min                                 | `API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE`                                                                           |
+| `email-verify`               | `GET /auth/email/verify/{id}/{hash}`                                                    | the address ceiling only                                                                        | ceiling 15/min                        | `API_EMAIL_VERIFY_IP_CEILING_PER_MINUTE`                                                                                 |
+| `auth-password-change`       | `PATCH /me/password`                                                                    | User ID plus the address, plus the address ceiling                                              | 5/min, ceiling 15/min                 | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE`                                              |
+| `auth-sessions-revoke`       | `DELETE /sessions/current`, `DELETE /sessions/others`, `DELETE /sessions/{web_session}` | User ID plus the address, plus the address ceiling                                              | 5/min, ceiling 15/min                 | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE`                                              |
+| `api-tokens`                 | `POST /tokens`, `POST /users/{user}/tokens`                                             | the User ID; the caller's address for a guest                                                   | 10/min                                | `API_TOKEN_RATE_LIMIT_PER_MINUTE`                                                                                        |
+| `api-webhooks`               | the outbound-emitting webhook routes (create, test ping, rotate secret)                 | the User ID; the caller's address for a guest                                                   | 10/min                                | `API_WEBHOOK_RATE_LIMIT_PER_MINUTE`                                                                                      |
+| `api-status`                 | `GET /status`, `GET /app-info`                                                          | the address                                                                                     | 30/min                                | `API_STATUS_RATE_LIMIT_PER_MINUTE`                                                                                       |
+| `health`                     | `GET /health` (the `web` group)                                                         | the address                                                                                     | 60/min                                | `API_HEALTH_RATE_LIMIT_PER_MINUTE`                                                                                       |
+| `csp-reports`                | `POST /csp-reports`                                                                     | the address ceiling only                                                                        | ceiling 60/min                        | `API_CSP_REPORT_IP_CEILING_PER_MINUTE`                                                                                   |
 
 ### Why Login Carries Two Extra Buckets
 
@@ -212,7 +212,7 @@ in `config('cache.default')`, which is `CACHE_STORE` - `redis` in the shipped
 ([`config/cache.php`](../config/cache.php), table created by
 [`0001_01_01_000001_create_cache_table.php`](../database/migrations/0001_01_01_000001_create_cache_table.php)),
 `file` in CI ([`.env.ci`](../.env.ci)), and `array` in the PHPUnit suite
-([`phpunit.xml`](../phpunit.xml) and [`.env.testing.local`](../.env.testing.local)).
+([`phpunit.xml`](../phpunit.xml) and `.env.testing.local`).
 
 That matters for three reasons.
 
@@ -236,12 +236,12 @@ That matters for three reasons.
 The header set is the framework's; the renderer now carries it across to the
 envelope.
 
-| Header | When It Appears | Form |
-| --- | --- | --- |
-| `X-RateLimit-Limit` | every response that passes a limiter, and on a `429` | the maximum attempts for that limiter |
+| Header                  | When It Appears                                      | Form                                                     |
+| ----------------------- | ---------------------------------------------------- | -------------------------------------------------------- |
+| `X-RateLimit-Limit`     | every response that passes a limiter, and on a `429` | the maximum attempts for that limiter                    |
 | `X-RateLimit-Remaining` | every response that passes a limiter, and on a `429` | attempts left in the window, or `0` on the exhausted one |
-| `Retry-After` | on a `429` | RFC 9110 delay-seconds (the framework's own value) |
-| `X-RateLimit-Reset` | on a `429` | UNIX timestamp when the window ends |
+| `Retry-After`           | on a `429`                                           | RFC 9110 delay-seconds (the framework's own value)       |
+| `X-RateLimit-Reset`     | on a `429`                                           | UNIX timestamp when the window ends                      |
 
 `ApiExceptionRenderer::renderThrottle()` builds the standard envelope and then
 copies `ThrottleRequestsException::getHeaders()` onto it, casting the attempt
@@ -254,11 +254,11 @@ response body is the standard envelope:
 
 ```json
 {
-  "status": "error",
-  "status_code": 429,
-  "message": "Too Many Requests",
-  "data": null,
-  "meta": {}
+    "status": "error",
+    "status_code": 429,
+    "message": "Too Many Requests",
+    "data": null,
+    "meta": {}
 }
 ```
 
@@ -301,11 +301,11 @@ curl -sS -D - -o /dev/null -X POST http://localhost:8090/api/auth/login \
 Every `/api` route is covered by the baseline, and the credentials, telemetry,
 and webhook surfaces carry their own limiter. The rest is deliberate.
 
-| Path | Limiting | Why |
-| --- | --- | --- |
-| `GET /api/docs`, `GET /api/openapi.yaml` | none | Static content, fetched once per session; the interactive reference must not throttle while a reader explores it |
-| `GET /.well-known/security.txt` | none | Static, and a security control that must always answer |
-| The welcome page (`GET /`) | none | A static landing view (`view('welcome')`); it serves no data and no principal |
+| Path                                     | Limiting | Why                                                                                                              |
+| ---------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
+| `GET /api/docs`, `GET /api/openapi.yaml` | none     | Static content, fetched once per session; the interactive reference must not throttle while a reader explores it |
+| `GET /.well-known/security.txt`          | none     | Static, and a security control that must always answer                                                           |
+| The welcome page (`GET /`)               | none     | A static landing view (`view('welcome')`); it serves no data and no principal                                    |
 
 Edge protection (Cloudflare's own rate limiting and WAF) belongs in front of
 anything above; the application-level limiter is the one that survives a change
@@ -323,8 +323,8 @@ defaults. Each was verified against the current tree.
 
 One limitation remains, recorded rather than silently accepted:
 
-| Limitation | Evidence | Closing It |
-| --- | --- | --- |
+| Limitation                                               | Evidence                                                                                                                                   | Closing It                                                                                                                                                                                    |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | The proxy list is read from the process environment only | `bootstrap/app.php` resolves it while the application is configured, before `.env` is loaded, so a value written only to `.env` is ignored | Move the trust-proxy resolution after bootstrap (a provider setting `TrustProxies::at()` from `config()`), which changes when the list is applied and needs its own test of every environment |
 
 ---
@@ -342,13 +342,13 @@ One limitation remains, recorded rather than silently accepted:
 
 ## Related
 
-| Doc or File | Purpose |
-| --- | --- |
-| [config/api.php](../config/api.php) | Every allowance, with the comment explaining each ceiling |
-| [AppServiceProvider](../app/Providers/AppServiceProvider.php) | The limiter closures and the key helpers |
-| [IpAddress](../app/Support/IpAddress.php) | IPv6 `/64` aggregation for address-derived keys |
-| [TrustedProxies](../app/Support/TrustedProxies.php) | Resolving the caller behind a load balancer |
-| [routes/api.php](../routes/api.php) | Which limiter is attached where |
+| Doc or File                                                     | Purpose                                                        |
+| --------------------------------------------------------------- | -------------------------------------------------------------- |
+| [config/api.php](../config/api.php)                             | Every allowance, with the comment explaining each ceiling      |
+| [AppServiceProvider](../app/Providers/AppServiceProvider.php)   | The limiter closures and the key helpers                       |
+| [IpAddress](../app/Support/IpAddress.php)                       | IPv6 `/64` aggregation for address-derived keys                |
+| [TrustedProxies](../app/Support/TrustedProxies.php)             | Resolving the caller behind a load balancer                    |
+| [routes/api.php](../routes/api.php)                             | Which limiter is attached where                                |
 | [ApiExceptionRenderer](../app/Support/ApiExceptionRenderer.php) | How a throttle becomes the standard envelope, headers included |
-| [docs/testing.md](testing.md) | The gates, suites, and coverage floor |
-| [docs/permissions.md](permissions.md) | Roles, permissions, and what each route requires |
+| [docs/testing.md](testing.md)                                   | The gates, suites, and coverage floor                          |
+| [docs/permissions.md](permissions.md)                           | Roles, permissions, and what each route requires               |

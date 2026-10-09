@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dead Link to a Gitignored Local File:** [docs/rate-limiting.md](docs/rate-limiting.md) linked `.env.testing.local`, which `.gitignore` excludes, so it resolved on a developer machine and answered `400` on a runner - the **Link Check** job failed on the v3.0.0 release commit while every other gate passed. The file is named in backticks now, [docs/testing.md](docs/testing.md) records the trap, and [docs/releasing.md](docs/releasing.md) carries the link gate's in-flight compare exemptions as a release step
+
 ## [3.0.0] - 2026-10-09
 
 ### Breaking Changes

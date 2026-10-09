@@ -121,6 +121,11 @@ skipped - so a cancelled job fails the build even though nothing was reported as
 Zizmor, `actionlint`, or the Renovate config, and the live pen test (step 12) runs
 locally only - so it is a pre-flight check rather than a full substitute for CI.
 
+A link that points at a gitignored local file (`.env.testing.local`, `.env.*.local`) resolves on
+the developer's machine and answers `400` on a runner, so step 1b passes locally and the **Link
+Check** job fails in CI with nothing to reproduce locally. Name such a file in backticks instead
+of linking it - a link to a file no clone contains is dead for every reader, not only for CI.
+
 > [!IMPORTANT]
 > `composer ci` includes `verify:openapi`, which needs a running app and a seeded
 > database. Run `./vendor/bin/sail artisan migrate:fresh --seed` first and make sure the

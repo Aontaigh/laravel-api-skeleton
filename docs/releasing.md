@@ -17,7 +17,8 @@ This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 
 - [ ] 1. App version bumped - `composer.json`, `docs/openapi.yaml`, `.env.example` / `.env.ci`, and changelog (see [App version](#app-version))
 - [ ] 2. `CHANGELOG.md` updated - `## [X.Y.Z] - YYYY-MM-DD` with today's date
-- [ ] 3. Quality gates green locally (see below)
+- [ ] 3. Quality gates green locally (see below), with the link gate's in-flight compare
+      exemptions updated for the release being cut (see [Run the Quality Gates](#2-run-the-quality-gates))
 - [ ] 4. Release commit pushed to `main`, CI green **on that commit**
 - [ ] 5. Tag `vX.Y.Z` on the CI-green commit and push
 - [ ] 6. GitHub release published per [GitHub release format](#github-release-format) (emoji
@@ -94,6 +95,11 @@ documented example against a served, seeded app, so seed before running the chai
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
 Sail port notes when Docker ports on your machine are already in use.
+
+The link gate exempts the two compare URLs for the release being cut - `v{prev}...v{new}` and
+`v{new}...HEAD` - in [`scripts/lint-links.sh`](../scripts/lint-links.sh), because GitHub 404s a
+compare until the tag exists on the remote. Add both before running the gates, and delete both
+once the tag is pushed: a stale pair passes silently and hides the next release's dead links.
 
 ## 3. Commit and Push, Then Wait for CI
 
