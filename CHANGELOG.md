@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.0.1] - 2026-10-09
+
+### Changed
+
+- **CI Pin:** CI: bump `github/codeql-action/upload-sarif` from v4.38.1 to v4.38.2, digest-verified against the upstream tag ([#24](https://github.com/Aontaigh/laravel-api-skeleton/pull/24))
+- **source-map-js Bump:** Bump `source-map-js` from 1.2.1 to 1.2.2 (transitive npm dependency); the lockfile also records the nested `@tailwindcss/oxide-wasm32-wasi` entries npm had omitted, and now reproduces from `npm install --package-lock-only` without a diff ([#25](https://github.com/Aontaigh/laravel-api-skeleton/pull/25))
+- **Release Documentation:** `docs/testing.md` records the gitignored-local-file link trap, `docs/releasing.md` carries the link gate's in-flight compare exemptions as a release step, and `scripts/lint-links.sh` drops the resolved v3.0.0 pair so a stale exemption cannot hide the next release's dead links
+
 ### Fixed
 
 - **Dead Link to a Gitignored Local File:** [docs/rate-limiting.md](docs/rate-limiting.md) linked `.env.testing.local`, which `.gitignore` excludes, so it resolved on a developer machine and answered `400` on a runner - the **Link Check** job failed on the v3.0.0 release commit while every other gate passed. The file is named in backticks now, [docs/testing.md](docs/testing.md) records the trap, and [docs/releasing.md](docs/releasing.md) carries the link gate's in-flight compare exemptions as a release step
@@ -884,7 +892,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.1...HEAD
+[3.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.1.0...v3.0.0
 [2.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.1...v2.1.0
 [2.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.0...v2.0.1
