@@ -91,11 +91,13 @@ final class ApiExceptionRenderer
     /**
      * Title Case message for a given HTTP status code.
      *
-     * Mapped codes carry house copy that deliberately diverges from the reason
-     * phrase (`Unauthenticated`, `Validation Failed`). Unmapped 4xx fall back to
-     * the official RFC 9110 reason phrase so the message can never contradict
-     * `status_code`; unmapped 5xx stay generic, since phrases like `Bad Gateway`
-     * leak infrastructure topology to clients.
+     * `401` and `403` carry the next action rather than the HTTP reason phrase:
+     * the envelope `message` is what a screen shows the person who hit the
+     * failure, and `Unauthenticated` or `Forbidden` tells them nothing they can
+     * act on. The status code still carries the machine-readable meaning.
+     * Unmapped 4xx fall back to the official RFC 9110 reason phrase so the
+     * message can never contradict `status_code`; unmapped 5xx stay generic,
+     * since phrases like `Bad Gateway` leak infrastructure topology to clients.
      *
      * @param  int    $statusCode the HTTP status code
      * @return string the Title Case error message
@@ -104,8 +106,8 @@ final class ApiExceptionRenderer
     {
         return match ($statusCode) {
             400 => 'Bad Request',
-            401 => 'Unauthenticated',
-            403 => 'Forbidden',
+            401 => 'Authentication Required',
+            403 => 'You Do Not Have Permission To Do That',
             404 => 'Resource Not Found',
             405 => 'Method Not Allowed',
             422 => 'Validation Failed',
@@ -219,7 +221,7 @@ final class ApiExceptionRenderer
     ): ?JsonResponse {
         return self::envelope(
             request: $request,
-            message: 'Unauthenticated',
+            message: self::messageForStatusCode(401),
             statusCode: 401,
         );
     }
@@ -347,7 +349,7 @@ final class ApiExceptionRenderer
     ): ?JsonResponse {
         return self::envelope(
             request: $request,
-            message: 'Forbidden',
+            message: self::messageForStatusCode(403),
             statusCode: 403,
         );
     }

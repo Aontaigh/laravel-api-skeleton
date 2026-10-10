@@ -155,7 +155,7 @@ final class MeShowControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+        $this->assertApiErrorEnvelope($response, 401, 'Authentication Required');
     }
 
     /**

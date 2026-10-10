@@ -153,7 +153,7 @@ final class RememberLoginControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+        $this->assertApiErrorEnvelope($response, 401, 'Authentication Required');
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::RememberMeLogin->value,
@@ -182,7 +182,7 @@ final class RememberLoginControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+        $this->assertApiErrorEnvelope($response, 401, 'Authentication Required');
 
         /*
          * The generic answer still withholds *whether* the cookie resolved,
@@ -226,7 +226,7 @@ final class RememberLoginControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+        $this->assertApiErrorEnvelope($response, 401, 'Authentication Required');
 
         $this->assertDatabaseHas('auth_audit_logs', [
             'user_id' => $user->id,

@@ -180,7 +180,7 @@ final class LogoutControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+        $this->assertApiErrorEnvelope($response, 401, 'Authentication Required');
     }
 
     /**
@@ -196,6 +196,6 @@ final class LogoutControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 401, 'Unauthenticated');
+        $this->assertApiErrorEnvelope($response, 401, 'Authentication Required');
     }
 }

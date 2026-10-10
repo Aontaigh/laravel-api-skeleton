@@ -18,6 +18,31 @@ use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
+| Bound Parameter Shapes
+|--------------------------------------------------------------------------
+|
+| Every id-bound parameter is a positive integer with no leading zero. MySQL
+| coerces a string with a numeric prefix, so `7abc`, `07`, and `7e0` would
+| otherwise resolve row 7 through the binder: a malformed URL would answer for a
+| real row instead of `404`, and the `403`-versus-`404` difference would map ids
+| to rows for a caller who may not read them.
+|
+| One pattern owns the shape for every numeric model key, so a new route inherits
+| the constraint instead of remembering it, and `\z` pins the match:
+| `->whereNumber()` is not equivalent, because Laravel compiles that to `[0-9]+`,
+| which still admits `07`. `tests/Feature/Security/RouteBindingShapeTest.php`
+| pins the behaviour.
+|
+*/
+
+$positiveIntegerModelKey = '[1-9][0-9]*\z';
+
+foreach (['user', 'web_session', 'token', 'client', 'auth_audit_log', 'role', 'webhook_endpoint', 'team', 'id'] as $boundParameter) {
+    Route::pattern($boundParameter, $positiveIntegerModelKey);
+}
+
+/*
+|--------------------------------------------------------------------------
 | Public Authentication
 |--------------------------------------------------------------------------
 |

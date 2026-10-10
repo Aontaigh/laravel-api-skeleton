@@ -217,7 +217,7 @@ enforces on token and API client create. Service accounts cannot list permission
 answer the middleware gives mid-session), while the OAuth client-credentials
 exchange still rejects suspended service identities up front with the generic
 `Invalid Credentials` validation message (same as a wrong password). Remember-me
-restoration answers with a generic `401 Unauthenticated`.
+restoration answers with a generic `401 Authentication Required`.
 
 Admins suspend and unsuspend accounts via `POST /api/users/{user}/suspend` and
 `POST /api/users/{user}/unsuspend`, both gated by `users.suspend`. An Admin

@@ -71,7 +71,7 @@ final class RememberLoginController
             $this->recordRestorationFailure($request, AuditOutcome::Failed, userId: null);
 
             return ApiResponse::error(
-                message: 'Unauthenticated',
+                message: 'Authentication Required',
                 statusCode: 401,
             );
         }
@@ -88,7 +88,7 @@ final class RememberLoginController
             $this->recordRestorationFailure($request, AuditOutcome::Refused, userId: $user->id);
 
             return ApiResponse::error(
-                message: 'Unauthenticated',
+                message: 'Authentication Required',
                 statusCode: 401,
             );
         }

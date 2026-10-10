@@ -266,7 +266,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
+        $this->assertApiErrorEnvelope($response, 403, 'You Do Not Have Permission To Do That');
         $this->assertDatabaseHas('users', [
             'id' => $this->teamMember->id,
             'team_id' => $this->team->id,
@@ -556,7 +556,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
+        $this->assertApiErrorEnvelope($response, 403, 'You Do Not Have Permission To Do That');
         $this->assertDatabaseHas('users', [
             'id' => $this->teamMember->id,
             'name' => 'Team Member',
@@ -587,7 +587,7 @@ final class UpdateUserControllerTest extends TestCase
 
         // Assert
 
-        $this->assertApiErrorEnvelope($response, 403, 'Forbidden');
+        $this->assertApiErrorEnvelope($response, 403, 'You Do Not Have Permission To Do That');
         $this->assertTrue($admin->refresh()->hasRole(RoleName::Admin));
     }
 

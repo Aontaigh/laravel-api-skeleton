@@ -582,7 +582,7 @@ final class StoreTokenControllerTest extends TestCase
         $response->assertUnauthorized();
         $response->assertJsonPath('status', 'error');
         $response->assertJsonPath('status_code', 401);
-        $response->assertJsonPath('message', 'Unauthenticated');
+        $response->assertJsonPath('message', 'Authentication Required');
 
         Carbon::setTestNow();
     }

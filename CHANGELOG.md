@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-10-10
+
+### Changed
+
+- **`401` and `403` Envelope Copy:** the two answers carried `Unauthenticated` and `Forbidden`, which restate the status code and name no remedy for the caller who reads them. They now carry `Authentication Required` and `You Do Not Have Permission To Do That`, both read from `messageForStatusCode()` so the table stays the single source of truth, and the OpenAPI examples, `docs/permissions.md`, and the feature tests follow
+
+### Fixed
+
+- **Malformed Ids Resolved the Wrong Row:** every id-bound parameter (`{user}`, `{web_session}`, `{token}`, `{client}`, `{auth_audit_log}`, `{role}`, `{webhook_endpoint}`, `{team}`) accepted a malformed id - `7abc`, `07`, and `7e0` all resolved row 7 through the binder, because MySQL coerces a string with a numeric prefix - so a malformed URL answered for a real row rather than `404`, and the `403`-versus-`404` difference mapped ids to rows for a caller who may not read them. One `\z`-anchored `[1-9][0-9]*` pattern now constrains every numeric model key, pinned by `tests/Feature/Security/RouteBindingShapeTest.php`
+
 ## [3.0.2] - 2026-10-09
 
 ### Fixed
@@ -899,7 +909,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.2...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.1.0...HEAD
+[3.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.2...v3.1.0
 [3.0.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.0...v3.0.1
 [3.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.1.0...v3.0.0

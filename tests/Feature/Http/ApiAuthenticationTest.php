@@ -46,7 +46,7 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertUnauthorized();
         $response->assertJsonPath('status', 'error');
         $response->assertJsonPath('status_code', 401);
-        $response->assertJsonPath('message', 'Unauthenticated');
+        $response->assertJsonPath('message', 'Authentication Required');
         $response->assertJsonPath('data', null);
     }
 
@@ -66,7 +66,7 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertUnauthorized();
         $response->assertJsonPath('status', 'error');
         $response->assertJsonPath('status_code', 401);
-        $response->assertJsonPath('message', 'Unauthenticated');
+        $response->assertJsonPath('message', 'Authentication Required');
         $response->assertJsonPath('data', null);
     }
 
@@ -98,7 +98,7 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertForbidden();
         $response->assertJsonPath('status', 'error');
         $response->assertJsonPath('status_code', 403);
-        $response->assertJsonPath('message', 'Forbidden');
+        $response->assertJsonPath('message', 'You Do Not Have Permission To Do That');
         $response->assertJsonPath('data', null);
         $response->assertJsonPath('meta', []);
     }
@@ -152,7 +152,7 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertUnauthorized();
         $response->assertJsonPath('status', 'error');
         $response->assertJsonPath('status_code', 401);
-        $response->assertJsonPath('message', 'Unauthenticated');
+        $response->assertJsonPath('message', 'Authentication Required');
         $this->assertNotSame(302, $response->getStatusCode());
     }
 
@@ -172,7 +172,7 @@ final class ApiAuthenticationTest extends TestCase
         $response->assertUnauthorized();
         $response->assertJsonPath('status', 'error');
         $response->assertJsonPath('status_code', 401);
-        $response->assertJsonPath('message', 'Unauthenticated');
+        $response->assertJsonPath('message', 'Authentication Required');
         $response->assertJsonPath('data', null);
     }
 }

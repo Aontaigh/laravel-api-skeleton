@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 3.0.2
+  version: 3.1.0
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -127,7 +127,7 @@ info:
     message - no bearer token is issued. An existing bearer token or session
     receives `403` with message `Account Suspended` on every authenticated route
     (`active.account` middleware). Remember-me restoration answers with generic
-    `401 Unauthenticated`. Admins suspend and unsuspend accounts via
+    `401 Authentication Required`. Admins suspend and unsuspend accounts via
     `POST /users/{user}/suspend` and `POST /users/{user}/unsuspend`
     (requires `users.suspend`).
 
@@ -466,7 +466,7 @@ paths:
         Re-authenticate a User from an active web session or remember-me cookie and
         issue a fresh long-lived Sanctum bearer token. Intended for stateful SPAs
         after a prior `POST /auth/login` with `remember: true`. Suspended accounts and
-        service accounts receive generic `401 Unauthenticated` (same as a bad
+        service accounts receive generic `401 Authentication Required` (same as a bad
         cookie). Records a `Remember Me Login` row in `auth_audit_logs`.
       operationId: loginRemember
       security: []
@@ -3266,7 +3266,7 @@ components:
       value:
         status: error
         status_code: 401
-        message: Unauthenticated
+        message: Authentication Required
         data: null
         meta: {}
 
@@ -3275,7 +3275,7 @@ components:
       value:
         status: error
         status_code: 403
-        message: Forbidden
+        message: You Do Not Have Permission To Do That
         data: null
         meta: {}
 
@@ -3645,7 +3645,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 3.0.2
+          version: 3.1.0
         meta: {}
 
     HealthUnavailable:
@@ -4405,7 +4405,7 @@ components:
           example: up
         version:
           type: string
-          example: 3.0.2
+          example: 3.1.0
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -5251,7 +5251,7 @@ components:
                   status_code:
                     example: 401
                   message:
-                    example: Unauthenticated
+                    example: Authentication Required
           examples:
             default:
               $ref: '#/components/examples/UnauthorizedError'

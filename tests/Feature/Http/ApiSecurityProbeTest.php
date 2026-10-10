@@ -233,7 +233,7 @@ final class ApiSecurityProbeTest extends TestCase
         // Assert
 
         $response->assertForbidden();
-        $response->assertJsonPath('message', 'Forbidden');
+        $response->assertJsonPath('message', 'You Do Not Have Permission To Do That');
     }
 
     /**
