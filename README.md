@@ -373,11 +373,12 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 
 ## 📋 Requirements
 
-| Dependency        | Version            |
-| ----------------- | ------------------ |
-| PHP               | ^8.5               |
-| Laravel           | ^13.8              |
-| Docker (for Sail) | any recent version |
+| Dependency        | Version                                                                                          |
+| ----------------- | ------------------------------------------------------------------------------------------------ |
+| PHP               | ^8.5                                                                                            |
+| Laravel           | ^13.8                                                                                           |
+| Node (Vite build) | >=22.12 - pinned in [.nvmrc](.nvmrc) and declared in `engines.node`; `npm` enforces both         |
+| Docker (for Sail) | any recent version                                                                               |
 
 <a id="api"></a>
 
@@ -854,7 +855,7 @@ documented example against a live instance:
 
 It does **not** cover Zizmor, `actionlint`, the Renovate config, or the live pen test.
 The first three are separate CI jobs; the live pen test (step 12) runs locally only.
-See [docs/testing.md](docs/testing.md) for all twelve steps, which of them run on the
+See [docs/testing.md](docs/testing.md) for all thirteen steps, which of them run on the
 host rather than in Sail, and what each one writes.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, a Markdown link check,
