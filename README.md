@@ -377,7 +377,7 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | ----------------- | ------------------------------------------------------------------------------------------------ |
 | PHP               | ^8.5                                                                                            |
 | Laravel           | ^13.8                                                                                           |
-| Node (Vite build) | >=22.12 - pinned in [.nvmrc](.nvmrc) and declared in `engines.node`; `npm` enforces both         |
+| Node (Vite build) | >=22.12 - `.nvmrc` picks 22; `engines.node` sets the floor, `engine-strict` enforces it         |
 | Docker (for Sail) | any recent version                                                                               |
 
 <a id="api"></a>
