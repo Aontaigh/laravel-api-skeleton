@@ -48,7 +48,7 @@ final class ShowAppInfoControllerTest extends TestCase
                 'php' => ['version', 'sapi'],
                 'server' => ['os', 'architecture'],
                 'laravel' => ['version'],
-                'auth' => ['token_expiration_days'],
+                'auth' => ['token_expiration_days', 'token_max_expiration_days'],
                 'drivers' => ['cache', 'session', 'queue', 'database', 'mail', 'filesystem'],
             ],
         ]);
@@ -73,6 +73,31 @@ final class ShowAppInfoControllerTest extends TestCase
 
         $response->assertOk();
         $response->assertJsonPath('data.auth.token_expiration_days', 45);
+    }
+
+    /**
+     * Report the configured Token lifetime ceiling so clients can mirror it.
+     *
+     * The ceiling is the hard bound every issued Token is clamped to; a SPA
+     * reads it alongside the default to constrain its expiry picker, so both
+     * figures travel in the same response.
+     */
+    #[Test]
+    public function it_reports_the_configured_token_lifetime_ceiling(): void
+    {
+        // Arrange
+
+        config(['api.token_max_expiration_days' => 366]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->getJson('/api/app-info');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.auth.token_max_expiration_days', 366);
     }
 
     /**

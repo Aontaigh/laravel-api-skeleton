@@ -126,6 +126,8 @@ final class AuthenticateUserActionTest extends UnitTestCase
             ));
             $this->fail('Expected ValidationException was not thrown');
         } catch (ValidationException $exception) {
+            // Assert
+
             $this->assertSame(['Invalid Credentials'], $exception->errors()['email']);
         }
     }
@@ -163,6 +165,8 @@ final class AuthenticateUserActionTest extends UnitTestCase
             ));
             $this->fail('Expected ValidationException was not thrown');
         } catch (ValidationException $exception) {
+            // Assert
+
             $this->assertSame(['Invalid Credentials'], $exception->errors()['email']);
         }
     }

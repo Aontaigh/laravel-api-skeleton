@@ -64,6 +64,7 @@ final class ShowAppInfoController
                 ],
                 'auth' => [
                     'token_expiration_days' => config()->integer('api.token_expiration_days'),
+                    'token_max_expiration_days' => config()->integer('api.token_max_expiration_days'),
                 ],
                 'drivers' => [
                     'cache' => $this->driver('cache.default'),

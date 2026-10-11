@@ -94,6 +94,8 @@ final class PasswordChangedNotificationTest extends UnitTestCase
     #[Test]
     public function it_labels_every_change_source(): void
     {
+        // Assert
+
         $this->assertSame('Your Account Security Settings', PasswordChangeSource::SelfService->label());
         $this->assertSame('A Password Reset Link', PasswordChangeSource::ResetLink->label());
     }

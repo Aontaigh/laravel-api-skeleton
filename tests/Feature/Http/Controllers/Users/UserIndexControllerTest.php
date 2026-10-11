@@ -67,13 +67,13 @@ use Tests\TestCase;
 #[CoversClass(DateBoundaryParser::class)]
 final class UserIndexControllerTest extends TestCase
 {
-    use AssertsApiEnvelope;
     /*
     |--------------------------------------------------------------------------
     | Traits
     |--------------------------------------------------------------------------
     */
 
+    use AssertsApiEnvelope;
     use RefreshDatabase;
 
     /*
@@ -137,6 +137,29 @@ final class UserIndexControllerTest extends TestCase
         parent::tearDown();
     }
 
+    /**
+     * Read the first validation message for a filter key from the error envelope.
+     *
+     * Laravel keys a validation error against the attribute as written, so a dotted rule key stays
+     * a literal `filter.status` in the array rather than nesting. Reading it through
+     * `json('meta.errors.status')` would therefore find nothing, which is why this indexes the
+     * decoded array directly.
+     *
+     * @param  TestResponse<JsonResponse> $response the 422 response
+     * @param  string                     $key      the `filter[…]` key, for example `filter.status`
+     * @return string                     the first message, or an empty string when absent
+     */
+    private function firstFilterError(TestResponse $response, string $key): string
+    {
+        /** @var array<string, list<string>> $errors */
+        $errors = $response->json('meta.errors') ?? [];
+
+        return $errors[$key][0] ?? '';
+    }
+    /*
+     * Date Range Tests
+     * ----------------
+     */
     /*
     |--------------------------------------------------------------------------
     | Tests
@@ -437,7 +460,7 @@ final class UserIndexControllerTest extends TestCase
          *
          * `withDefault()` on the BelongsTo relationship returns a default
          * (empty) Team model when the foreign key is null, so the relation
-         * serializes as an object with default values rather than `null`.
+         * serialises as an object with default values rather than `null`.
          */
 
         // Arrange
@@ -818,6 +841,194 @@ final class UserIndexControllerTest extends TestCase
         $response->assertUnauthorized();
     }
 
+    /**
+     * Filter Users by an inclusive lower bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_from_only(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var User $early */
+        $early = User::factory()->user()->create(['created_at' => '2026-10-01 10:00:00']);
+        /** @var User $late */
+        $late = User::factory()->user()->create(['created_at' => '2026-10-05 10:00:00']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+        $this->assertContains($late->id, $ids);
+        $this->assertNotContains($early->id, $ids);
+    }
+
+    /**
+     * Filter Users by an inclusive upper bound on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_to_only(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var User $early */
+        $early = User::factory()->user()->create(['created_at' => '2026-10-01 10:00:00']);
+        /** @var User $late */
+        $late = User::factory()->user()->create(['created_at' => '2026-10-05 10:00:00']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users?filter[to]=2026-10-01');
+
+        // Assert
+
+        $response->assertOk();
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+        $this->assertContains($early->id, $ids);
+        $this->assertNotContains($late->id, $ids);
+    }
+
+    /**
+     * Filter Users by an inclusive range on `created_at`.
+     */
+    #[Test]
+    public function it_filters_by_both_bounds(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var User $early */
+        $early = User::factory()->user()->create(['created_at' => '2026-10-01 10:00:00']);
+        /** @var User $late */
+        $late = User::factory()->user()->create(['created_at' => '2026-10-05 10:00:00']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=2026-10-01&filter[to]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+        $this->assertContains($early->id, $ids);
+        $this->assertContains($late->id, $ids);
+    }
+
+    /**
+     * Include the whole named day for a bare date upper bound.
+     */
+    #[Test]
+    public function it_includes_the_whole_day_for_a_bare_date_to_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var User $daytime */
+        $daytime = User::factory()->user()->create(['created_at' => '2026-10-05 15:00:00']);
+        /** @var User $nextDay */
+        $nextDay = User::factory()->user()->create(['created_at' => '2026-10-06 00:00:01']);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users?filter[to]=2026-10-05');
+
+        // Assert
+
+        $response->assertOk();
+        /** @var list<array{id: int}> $rows */
+        $rows = $response->json('data');
+        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
+        $this->assertContains($daytime->id, $ids);
+        $this->assertNotContains($nextDay->id, $ids);
+    }
+
+    /**
+     * Reject a range whose upper bound precedes its lower bound.
+     */
+    #[Test]
+    public function it_rejects_a_to_bound_before_the_from_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=2026-10-05&filter[to]=2026-10-01');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.to']);
+    }
+
+    /**
+     * Reject a bound Carbon cannot parse.
+     */
+    #[Test]
+    public function it_rejects_an_unparseable_from_date(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=not-a-date');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
+    }
+
+    /**
+     * Reject a blank bound instead of narrowing to nothing.
+     *
+     * A blank date is malformed input, not an empty list: unlike a comma list, there is no
+     * "empty date" that could mean absent, so the `date` rule refuses it.
+     */
+    #[Test]
+    public function it_rejects_a_blank_from_bound(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=');
+
+        // Assert
+
+        $response->assertUnprocessable();
+        $this->assertApiValidationErrors($response, ['filter.from']);
+    }
     /*
     |--------------------------------------------------------------------------
     | Data Providers
@@ -1237,241 +1448,5 @@ final class UserIndexControllerTest extends TestCase
         // Assert
 
         $this->assertApiValidationErrors($response, ['filter.status']);
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Helpers
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Read the first validation message for a filter key from the error envelope.
-     *
-     * Laravel keys a validation error against the attribute as written, so a dotted rule key stays
-     * a literal `filter.status` in the array rather than nesting. Reading it through
-     * `json('meta.errors.status')` would therefore find nothing, which is why this indexes the
-     * decoded array directly.
-     *
-     * @param  TestResponse<JsonResponse> $response the 422 response
-     * @param  string                     $key      the `filter[…]` key, for example `filter.status`
-     * @return string                     the first message, or an empty string when absent
-     */
-    private function firstFilterError(TestResponse $response, string $key): string
-    {
-        /** @var array<string, list<string>> $errors */
-        $errors = $response->json('meta.errors') ?? [];
-
-        return $errors[$key][0] ?? '';
-    }
-
-    /*
-     * Date Range Tests
-     * ----------------
-     */
-
-    /**
-     * Filter Users by an inclusive lower bound on `created_at`.
-     */
-    #[Test]
-    public function it_filters_by_from_only(): void
-    {
-        // Arrange
-
-        /** @var User $admin */
-        $admin = User::factory()->admin()->create();
-
-        /** @var User $early */
-        $early = User::factory()->user()->create(['created_at' => '2026-10-01 10:00:00']);
-
-        /** @var User $late */
-        $late = User::factory()->user()->create(['created_at' => '2026-10-05 10:00:00']);
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=2026-10-05');
-
-        // Assert
-
-        $response->assertOk();
-
-        /** @var list<array{id: int}> $rows */
-        $rows = $response->json('data');
-        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
-
-        $this->assertContains($late->id, $ids);
-        $this->assertNotContains($early->id, $ids);
-    }
-
-    /**
-     * Filter Users by an inclusive upper bound on `created_at`.
-     */
-    #[Test]
-    public function it_filters_by_to_only(): void
-    {
-        // Arrange
-
-        /** @var User $admin */
-        $admin = User::factory()->admin()->create();
-
-        /** @var User $early */
-        $early = User::factory()->user()->create(['created_at' => '2026-10-01 10:00:00']);
-
-        /** @var User $late */
-        $late = User::factory()->user()->create(['created_at' => '2026-10-05 10:00:00']);
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/users?filter[to]=2026-10-01');
-
-        // Assert
-
-        $response->assertOk();
-
-        /** @var list<array{id: int}> $rows */
-        $rows = $response->json('data');
-        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
-
-        $this->assertContains($early->id, $ids);
-        $this->assertNotContains($late->id, $ids);
-    }
-
-    /**
-     * Filter Users by an inclusive range on `created_at`.
-     */
-    #[Test]
-    public function it_filters_by_both_bounds(): void
-    {
-        // Arrange
-
-        /** @var User $admin */
-        $admin = User::factory()->admin()->create();
-
-        /** @var User $early */
-        $early = User::factory()->user()->create(['created_at' => '2026-10-01 10:00:00']);
-
-        /** @var User $late */
-        $late = User::factory()->user()->create(['created_at' => '2026-10-05 10:00:00']);
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=2026-10-01&filter[to]=2026-10-05');
-
-        // Assert
-
-        $response->assertOk();
-
-        /** @var list<array{id: int}> $rows */
-        $rows = $response->json('data');
-        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
-
-        $this->assertContains($early->id, $ids);
-        $this->assertContains($late->id, $ids);
-    }
-
-    /**
-     * Include the whole named day for a bare date upper bound.
-     */
-    #[Test]
-    public function it_includes_the_whole_day_for_a_bare_date_to_bound(): void
-    {
-        // Arrange
-
-        /** @var User $admin */
-        $admin = User::factory()->admin()->create();
-
-        /** @var User $daytime */
-        $daytime = User::factory()->user()->create(['created_at' => '2026-10-05 15:00:00']);
-
-        /** @var User $nextDay */
-        $nextDay = User::factory()->user()->create(['created_at' => '2026-10-06 00:00:01']);
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/users?filter[to]=2026-10-05');
-
-        // Assert
-
-        $response->assertOk();
-
-        /** @var list<array{id: int}> $rows */
-        $rows = $response->json('data');
-        $ids = array_map(static fn (array $row): int => $row['id'], $rows);
-
-        $this->assertContains($daytime->id, $ids);
-        $this->assertNotContains($nextDay->id, $ids);
-    }
-
-    /**
-     * Reject a range whose upper bound precedes its lower bound.
-     */
-    #[Test]
-    public function it_rejects_a_to_bound_before_the_from_bound(): void
-    {
-        // Arrange
-
-        /** @var User $admin */
-        $admin = User::factory()->admin()->create();
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=2026-10-05&filter[to]=2026-10-01');
-
-        // Assert
-
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, ['filter.to']);
-    }
-
-    /**
-     * Reject a bound Carbon cannot parse.
-     */
-    #[Test]
-    public function it_rejects_an_unparseable_from_date(): void
-    {
-        // Arrange
-
-        /** @var User $admin */
-        $admin = User::factory()->admin()->create();
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=not-a-date');
-
-        // Assert
-
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, ['filter.from']);
-    }
-
-    /**
-     * Reject a blank bound instead of narrowing to nothing.
-     *
-     * A blank date is malformed input, not an empty list: unlike a comma list, there is no
-     * "empty date" that could mean absent, so the `date` rule refuses it.
-     */
-    #[Test]
-    public function it_rejects_a_blank_from_bound(): void
-    {
-        // Arrange
-
-        /** @var User $admin */
-        $admin = User::factory()->admin()->create();
-
-        // Act
-
-        /** @var TestResponse<JsonResponse> $response */
-        $response = $this->actingAs($admin)->getJson('/api/users?filter[from]=');
-
-        // Assert
-
-        $response->assertUnprocessable();
-        $this->assertApiValidationErrors($response, ['filter.from']);
     }
 }

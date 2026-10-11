@@ -953,6 +953,8 @@ final class TwoFactorFlowTest extends TestCase
 
         // Act
 
+        // Assert
+
         $this->assertDatabaseHas('auth_audit_logs', [
             'event' => AuthAuditEvent::TwoFactorIssued->value,
             'email' => 'audit@example.com',

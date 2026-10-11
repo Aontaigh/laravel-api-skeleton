@@ -34,7 +34,44 @@ final class RolesAndPermissionsMigrationTest extends TestCase
     */
 
     use RefreshDatabase;
+    /*
+    |--------------------------------------------------------------------------
+    | Setup / Teardown
+    |--------------------------------------------------------------------------
+    */
 
+    /**
+     * Run the dated reseed migration in place.
+     *
+     * `require` on a migration file yields the anonymous class, which has no declared return type
+     * for static analysis to read, so the result is asserted as a `Migration` before `up()` is
+     * called. Loading the file directly rather than through Artisan is deliberate: the point is to
+     * prove the migration repairs a database, which is exactly what `migrate` would not do on a
+     * database that has already run it.
+     *
+     * @return void
+     */
+    private function runReseedMigration(): void
+    {
+        $migration = require database_path(
+            'migrations/2026_10_07_000001_reseed_roles_and_permissions.php',
+        );
+
+        $this->assertInstanceOf(Migration::class, $migration);
+
+        /*
+         * Called through `call_user_func` rather than `$migration->up()` on purpose. The base
+         * `Migration` class declares neither `up()` nor `down()` - that is why every migration file
+         * returns an anonymous subclass rather than a class with those methods - so a direct call is
+         * a method static analysis cannot resolve, even though it is valid at runtime.
+         */
+        $this->assertTrue(
+            method_exists($migration, 'up'),
+            'The migration file must return an object exposing up().',
+        );
+
+        call_user_func([$migration, 'up']);
+    }
     /*
     |--------------------------------------------------------------------------
     | Tests
@@ -158,44 +195,5 @@ final class RolesAndPermissionsMigrationTest extends TestCase
                 );
             }
         }
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Helpers
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Run the dated reseed migration in place.
-     *
-     * `require` on a migration file yields the anonymous class, which has no declared return type
-     * for static analysis to read, so the result is asserted as a `Migration` before `up()` is
-     * called. Loading the file directly rather than through Artisan is deliberate: the point is to
-     * prove the migration repairs a database, which is exactly what `migrate` would not do on a
-     * database that has already run it.
-     *
-     * @return void
-     */
-    private function runReseedMigration(): void
-    {
-        $migration = require database_path(
-            'migrations/2026_10_07_000001_reseed_roles_and_permissions.php',
-        );
-
-        $this->assertInstanceOf(Migration::class, $migration);
-
-        /*
-         * Called through `call_user_func` rather than `$migration->up()` on purpose. The base
-         * `Migration` class declares neither `up()` nor `down()` - that is why every migration file
-         * returns an anonymous subclass rather than a class with those methods - so a direct call is
-         * a method static analysis cannot resolve, even though it is valid at runtime.
-         */
-        $this->assertTrue(
-            method_exists($migration, 'up'),
-            'The migration file must return an object exposing up().',
-        );
-
-        call_user_func([$migration, 'up']);
     }
 }

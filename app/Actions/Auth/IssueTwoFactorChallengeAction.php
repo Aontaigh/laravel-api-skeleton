@@ -71,7 +71,7 @@ final class IssueTwoFactorChallengeAction
     /**
      * Seconds the code remains valid before auto-expiry.
      *
-     * @return int
+     * @return int the configured lifetime in seconds
      */
     public static function ttlSeconds(): int
     {

@@ -17,7 +17,7 @@ abstract class UnitTestCase extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
-    | Helpers
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 
@@ -65,12 +65,6 @@ abstract class UnitTestCase extends TestCase
 
         return is_string($sql) ? $sql : '';
     }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Setup / Teardown
-    |--------------------------------------------------------------------------
-    */
 
     /**
      * Fail the test when any database query runs during a unit test.

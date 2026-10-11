@@ -22,19 +22,11 @@ use Tests\TestCase;
 #[CoversNothing]
 final class RouteBindingShapeTest extends TestCase
 {
-    /**
-     * Ids that must never reach an id-bound controller.
-     *
-     * @return array<string, array{string}>
-     */
-    public static function malformedIds(): array
-    {
-        return [
-            'alpha suffix' => ['7abc'],
-            'leading zero' => ['07'],
-            'exponent' => ['7e0'],
-        ];
-    }
+    /*
+    |--------------------------------------------------------------------------
+    | Tests
+    |--------------------------------------------------------------------------
+    */
 
     /**
      * Every id-bound route rejects a malformed id, on reads and on writes.
@@ -94,5 +86,25 @@ final class RouteBindingShapeTest extends TestCase
             array_values(array_unique($matched)),
             'A malformed id must not match an id-bound route; it should fall through to a 404.',
         );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Data Providers
+    |--------------------------------------------------------------------------
+    */
+
+    /**
+     * Ids that must never reach an id-bound controller.
+     *
+     * @return array<string, array{string}>
+     */
+    public static function malformedIds(): array
+    {
+        return [
+            'alpha suffix' => ['7abc'],
+            'leading zero' => ['07'],
+            'exponent' => ['7e0'],
+        ];
     }
 }

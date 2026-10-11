@@ -202,6 +202,8 @@ final class RecordAuthAuditLogTest extends TestCase
          * The listener is queued, not synchronous.
          */
 
+        // Assert
+
         $this->assertContains(ShouldQueue::class, class_implements(RecordAuthAuditLog::class));
     }
 

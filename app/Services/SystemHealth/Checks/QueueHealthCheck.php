@@ -16,6 +16,12 @@ use Throwable;
  */
 final class QueueHealthCheck implements SystemHealthCheck
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use MeasuresHealthCheckTiming;
 
     /*

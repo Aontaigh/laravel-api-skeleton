@@ -389,6 +389,12 @@ final class ClientTokenExchangeControllerTest extends TestCase
         ]);
     }
 
+    /**
+     * Refuse an exchange when the client is no longer active.
+     *
+     * Deactivation is the revocation switch an operator reaches for, so the
+     * token endpoint must honour it even while the secret still matches.
+     */
     #[Test]
     public function it_rejects_inactive_clients(): void
     {

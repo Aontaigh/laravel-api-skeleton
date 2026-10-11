@@ -16,6 +16,12 @@ use Throwable;
  */
 final class DatabaseHealthCheck implements SystemHealthCheck
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use MeasuresHealthCheckTiming;
 
     /*

@@ -36,7 +36,7 @@ use Tests\TestCase;
  * row leaves the rest of the suite green. These are the tests that catch both.
  */
 #[CoversNothing]
-class AuthAuditLogIntegrityTest extends TestCase
+final class AuthAuditLogIntegrityTest extends TestCase
 {
     /*
     |--------------------------------------------------------------------------
@@ -76,9 +76,11 @@ class AuthAuditLogIntegrityTest extends TestCase
 
         // Act
 
-        // Scoped to the event just dispatched. The listener is queued, so a row written
-        // by an earlier test's job can land inside this test's transaction; counting the
-        // whole table would report that leak as a duplicate registration.
+        /*
+         * Scoped to the event just dispatched. The listener is queued, so a row written
+         * by an earlier test's job can land inside this test's transaction; counting the
+         * whole table would report that leak as a duplicate registration.
+         */
         $rows = AuthAuditLog::query()
             ->where('event', AuthAuditEvent::Login->value)
             ->get();
@@ -146,8 +148,10 @@ class AuthAuditLogIntegrityTest extends TestCase
     {
         // Arrange
 
-        // The worker is shared, so an ambient request exists when the queued listener
-        // finally runs. Its address must not leak into the row.
+        /*
+         * The worker is shared, so an ambient request exists when the queued listener
+         * finally runs. Its address must not leak into the row.
+         */
         request()->server->set('REMOTE_ADDR', '198.51.100.99');
 
         $data = new RecordAuthAuditData(
@@ -255,7 +259,7 @@ class AuthAuditLogIntegrityTest extends TestCase
      * *persisted* length rather than the constant, so it fails either way the bound
      * disappears.
      *
-     * @param string $column
+     * @param string $column the persisted column under test
      */
     #[Test]
     #[DataProvider('oversizedClientInfluencedValuesProvider')]

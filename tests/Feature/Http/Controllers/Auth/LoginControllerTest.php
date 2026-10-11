@@ -672,8 +672,8 @@ final class LoginControllerTest extends TestCase
     /**
      * Reject hostile and incomplete login payloads.
      *
-     * @param array<string, mixed> $payload
-     * @param list<string>         $expectedErrorKeys
+     * @param array<string, mixed> $payload           the rejected request payload
+     * @param list<string>         $expectedErrorKeys the validation keys it must report
      */
     #[Test]
     #[DataProvider('invalidLoginPayloadProvider')]

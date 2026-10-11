@@ -51,7 +51,7 @@ final class ApiRateLimitSharedStoreTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Public
+    | Setup / Teardown
     |--------------------------------------------------------------------------
     */
 
@@ -83,6 +83,38 @@ final class ApiRateLimitSharedStoreTest extends TestCase
         putenv('CACHE_STORE=database');
 
         return parent::createApplication();
+    }
+
+    /**
+     * Restore the original `CACHE_STORE` values and tear the application down.
+     *
+     * @return void
+     */
+    protected function tearDown(): void
+    {
+        $original = $this->originalCacheStoreEnvironment;
+
+        if ($original !== null) {
+            if ($original['server'] === null) {
+                unset($_SERVER['CACHE_STORE']);
+            } else {
+                $_SERVER['CACHE_STORE'] = $original['server'];
+            }
+
+            if ($original['env'] === null) {
+                unset($_ENV['CACHE_STORE']);
+            } else {
+                $_ENV['CACHE_STORE'] = $original['env'];
+            }
+
+            if ($original['putenv'] === null) {
+                putenv('CACHE_STORE');
+            } else {
+                putenv('CACHE_STORE='.$original['putenv']);
+            }
+        }
+
+        parent::tearDown();
     }
 
     /*
@@ -125,43 +157,5 @@ final class ApiRateLimitSharedStoreTest extends TestCase
             DB::table('cache')->where('key', 'like', '%'.$counterKey.':timer')->exists(),
             'Expected the rate-limiter counter row in the `cache` table.',
         );
-    }
-
-    /*
-    |--------------------------------------------------------------------------
-    | Protected
-    |--------------------------------------------------------------------------
-    */
-
-    /**
-     * Restore the original `CACHE_STORE` values and tear the application down.
-     *
-     * @return void
-     */
-    protected function tearDown(): void
-    {
-        $original = $this->originalCacheStoreEnvironment;
-
-        if ($original !== null) {
-            if ($original['server'] === null) {
-                unset($_SERVER['CACHE_STORE']);
-            } else {
-                $_SERVER['CACHE_STORE'] = $original['server'];
-            }
-
-            if ($original['env'] === null) {
-                unset($_ENV['CACHE_STORE']);
-            } else {
-                $_ENV['CACHE_STORE'] = $original['env'];
-            }
-
-            if ($original['putenv'] === null) {
-                putenv('CACHE_STORE');
-            } else {
-                putenv('CACHE_STORE='.$original['putenv']);
-            }
-        }
-
-        parent::tearDown();
     }
 }

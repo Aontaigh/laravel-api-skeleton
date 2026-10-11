@@ -71,6 +71,8 @@ final class TrustedProxiesTest extends TestCase
     {
         putenv('TRUSTED_PROXIES');
 
+        // Assert
+
         $this->assertSame([], TrustedProxies::all());
     }
 
@@ -82,6 +84,8 @@ final class TrustedProxiesTest extends TestCase
     {
         putenv('TRUSTED_PROXIES=');
 
+        // Assert
+
         $this->assertSame([], TrustedProxies::all());
     }
 
@@ -92,6 +96,8 @@ final class TrustedProxiesTest extends TestCase
     public function it_parses_a_comma_separated_list(): void
     {
         putenv('TRUSTED_PROXIES=10.0.0.5, 10.0.0.0/24 ,192.168.1.1');
+
+        // Assert
 
         $this->assertSame(['10.0.0.5', '10.0.0.0/24', '192.168.1.1'], TrustedProxies::all());
     }
@@ -105,6 +111,8 @@ final class TrustedProxiesTest extends TestCase
     {
         putenv('TRUSTED_PROXIES=2400:cb00::/32, 2001:db8:1::/48');
 
+        // Assert
+
         $this->assertSame(['2400:cb00::/32', '2001:db8:1::/48'], TrustedProxies::all());
     }
 
@@ -116,6 +124,8 @@ final class TrustedProxiesTest extends TestCase
     {
         putenv('TRUSTED_PROXIES=*');
 
+        // Assert
+
         $this->assertSame([], TrustedProxies::all());
     }
 
@@ -126,6 +136,8 @@ final class TrustedProxiesTest extends TestCase
     public function it_drops_blank_entries(): void
     {
         putenv('TRUSTED_PROXIES=10.0.0.5,, ,10.0.0.6');
+
+        // Assert
 
         $this->assertSame(['10.0.0.5', '10.0.0.6'], TrustedProxies::all());
     }

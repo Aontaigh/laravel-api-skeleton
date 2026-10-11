@@ -628,6 +628,15 @@ final class AppServiceProvider extends ServiceProvider
         });
     }
 
+    /**
+     * Bind the `web_session` route parameter to a session the caller may reach.
+     *
+     * Scoped rather than global: a caller without the cross-user abilities
+     * resolves only a session on their own account, and a miss becomes a
+     * `404` rather than a `403` that would confirm the row exists.
+     *
+     * @return void
+     */
     private function registerScopedWebSessionBinding(): void
     {
         Route::bind('web_session', static function (string $value): WebSession {

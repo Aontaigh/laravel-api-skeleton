@@ -34,13 +34,13 @@ use Tests\TestCase;
 #[CoversClass(ApiResponse::class)]
 final class UpdateTeamControllerTest extends TestCase
 {
-    use AssertsApiEnvelope;
     /*
     |--------------------------------------------------------------------------
     | Traits
     |--------------------------------------------------------------------------
     */
 
+    use AssertsApiEnvelope;
     use RefreshDatabase;
 
     /*

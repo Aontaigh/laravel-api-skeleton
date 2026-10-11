@@ -52,6 +52,8 @@ final class ListenerRegistrationTest extends TestCase
     #[Test]
     public function it_registers_exactly_one_listener_per_auth_event(): void
     {
+        // Assert
+
         $this->assertSame(1, count(Event::getListeners(AuthEventOccurred::class)));
         $this->assertSame(1, count(Event::getListeners(TwoFactorChallengeIssued::class)));
     }

@@ -120,8 +120,8 @@ final class UpdateApiClientAction
     }
 
     /**
-     * @param  list<string> $abilities
-     * @return list<string>
+     * @param  list<string> $abilities the requested abilities, before de-duplication
+     * @return list<string> the de-duplicated abilities in their submitted order
      */
     private function normalisedAbilitySet(array $abilities): array
     {

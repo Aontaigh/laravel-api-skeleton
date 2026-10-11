@@ -82,6 +82,8 @@ final class SystemHealthCheckRegistryTest extends TestCase
 
         // Expect
 
+        // Assert
+
         $this->expectException(UnexpectedValueException::class);
 
         // Act

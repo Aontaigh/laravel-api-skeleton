@@ -114,6 +114,8 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
             ));
             $this->fail('Expected ValidationException was not thrown');
         } catch (ValidationException $exception) {
+            // Assert
+
             $this->assertSame(
                 ['Invalid Credentials'],
                 $exception->errors()['client_id'],
@@ -151,6 +153,8 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
             ));
             $this->fail('Expected ValidationException was not thrown');
         } catch (ValidationException $exception) {
+            // Assert
+
             $this->assertSame(
                 ['Invalid Credentials'],
                 $exception->errors()['client_id'],
@@ -191,6 +195,8 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
              * The reason is what the caller audits, so it is asserted rather than
              * left implied by the exception type alone.
              */
+            // Assert
+
             $this->assertSame(ClientIneligibilityReason::MissingOwner, $refusal->reason);
         }
     }
@@ -235,6 +241,8 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
              * The reason is what the caller audits, so it is asserted rather than
              * left implied by the exception type alone.
              */
+            // Assert
+
             $this->assertSame(ClientIneligibilityReason::HumanOwned, $refusal->reason);
         }
     }
@@ -274,6 +282,8 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
              * The reason is what the caller audits, so it is asserted rather than
              * left implied by the exception type alone.
              */
+            // Assert
+
             $this->assertSame(ClientIneligibilityReason::MissingOwner, $refusal->reason);
         }
     }
@@ -313,6 +323,8 @@ final class AuthenticateClientCredentialsActionTest extends UnitTestCase
              * The reason is what the caller audits, so it is asserted rather than
              * left implied by the exception type alone.
              */
+            // Assert
+
             $this->assertSame(ClientIneligibilityReason::SuspendedOwner, $refusal->reason);
         }
     }

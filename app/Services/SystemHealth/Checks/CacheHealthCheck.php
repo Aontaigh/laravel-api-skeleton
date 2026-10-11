@@ -18,6 +18,12 @@ use Throwable;
  */
 final class CacheHealthCheck implements SystemHealthCheck
 {
+    /*
+    |--------------------------------------------------------------------------
+    | Traits
+    |--------------------------------------------------------------------------
+    */
+
     use MeasuresHealthCheckTiming;
 
     /*

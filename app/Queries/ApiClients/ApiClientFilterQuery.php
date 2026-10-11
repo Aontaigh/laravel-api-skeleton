@@ -23,7 +23,7 @@ final class ApiClientFilterQuery
     /**
      * Apply the Api Client filters to the query.
      *
-     * @param  Builder<ApiClient> $query
+     * @param  Builder<ApiClient> $query   the query to constrain
      * @param  ApiClientFilters   $filters the validated filters
      * @return void
      */

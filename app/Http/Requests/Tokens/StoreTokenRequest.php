@@ -60,7 +60,8 @@ final class StoreTokenRequest extends ApiFormRequest
      *
      * Laravel distinguishes a missing key from an explicit `null`: omitting
      * `expires_at` keeps the configured default lifetime, while sending it as
-     * `null` opts the Token into never expiring.
+     * `null` is an explicit never-expire request the issuing Action refuses
+     * with `422` (`Tokens Must Expire`).
      *
      * @return bool true when the caller set `expires_at` themselves
      */
@@ -70,7 +71,7 @@ final class StoreTokenRequest extends ApiFormRequest
     }
 
     /**
-     * The requested expiry, or null for the configured default or a never-expires Token.
+     * The requested expiry, or null when the configured default lifetime applies.
      *
      * @return Carbon|null the parsed expiry, or null
      */

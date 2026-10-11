@@ -41,7 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->statefulApi();
 
         /*
-         * API-only app — never redirect unauthenticated guests to a web login route.
+         * API-only app, so never redirect unauthenticated guests to a web login route.
          */
         $middleware->redirectGuestsTo(static fn (): ?string => null);
     })

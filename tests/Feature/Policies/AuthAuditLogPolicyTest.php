@@ -152,6 +152,8 @@ final class AuthAuditLogPolicyTest extends TestCase
 
         $log = AuthAuditLog::factory()->create();
 
+        // Assert
+
         $this->assertTrue(
             $serviceUser->can(AuthAuditLogPolicy::LIST_PERMISSION),
             'The permission must be held, otherwise the refusal proves nothing.',

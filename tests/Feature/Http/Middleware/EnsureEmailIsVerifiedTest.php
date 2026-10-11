@@ -147,6 +147,7 @@ final class EnsureEmailIsVerifiedTest extends TestCase
         // Act
 
         $response = $this->actingAs($user)->deleteJson('/api/sessions/current');
+
         // Assert
 
         /*

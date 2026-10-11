@@ -109,6 +109,8 @@ final class WebhookEndpointPolicyTest extends TestCase
             $this->actingAs($viewer)->postJson("/api/webhook-endpoints/{$endpoint->id}/rotate-secret")->assertForbidden();
         }
 
+        // Assert
+
         $this->assertDatabaseHas('webhook_endpoints', ['id' => $endpoint->id, 'name' => $endpoint->name]);
     }
 }

@@ -59,6 +59,8 @@ final class VerifyTwoFactorCodeActionTest extends TestCase
             app(VerifyTwoFactorCodeAction::class)->execute($user, '123456');
             $this->fail('Expected TwoFactorChallengeException was not thrown.');
         } catch (TwoFactorChallengeException $exception) {
+            // Assert
+
             $this->assertSame('Invalid or Expired Code', $exception->getMessage());
         }
     }

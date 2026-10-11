@@ -153,6 +153,9 @@ final class RotateClientSecretControllerTest extends TestCase
         ]);
 
         $exchange->assertOk();
+
+        // Assert
+
         $this->assertNotNull($exchange->json('data.plain_text_token'));
     }
 

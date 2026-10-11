@@ -23,7 +23,7 @@ final class CommaSeparatedListTest extends UnitTestCase
     */
 
     /**
-     * @param list<string> $expected
+     * @param list<string> $expected the parsed segments the raw value must yield
      */
     #[Test]
     #[DataProvider('parseProvider')]
