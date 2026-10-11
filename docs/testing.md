@@ -54,6 +54,10 @@ entry in the [README](../README.md)), only the **host** row moves.
 
 `scripts/pen-test-auth.sh` runs its probes through `sail exec`, so its default
 `PEN_TEST_BASE=http://localhost/api` is correct **from inside the container**.
+Launch the script **from the host**, not inside the container: it invokes `sail exec`
+for every probe, and the app container has no Docker daemon, so an in-container run
+fails every check with `Docker or Podman is not running` and reports a wall of `FAIL`s
+that say nothing about the app.
 Probing port 80 from your shell returns nothing, and probing your host port from
 inside the container returns nothing - neither is a broken app. Check both
 namespaces, deriving the host port so the command works whatever you remapped:

@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-10-11
+
+### Added
+
+- **Token Lifetime Ceiling in App Info:** `GET /api/app-info` now reports `auth.token_max_expiration_days` alongside `auth.token_expiration_days`, so a SPA can constrain its expiry picker to the same ceiling issuance enforces without hard-coding a copy of the policy. The OpenAPI `AppInfo` schema and example and the README's telemetry section carry the new field
+
+### Changed
+
+- **A Refused Service-Account Sign-In Is Recorded as Refused:** a service account attempting a password sign-in is a deliberate policy refusal rather than an unknown credential, so the audit trail labels it `refused` instead of `failed` and a triager can tell a machine identity reaching for an interactive flow from a wrong password. The HTTP response is unchanged - the same generic `422 Invalid Credentials` the enumeration hardening requires - so nothing is disclosed to the caller (`ServiceAccountAuthenticationException`)
+- **Test Suite Aligned with the Structure Convention:** `RolesAndPermissionsMigrationTest` and `ApiRateLimitSharedStoreTest` gained their `Setup / Teardown` regions, with the shared-store test's teardown restoring the original `CACHE_STORE`; `AuthAuditLogIntegrityTest` is `final`; and the two index suites read a dotted `filter[…]` validation key through a `firstFilterError` helper, because `json('meta.errors.…')` cannot find a key Laravel stores literally
+- **Client Deactivation Pinned at the Exchange:** a new case asserts the token endpoint refuses a client-credentials exchange for a client that is no longer active even while its secret still matches, which is the revocation switch an operator actually reaches for
+- **Docblocks and Class Regions Completed:** the three system-health checks, `UpdateApiClientAction`, `ApiClientFilterQuery`, `IssueTwoFactorChallengeAction` and `UnitTestCase` gained the parameter and return descriptions and the region dividers the structure conventions require - stating what a `list<string>` holds after de-duplication, what a builder parameter constrains, and what a lifetime is measured in - following the same pass recorded above
+- **Docs and Copy:** `StoreTokenRequest` now describes an explicit `null` expiry as the never-expire request the issuing Action refuses with `422`, rather than something that opts a Token into never expiring; the API-only comment in `bootstrap/app.php` reads correctly; and one test docblock uses British "normalised"
+
+### Fixed
+
+- **A Scoped Session Binding Closes a `403`-versus-`404` Oracle:** the `{web_session}` route parameter was bound globally, so a caller without the cross-user session abilities received `403` for another account's session and `404` for a missing one, and the difference mapped ids to rows. The binding is scoped to the caller's own sessions, so both answer `404` and a denial cannot confirm that a row exists
+
 ## [3.1.0] - 2026-10-10
 
 ### Changed
@@ -909,7 +927,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.1.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.0...HEAD
+[3.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.2...v3.1.0
 [3.0.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.1...v3.0.2
 [3.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.0...v3.0.1

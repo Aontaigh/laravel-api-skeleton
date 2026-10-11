@@ -675,9 +675,11 @@ GET  /.well-known/security.txt   # public; RFC 9116 disclosure contact (served a
 `POST /api/csp-reports` accepts legacy `report-uri` and modern Reporting API
 shapes (per-IP throttled, `413` past 16 KiB) into the dedicated `csp-reports`
 log channel; both CSP policies point `report-uri` at it. `GET /api/app-info`
-reports application, runtime, driver names, and `auth.token_expiration_days` (configured
-default Personal Access Token lifetime; a `0` falls back to the maximum lifetime, never
-disabling expiry) for deploy verification behind the status page throttle. Disclosure
+reports application, runtime, driver names, and the `auth` Token lifetime bounds
+(`token_expiration_days`, the configured default Personal Access Token lifetime; a `0`
+falls back to the maximum lifetime, never disabling expiry, and `token_max_expiration_days`,
+the hard ceiling every issued Token is clamped to and beyond which an explicit expiry is
+refused with `422`) for deploy verification behind the status page throttle. Disclosure
 policy: [SECURITY.md](SECURITY.md).
 
 **Source of Truth:** [StoreCspReportController](app/Http/Controllers/CspReports/StoreCspReportController.php),
