@@ -88,7 +88,9 @@
         "semgrep": [
             "bash scripts/semgrep.sh"
         ],
+        "lint:composer": "composer validate --strict --no-check-publish --no-check-version --no-ansi",
         "ci": [
+            "@lint:composer",
             "@lint",
             "@lint:links",
             "@analyse",

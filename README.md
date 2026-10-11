@@ -831,20 +831,21 @@ Trait coverage uses **real hosts** (feature tests and resource unit tests), not
 Run locally (Sail - matches PHP 8.5 when host PHP is older):
 
 ```bash
+./vendor/bin/sail composer lint:composer # composer.json and composer.lock agree
 ./vendor/bin/sail composer lint          # Pint (--test)
 ./vendor/bin/sail composer lint:fix      # Pint, auto-fix
 ./vendor/bin/sail composer lint:links    # Markdown links and anchors
 ./vendor/bin/sail composer analyse       # Larastan, level 10
 ./vendor/bin/sail composer test          # PHPUnit
 ./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
-./vendor/bin/sail composer verify:version        # composer.json / package.json / App version agree
+./vendor/bin/sail composer verify:version        # composer.json / docs/openapi.yaml / git tag agree
 ./vendor/bin/sail composer ci            # the chain below
 ```
 
-`composer ci` chains `lint`, `lint:links`, `analyse`, `semgrep`, `test:coverage:check`,
-`verify:openapi`, `verify:version`, and `composer audit --locked`. It needs a seeded
-database and a served app, because `verify:openapi` replays every documented example
-against a live instance:
+`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`, `semgrep`,
+`test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`.
+It needs a seeded database and a served app, because `verify:openapi` replays every
+documented example against a live instance:
 
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed

@@ -15,7 +15,7 @@ This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 
 ## Release Checklist
 
-- [ ] 1. App version bumped - `composer.json`, `docs/openapi.yaml`, `.env.example` / `.env.ci`, and changelog (see [App version](#app-version))
+- [ ] 1. App version bumped - `composer.json`, `docs/openapi.yaml`, `.env.example` / `.env.ci`, and changelog (see [App version](#app-version)), then `composer update --lock` so the lock's content hash matches
 - [ ] 2. `CHANGELOG.md` updated - `## [X.Y.Z] - YYYY-MM-DD` with today's date
 - [ ] 3. Quality gates green locally (see below), with the link gate's in-flight compare
       exemptions updated for the release being cut (see [Run the Quality Gates](#2-run-the-quality-gates))
@@ -64,6 +64,19 @@ composer verify:version
 
 The script fails when OpenAPI drifts from `composer.json`, or when a tagged GitHub
 Actions build (`GITHUB_REF_NAME=vX.Y.Z`) does not match the composer version.
+
+### Refresh the Lock Hash
+
+Bumping `version` edits `composer.json`, and Composer's `content-hash` covers that
+field, so the bump also makes `composer.lock` stale. Refresh it in the same commit:
+
+```bash
+composer update --lock
+```
+
+`composer update --lock` rewrites the hash without changing a single locked version.
+`composer lint:composer` (step 1a in [testing.md](testing.md), and part of `composer ci`)
+fails on a stale hash, so CI catches a bump that forgot this step.
 
 ## 1. Update the Changelog
 

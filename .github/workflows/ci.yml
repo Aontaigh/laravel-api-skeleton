@@ -68,6 +68,9 @@ jobs:
             - name: Verify App Version Sync
               run: composer verify:version
 
+            - name: Validate Composer Metadata
+              run: composer lint:composer
+
     # ---------------------------------------------------------------------
     # Link Check (Markdown relative links and heading anchors)
     # ---------------------------------------------------------------------
