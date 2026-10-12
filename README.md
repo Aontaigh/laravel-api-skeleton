@@ -96,9 +96,15 @@ composer install
 cp .env.example .env
 php artisan key:generate
 
+npm ci
+npm run build          # or: npm run dev, for the Vite dev server with HMR
+
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan migrate:fresh --seed
 ```
+
+The two `npm` steps need the Node version pinned in [`.nvmrc`](.nvmrc); without them Laravel
+answers `ViteManifestNotFoundException`, because it expects `public/build/manifest.json`.
 
 Seeding creates one team ("Acme Corp") and one user per role. The full permission matrix
 lives in [docs/permissions.md](docs/permissions.md).
@@ -377,7 +383,7 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | ----------------- | ------------------------------------------------------------------------------------------------ |
 | PHP               | ^8.5                                                                                            |
 | Laravel           | ^13.8                                                                                           |
-| Node (Vite build) | >=22.12 - `.nvmrc` picks 22; `engines.node` sets the floor, `engine-strict` enforces it         |
+| Node (Vite build) | >=22.12 - `.nvmrc` pins 22.12.0 and `engine-strict` enforces it                                 |
 | Docker (for Sail) | any recent version                                                                               |
 
 <a id="api"></a>
