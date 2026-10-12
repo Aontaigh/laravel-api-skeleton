@@ -160,9 +160,16 @@ git rev-parse vX.Y.Z          # must equal the SHA above
 
 ## 5. Publish the GitHub Release
 
-Draft notes from the `## [X.Y.Z]` changelog section. GitHub release notes are **not** a
-copy of `CHANGELOG.md` - they follow a separate layout so they render cleanly on the
-[Releases](https://github.com/Aontaigh/laravel-api-skeleton/releases) page.
+Draft notes from the `## [X.Y.Z]` changelog section:
+
+```bash
+python3 scripts/changelog-to-github-release-body.py X.Y.Z > /tmp/release-notes.md
+```
+
+That renders the section in the format below - emoji headings, one physical line per bullet,
+and the compare footer - so it is generated rather than assembled by hand. GitHub release
+notes are **not** a copy of `CHANGELOG.md`: they follow a separate layout so they render
+cleanly on the [Releases](https://github.com/Aontaigh/laravel-api-skeleton/releases) page.
 
 ### GitHub Release Format
 

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.1] - 2026-10-12
+
+### Changed
+
+- **Composer Metadata, Node Runtime, and npm Lock Gated:** `composer lint:composer` compares `composer.json` with its lock in CI, because a bare `composer validate` reports drift as a warning and exits `0`. `.nvmrc` holds the one Node version local tooling and CI both read, `engines.node` now names only the lines CI runs - `^22.12.0 || ^24.0.0 || ^26.0.0`, even majors only - and `engine-strict` makes that range enforceable. `npm run lint:npm` covers the field `npm ci` never compares, the lock's root `engines` range, which had drifted to record none at all. Dependabot and Renovate now own non-overlapping halves of the dependency surface, an unused Composer plugin allowance is gone, and the README and `docs/testing.md` carry the new step
+- **Dependency Bumps:** `shell-quote` to 1.12.0 and `concurrently` to 9.2.5 ([#26](https://github.com/Aontaigh/laravel-api-skeleton/pull/26))
+- **Link-Gate Exemptions Dropped:** the in-flight compare exemptions added for the `v3.2.0` cut came out once the tag resolved, so a stale pair cannot hide the next release's dead links
+
 ## [3.2.0] - 2026-10-11
 
 ### Added
@@ -927,7 +935,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.1...HEAD
+[3.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.2...v3.1.0
 [3.0.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.1...v3.0.2
