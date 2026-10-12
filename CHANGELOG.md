@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.2.2] - 2026-10-12
+
+### Changed
+
+- **Development Dependency Bumps:** `phpunit/phpunit` to 13.4.1, `phpstan/phpstan-strict-rules` to 2.1.0, `larastan/larastan` to 3.12.3, `concurrently` to 10.0.5, and the grouped npm minor-and-patch updates. All dev-only: no runtime dependency, route, or response changes, and the full `composer ci` chain plus the frontend build pass on each bump
+
+### Fixed
+
+- **Force-Logout ID Validation No Longer Shadows Its Index:** `ForceLogoutUsersRequest::withValidator()` bound one name as the key of two sibling loops, so PHP's function-level scope had the second overwrite the first. The two passes now bind different names - `$position` while the raw input is walked, `$index` while the built array is re-walked. PHPStan 2.x reports the pattern as `foreach.keyOverwrite`, the code predates the rule, and the `larastan/larastan` bump is what surfaced it, so the fix landed ahead of the bump that found it rather than with it
+
 ## [3.2.1] - 2026-10-12
 
 ### Changed
@@ -935,7 +945,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.2...HEAD
+[3.2.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.1...v3.2.2
 [3.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.1.0...v3.2.0
 [3.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.2...v3.1.0
