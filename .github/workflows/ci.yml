@@ -96,6 +96,38 @@ jobs:
               run: composer lint:links
 
     # ---------------------------------------------------------------------
+    # Frontend Build (Vite, across the Node lines engines.node declares)
+    # ---------------------------------------------------------------------
+    frontend:
+        name: Frontend Build
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
+        timeout-minutes: 10
+        strategy:
+            fail-fast: false
+            matrix:
+                # The floor `engines.node` declares, plus the LTS and Current
+                # lines, so the support range is verified rather than asserted.
+                # `.nvmrc` keeps local development on the 22 line, and the other
+                # Node jobs read it.
+                node-version: ['22.12.0', '24', '26']
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Setup Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: npm
+
+            - name: Install Dependencies
+              run: npm ci
+
+            - name: Build Assets
+              run: npm run build
+
+    # ---------------------------------------------------------------------
     # Static Analysis (Larastan, PHPStan Level 10 + Strict + Deprecation)
     # ---------------------------------------------------------------------
     static-analysis:
@@ -443,7 +475,7 @@ jobs:
         name: All Quality Gates
         runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 5
-        needs: [format, link-check, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, workflow-lint]
+        needs: [format, link-check, frontend, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, workflow-lint]
         if: always()
         steps:
             - name: Require Every Gate to Pass
@@ -457,6 +489,7 @@ jobs:
                   }
                   check "Pint" "${{ needs.format.result }}"
                   check "Link Check" "${{ needs.link-check.result }}"
+                  check "Frontend Build" "${{ needs.frontend.result }}"
                   check "Larastan" "${{ needs.static-analysis.result }}"
                   check "PHPUnit + Coverage" "${{ needs.tests.result }}"
                   check "Security Audit" "${{ needs.audit.result }}"

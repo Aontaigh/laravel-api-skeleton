@@ -383,7 +383,7 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | ----------------- | ------------------------------------------------------------------------------------------------ |
 | PHP               | ^8.5                                                                                            |
 | Laravel           | ^13.8                                                                                           |
-| Node (Vite build) | >=22.12 - `.nvmrc` pins 22.12.0 and `engine-strict` enforces it                                 |
+| Node (Vite build) | >=22.12 - `.nvmrc` pins 22.12.0; CI builds on the 22.12, 24 and 26 lines                        |
 | Docker (for Sail) | any recent version                                                                               |
 
 <a id="api"></a>
@@ -864,10 +864,11 @@ The first three are separate CI jobs; the live pen test (step 12) runs locally o
 See [docs/testing.md](docs/testing.md) for all thirteen steps, which of them run on the
 host rather than in Sail, and what each one writes.
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, a Markdown link check,
-Larastan, PHPUnit with coverage, `composer audit`, OpenAPI example verification, Semgrep,
-Zizmor, `actionlint` with the Renovate config, and a summary gate on every pull request
-and push to `main`. Require the **All Quality Gates** check for branch protection. CI uses
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, a Markdown link check, a Vite
+build across the Node lines `engines.node` declares, Larastan, PHPUnit with coverage,
+`composer audit`, OpenAPI example verification, Semgrep, Zizmor, `actionlint` with the
+Renovate config, and a summary gate on every pull request and push to `main`. Require the
+**All Quality Gates** check for branch protection. CI uses
 native PHP 8.5 with a MySQL service container - not Sail.
 
 Run Semgrep locally on the host (Docker or a local CLI - not inside Sail):

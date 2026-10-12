@@ -117,7 +117,7 @@ Zizmor needs both the pinned image and CI's scope to reproduce CI:
 - **Scope it to `.github/workflows/`.** Pointing it at the repository root also reports
   findings from the vendored toolkit and exits non-zero.
 
-CI runs twelve of the thirteen steps as nine parallel jobs, behind one `All Quality Gates`
+CI runs twelve of the thirteen steps as ten parallel jobs, behind one `All Quality Gates`
 summary job. `All Quality Gates` fails when any other job fails, is cancelled, or is
 skipped - so a cancelled job fails the build even though nothing was reported as broken.
 
