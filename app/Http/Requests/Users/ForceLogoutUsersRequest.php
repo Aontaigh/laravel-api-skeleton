@@ -130,11 +130,11 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
                 }
             }
 
-            foreach ($idsByIndex as $position => $id) {
+            foreach ($idsByIndex as $index => $id) {
                 if (! isset($validIdLookup[$id])) {
                     $check->errors()->add(
-                        "ids.{$position}",
-                        "The selected ids.{$position} is invalid.",
+                        "ids.{$index}",
+                        "The selected ids.{$index} is invalid.",
                     );
                 }
             }
