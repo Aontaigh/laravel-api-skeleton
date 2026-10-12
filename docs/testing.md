@@ -83,7 +83,8 @@ export ZIZMOR_IMAGE=ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980
 export ACTIONLINT_IMAGE=rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
 ```
 
-**Everything except step 7 runs through `./vendor/bin/sail`.** The project requires
+**Everything except steps 1c and 7 runs through `./vendor/bin/sail`.** Step 1c is an npm check and
+runs on the host, where the pinned Node version lives. The project requires
 `^8.5`, and a host PHP older than that fails inside `platform_check.php` before any
 code loads, so `php scripts/...` on the host is not interchangeable with
 `./vendor/bin/sail php scripts/...`. Switch the host runtime (`herd use php@8.5`,
@@ -94,6 +95,7 @@ code loads, so `php scripts/...` on the host is not interchangeable with
 | 1    | Sail            | `./vendor/bin/sail composer lint`                                                                               | Pint style check (`lint:fix` to auto-fix)                                                          | Exit 0                                            |
 | 1a   | Sail            | `./vendor/bin/sail composer lint:composer`                                                                      | `composer.json` and `composer.lock` are in sync - `--strict` fails on a stale hash                 | `is valid`                                        |
 | 1b   | Sail            | `./vendor/bin/sail composer lint:links`                                                                         | Markdown link and anchor resolution                                                                | `Link Lint Passed`                                |
+| 1c   | **host**        | `npm run lint:npm`                                                                                              | The lock's root `engines` range matches `package.json`, which `npm ci` never compares              | `Lock File Engines Match`                         |
 | 2    | Sail            | `./vendor/bin/sail composer analyse`                                                                            | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors`                                       |
 | 3    | Sail            | `./vendor/bin/sail composer test`                                                                               | Full PHPUnit suite (unit + feature)                                                                | All pass                                          |
 | 4    | Sail            | `./vendor/bin/sail composer test:coverage:check`                                                                | Step 3 plus the 90% line-coverage gate over `app/`                                                 | `Coverage Gate Passed`, and `PHPUnit Warnings: 0` |
@@ -117,7 +119,7 @@ Zizmor needs both the pinned image and CI's scope to reproduce CI:
 - **Scope it to `.github/workflows/`.** Pointing it at the repository root also reports
   findings from the vendored toolkit and exits non-zero.
 
-CI runs twelve of the thirteen steps as ten parallel jobs, behind one `All Quality Gates`
+CI runs thirteen of the fourteen steps as ten parallel jobs, behind one `All Quality Gates`
 summary job. `All Quality Gates` fails when any other job fails, is cancelled, or is
 skipped - so a cancelled job fails the build even though nothing was reported as broken.
 

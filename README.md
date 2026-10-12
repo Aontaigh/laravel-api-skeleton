@@ -379,12 +379,12 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 
 ## 📋 Requirements
 
-| Dependency        | Version                                                                                          |
-| ----------------- | ------------------------------------------------------------------------------------------------ |
-| PHP               | ^8.5                                                                                            |
-| Laravel           | ^13.8                                                                                           |
-| Node (Vite build) | >=22.12 - `.nvmrc` pins 22.12.0; CI builds on the 22.12, 24 and 26 lines                        |
-| Docker (for Sail) | any recent version                                                                               |
+| Dependency        | Version                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| PHP               | ^8.5                                                                                                  |
+| Laravel           | ^13.8                                                                                                 |
+| Node (Vite build) | `^22.12.0 \|\| ^24.0.0 \|\| ^26.0.0` - `.nvmrc` pins 22.12.0; CI builds on the 22.12, 24 and 26 lines |
+| Docker (for Sail) | any recent version                                                                                    |
 
 <a id="api"></a>
 
@@ -849,6 +849,12 @@ Run locally (Sail - matches PHP 8.5 when host PHP is older):
 ./vendor/bin/sail composer ci            # the chain below
 ```
 
+The npm lock check runs on the host, where the pinned Node version lives:
+
+```bash
+npm run lint:npm # package.json and the lock's root engines range agree
+```
+
 `composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`, `semgrep`,
 `test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`.
 It needs a seeded database and a served app, because `verify:openapi` replays every
@@ -861,11 +867,11 @@ documented example against a live instance:
 
 It does **not** cover Zizmor, `actionlint`, the Renovate config, or the live pen test.
 The first three are separate CI jobs; the live pen test (step 12) runs locally only.
-See [docs/testing.md](docs/testing.md) for all thirteen steps, which of them run on the
+See [docs/testing.md](docs/testing.md) for all fourteen steps, which of them run on the
 host rather than in Sail, and what each one writes.
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, a Markdown link check, a Vite
-build across the Node lines `engines.node` declares, Larastan, PHPUnit with coverage,
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, an npm lock check, a Markdown link
+check, a Vite build across the Node lines `engines.node` declares, Larastan, PHPUnit with coverage,
 `composer audit`, OpenAPI example verification, Semgrep, Zizmor, `actionlint` with the
 Renovate config, and a summary gate on every pull request and push to `main`. Require the
 **All Quality Gates** check for branch protection. CI uses

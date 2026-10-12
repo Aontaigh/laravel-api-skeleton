@@ -92,6 +92,13 @@ jobs:
             - name: Install Dependencies
               run: npm ci
 
+            - name: Lock File Engines Are In Sync
+              # `npm ci` verifies the dependency tree and never the root package's own
+              # `engines`, so a stale range survives it silently. Refreshing the lock and
+              # diffing it is not a check either: npm rewrites the root `name` from the
+              # checkout directory, so a clone and CI disagree on the same commit.
+              run: npm run lint:npm
+
             - name: Check Markdown Links
               run: composer lint:links
 
