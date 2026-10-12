@@ -99,17 +99,17 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
             /** @var array<int, int> $idsByIndex */
             $idsByIndex = [];
 
-            foreach ($rawIds as $index => $value) {
+            foreach ($rawIds as $position => $value) {
                 if (! is_int($value)) {
                     $check->errors()->add(
-                        "ids.{$index}",
-                        "The selected ids.{$index} is invalid.",
+                        "ids.{$position}",
+                        "The selected ids.{$position} is invalid.",
                     );
 
                     continue;
                 }
 
-                $idsByIndex[$index] = $value;
+                $idsByIndex[$position] = $value;
             }
 
             if ($idsByIndex === []) {
@@ -130,11 +130,11 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
                 }
             }
 
-            foreach ($idsByIndex as $index => $id) {
+            foreach ($idsByIndex as $position => $id) {
                 if (! isset($validIdLookup[$id])) {
                     $check->errors()->add(
-                        "ids.{$index}",
-                        "The selected ids.{$index} is invalid.",
+                        "ids.{$position}",
+                        "The selected ids.{$position} is invalid.",
                     );
                 }
             }
