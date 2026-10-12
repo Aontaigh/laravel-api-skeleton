@@ -96,9 +96,15 @@ composer install
 cp .env.example .env
 php artisan key:generate
 
+npm ci
+npm run build          # or: npm run dev, for the Vite dev server with HMR
+
 ./vendor/bin/sail up -d
 ./vendor/bin/sail artisan migrate:fresh --seed
 ```
+
+The two `npm` steps need the Node version pinned in [`.nvmrc`](.nvmrc); without them Laravel
+answers `ViteManifestNotFoundException`, because it expects `public/build/manifest.json`.
 
 Seeding creates one team ("Acme Corp") and one user per role. The full permission matrix
 lives in [docs/permissions.md](docs/permissions.md).
@@ -373,11 +379,12 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 
 ## 📋 Requirements
 
-| Dependency        | Version            |
-| ----------------- | ------------------ |
-| PHP               | ^8.5               |
-| Laravel           | ^13.8              |
-| Docker (for Sail) | any recent version |
+| Dependency        | Version                                                                                               |
+| ----------------- | ----------------------------------------------------------------------------------------------------- |
+| PHP               | ^8.5                                                                                                  |
+| Laravel           | ^13.8                                                                                                 |
+| Node (Vite build) | `^22.12.0 \|\| ^24.0.0 \|\| ^26.0.0` - `.nvmrc` pins 22.12.0; CI builds on the 22.12, 24 and 26 lines |
+| Docker (for Sail) | any recent version                                                                                    |
 
 <a id="api"></a>
 
@@ -831,20 +838,27 @@ Trait coverage uses **real hosts** (feature tests and resource unit tests), not
 Run locally (Sail - matches PHP 8.5 when host PHP is older):
 
 ```bash
+./vendor/bin/sail composer lint:composer # composer.json and composer.lock agree
 ./vendor/bin/sail composer lint          # Pint (--test)
 ./vendor/bin/sail composer lint:fix      # Pint, auto-fix
 ./vendor/bin/sail composer lint:links    # Markdown links and anchors
 ./vendor/bin/sail composer analyse       # Larastan, level 10
 ./vendor/bin/sail composer test          # PHPUnit
 ./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
-./vendor/bin/sail composer verify:version        # composer.json / package.json / App version agree
+./vendor/bin/sail composer verify:version        # composer.json / docs/openapi.yaml / git tag agree
 ./vendor/bin/sail composer ci            # the chain below
 ```
 
-`composer ci` chains `lint`, `lint:links`, `analyse`, `semgrep`, `test:coverage:check`,
-`verify:openapi`, `verify:version`, and `composer audit --locked`. It needs a seeded
-database and a served app, because `verify:openapi` replays every documented example
-against a live instance:
+The npm lock check runs on the host, where the pinned Node version lives:
+
+```bash
+npm run lint:npm # package.json and the lock's root engines range agree
+```
+
+`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`, `semgrep`,
+`test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`.
+It needs a seeded database and a served app, because `verify:openapi` replays every
+documented example against a live instance:
 
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed
@@ -853,13 +867,14 @@ against a live instance:
 
 It does **not** cover Zizmor, `actionlint`, the Renovate config, or the live pen test.
 The first three are separate CI jobs; the live pen test (step 12) runs locally only.
-See [docs/testing.md](docs/testing.md) for all twelve steps, which of them run on the
+See [docs/testing.md](docs/testing.md) for all fourteen steps, which of them run on the
 host rather than in Sail, and what each one writes.
 
-[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, a Markdown link check,
-Larastan, PHPUnit with coverage, `composer audit`, OpenAPI example verification, Semgrep,
-Zizmor, `actionlint` with the Renovate config, and a summary gate on every pull request
-and push to `main`. Require the **All Quality Gates** check for branch protection. CI uses
+[.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, an npm lock check, a Markdown link
+check, a Vite build across the Node lines `engines.node` declares, Larastan, PHPUnit with coverage,
+`composer audit`, OpenAPI example verification, Semgrep, Zizmor, `actionlint` with the
+Renovate config, and a summary gate on every pull request and push to `main`. Require the
+**All Quality Gates** check for branch protection. CI uses
 native PHP 8.5 with a MySQL service container - not Sail.
 
 Run Semgrep locally on the host (Docker or a local CLI - not inside Sail):

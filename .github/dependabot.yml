@@ -1,3 +1,14 @@
+# Dependabot owns every ecosystem it supports natively: GitHub Actions, Composer,
+# npm, and Docker (compose service images and Dockerfiles).
+#
+# Renovate covers the one surface Dependabot cannot see - `container:` images
+# referenced from workflow YAML - so the two bots never open a pull request for
+# the same dependency.
+#
+# `cooldown.default-days` delays a version update for 7 days after release, so a
+# compromised or unsigned publish is caught by the ecosystem before it reaches
+# this repository. Security updates ignore the cooldown and land immediately.
+
 version: 2
 
 updates:
@@ -10,6 +21,7 @@ updates:
       labels:
           - dependencies
           - github-actions
+      open-pull-requests-limit: 10
 
     - package-ecosystem: composer
       directory: /
@@ -20,4 +32,36 @@ updates:
       labels:
           - dependencies
           - php
+      open-pull-requests-limit: 10
+
+    # npm is the highest-volume surface here, so minor and patch bumps arrive as
+    # one grouped pull request per week. Major bumps stay separate because each
+    # one needs reading before it lands.
+    - package-ecosystem: npm
+      directory: /
+      schedule:
+          interval: weekly
+      cooldown:
+          default-days: 7
+      labels:
+          - dependencies
+          - javascript
+      open-pull-requests-limit: 10
+      groups:
+          npm-minor-and-patch:
+              patterns:
+                  - '*'
+              update-types:
+                  - patch
+                  - minor
+
+    - package-ecosystem: docker
+      directory: /
+      schedule:
+          interval: weekly
+      cooldown:
+          default-days: 7
+      labels:
+          - dependencies
+          - docker
       open-pull-requests-limit: 10

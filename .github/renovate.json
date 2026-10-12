@@ -5,9 +5,9 @@
   "minimumReleaseAge": "7 days",
   "packageRules": [
     {
-      "description": "Dependabot owns repo-syntax actions and Composer; Renovate tracks only Docker image pins and service images in workflows, which Dependabot cannot see.",
+      "description": "Dependabot owns GitHub Actions, Composer, npm, and Docker. Renovate is left with the one surface Dependabot cannot read at all: `container:` images referenced from workflow YAML. Every other dependency type is disabled here so the two bots never open a pull request for the same bump.",
       "matchManagers": ["github-actions"],
-      "matchDepTypes": ["action", "workflow", "container", "github-runner", "uses-with"],
+      "matchDepTypes": ["action", "workflow", "github-runner", "uses-with"],
       "enabled": false,
       "minimumReleaseAge": "7 days"
     }
