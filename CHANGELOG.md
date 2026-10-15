@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-10-15
+
+### Changed
+
+- **Roles and Permissions Seeding Writes Atomically:** `RolesAndPermissionsSeeder` ran a `findOrCreate` per permission and per role - a read-then-write whose read loses a race, so two seeders sharing one database both missed, both wrote, and the loser's plain INSERT died on the unique key (`1062 Duplicate entry`). Each table now converges with one `upsert` on `(name, guard_name)`, which turns the losing INSERT into an UPDATE of the winner's row, and the permission cache is flushed after the writes but before `syncPermissions` - a cached collection resolved after the upserts would not contain the rows they had just created. A new feature test primes Spatie's cache to reproduce the losing process's read, and the reseed migration that calls this seeder carries the same reasoning in its docblock
+- **Environment File Sections Renamed, Reordered, and De-duplicated:** `Local Port Overrides` is `Sail Ports` in `.env.example` and `.env.ci`, because the section holds Compose host ports and nothing else - and CI publishes none of them. The `Frontend` section moved ahead of `GeoIP`, so build-time client keys sit with the client surface instead of after the vendor boundary, and `.env.ci` no longer carries that section twice
+- **Env Parity Test Pins Those Conventions:** `EnvExampleParityTest` matched only `SCREAMING_SNAKE_CASE` keys starting in column one, so `_PRIVATE`, `privateKey`, an indented key, or a space before the `=` slipped past the parity check entirely. The matcher now accepts every dotenv recognition shape, a new test asserts one blank line above every section divider in both env files, and the canonical-order test requires `Sail Ports` first, `Frontend` before `GeoIP`, and `Security Headers` last
+- **Dependabot Guards the Two Migration Surfaces:** a `laravel/framework` major is ignored for the Composer ecosystem - a framework major moves the upgrade guide, the toolchain, and every consumer's contract together, so it is taken by hand - and the `mysql` and `redis` images are ignored for Docker because both pin a line (`mysql:8.4`, `redis:alpine`) rather than a version, which makes their bumps migrations rather than updates
+- **Testing and Host-Port Docs:** `docs/testing.md` records that one suite at a time runs against the single `testing` database and that overlapping runs read as flakiness (`1062`, `1213`), that `phpunit.xml` forces that database while `.env.ci` points the app at it too - so step 4 clears the rows step 11 needs unless the app keeps its own - and that step 11 needs a non-`sync` queue, because a webhook ping processed inside the request is no longer pending. `README.md` documents the mirror of the port trap: `APP_URL` naming a port `compose.yaml` no longer publishes points every signed URL and emailed link at a dead port, with a one-line `curl` that proves the pair agrees
+- **Link-Gate Exemptions Dropped:** the in-flight compare exemptions added for the `v3.2.2` cut came out once the tag resolved, so a stale pair cannot hide the next release's dead links
+
+### Fixed
+
+- **Release and Setup Commands Run Through Sail:** the version-sync and lock-refresh commands in `docs/releasing.md` and the key-generation command in `README.md` carried no Sail prefix, so on a host whose PHP is older than the `^8.5` this repo requires they failed inside `platform_check.php` before any code loaded
+
 ## [3.2.2] - 2026-10-12
 
 ### Changed
@@ -945,7 +960,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.2...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.0...HEAD
+[3.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.2...v3.3.0
 [3.2.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.1...v3.2.2
 [3.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.0...v3.2.1
 [3.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.1.0...v3.2.0

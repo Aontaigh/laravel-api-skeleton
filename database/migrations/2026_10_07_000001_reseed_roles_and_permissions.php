@@ -14,9 +14,9 @@ use Illuminate\Database\Migrations\Migration;
  * deployed one. The result is a silent 403 for Admin on the Auth Audit Log surface, with no failing
  * test anywhere to say why.
  *
- * Re-running the seeder closes that gap because it is already idempotent: `findOrCreate` and
- * `syncPermissions` converge on the declared matrix whether or not the rows already exist, so this
- * migration is safe on a fresh database and on one that has been running for months.
+ * Re-running the seeder closes that gap because it is already idempotent: atomic `upsert` writes
+ * and `syncPermissions` converge on the declared matrix whether or not the rows already exist,
+ * so this migration is safe on a fresh database and on one that has been running for months.
  *
  * Later permission changes need their own dated migration in this same shape. Editing an existing
  * one is not enough, and deleting these as duplicates is not a cleanup: each exists precisely

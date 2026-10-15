@@ -184,6 +184,10 @@ this README assumes the default port 80; substitute yours if you remap it.
 
 **Remapping the host port does not change anything inside the container.** Port 80 is
 nginx _inside_ the image, and `APP_PORT` only decides which host port forwards to it.
+The mirror-image trap: `APP_URL` naming a port nothing publishes - a remap was removed,
+Compose fell back to `80`, but `APP_URL` still says the old port - points every emailed
+link, signed URL, and `url()` call at a dead port while the app answers elsewhere. Prove
+the pair agrees after any change: `curl -sf "$(grep -E '^APP_URL=' .env | cut -d= -f2-)/up"`.
 That matters when a command runs in the wrong place:
 
 ```bash
@@ -207,7 +211,7 @@ machine-specific and never committed. If `php artisan key:generate` was skipped,
 edited `.env` by hand after booting, the encrypter has nothing to use:
 
 ```bash
-php artisan key:generate
+./vendor/bin/sail artisan key:generate
 ```
 
 </details>
@@ -858,7 +862,9 @@ npm run lint:npm # package.json and the lock's root engines range agree
 `composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`, `semgrep`,
 `test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`.
 It needs a seeded database and a served app, because `verify:openapi` replays every
-documented example against a live instance:
+documented example against a live instance. It also needs the app on its own database
+whenever the suite shares one - see [Quality Gates](docs/testing.md#quality-gates) for
+that caveat and the workaround:
 
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed

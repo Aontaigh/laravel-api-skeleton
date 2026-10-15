@@ -15,6 +15,7 @@ use PHPUnit\Framework\Attributes\Test;
 use ReflectionClass;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
+use Spatie\Permission\PermissionRegistrar;
 use Tests\TestCase;
 
 /**
@@ -150,6 +151,59 @@ final class RolesAndPermissionsMigrationTest extends TestCase
             $grantsBefore,
             DB::table('role_has_permissions')->count(),
             'Re-running the seeder must not duplicate role grants.',
+        );
+    }
+
+    /**
+     * A concurrent writer committing the same row mid-seed converges instead of erroring.
+     *
+     * Two suite processes sharing one testing database interleave as: both miss the
+     * permission on read, both write it, and the loser's plain INSERT dies on the
+     * unique key (the `1062 Duplicate entry` the shared-database failures surfaced).
+     * Spatie's `findOrCreate` resolves through the permission cache, so priming that
+     * cache with the stale collection reproduces the losing process's view exactly:
+     * read a miss, a concurrent writer commits, then the seeder writes. The seeder's
+     * own write must therefore be a single atomic upsert, which turns the loser's
+     * INSERT into an UPDATE of the winner's row.
+     */
+    #[Test]
+    public function it_converges_when_a_concurrent_writer_commits_the_same_row_mid_seed(): void
+    {
+        // Arrange
+
+        Permission::query()->where('name', AuthAuditLogPolicy::LIST_PERMISSION)->delete();
+
+        /*
+         * Prime Spatie's cache with the stale collection - the resolved view a second
+         * seeder process holds from before the concurrent writer committed the row.
+         */
+        app(PermissionRegistrar::class)->forgetCachedPermissions();
+        app(PermissionRegistrar::class)->getPermissions();
+
+        // The concurrent writer commits the same row before this process writes it.
+
+        DB::table('permissions')->insert([
+            'name' => AuthAuditLogPolicy::LIST_PERMISSION,
+            'guard_name' => 'web',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        // Act
+
+        (new RolesAndPermissionsSeeder)->run();
+
+        // Assert
+
+        $this->assertSame(
+            1,
+            Permission::query()->where('name', AuthAuditLogPolicy::LIST_PERMISSION)->count(),
+            'The losing write must converge onto the winner\'s row, not error or duplicate.',
+        );
+
+        $this->assertTrue(
+            Role::findByName(RoleName::Admin->value)->hasPermissionTo(AuthAuditLogPolicy::LIST_PERMISSION),
+            'Admin should hold the permission after the raced reseed.',
         );
     }
 

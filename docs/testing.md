@@ -39,6 +39,28 @@ CI seeds with `artisan migrate --force --seed` rather than `migrate:fresh`,
 because a CI database is already empty. Locally, `migrate:fresh` is what
 guarantees the state above.
 
+### One Suite at a Time Against One Testing Database
+
+`composer test` runs the suite **serially** against the single `testing`
+database. Never overlap two runs of it - a second suite shares that database,
+and the interference reads as flakiness: duplicate-key errors in the seeder
+(`1062`, `1213` deadlocks on `permissions` / `roles`), count assertions that
+see the other run's rows, and failures that vanish in isolation. Before
+re-running after a "flake", confirm no earlier run is still alive - a stopped
+agent task or a backgrounded command is the usual suspect.
+
+Checking from the host misses it: `sail test` executes PHPUnit **inside the
+container**, so `ps aux | grep phpunit` on the host sees nothing. Check in the
+container instead:
+
+```bash
+./vendor/bin/sail exec laravel.test ps aux | grep -i phpunit
+```
+
+Parallel runs are the supported way to get concurrency: `artisan test --parallel`
+gives every worker its own tokenised database (`testing_1`, `testing_2`, ...),
+which is the only shape in which concurrent suites are safe.
+
 ### Two Network Namespaces, One Port Number
 
 This trips up nearly everyone, including agents:
@@ -83,7 +105,7 @@ export ZIZMOR_IMAGE=ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980
 export ACTIONLINT_IMAGE=rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
 ```
 
-**Everything except steps 1c and 7 runs through `./vendor/bin/sail`.** Step 1c is an npm check and
+**Everything except steps 1c, 7, 8, 9 and 10 runs through `./vendor/bin/sail`.** Step 1c is an npm check and
 runs on the host, where the pinned Node version lives. The project requires
 `^8.5`, and a host PHP older than that fails inside `platform_check.php` before any
 code loads, so `php scripts/...` on the host is not interchangeable with
@@ -123,7 +145,7 @@ CI runs thirteen of the fourteen steps as ten parallel jobs, behind one `All Qua
 summary job. `All Quality Gates` fails when any other job fails, is cancelled, or is
 skipped - so a cancelled job fails the build even though nothing was reported as broken.
 
-`composer ci` chains `lint`, `lint:links`, `analyse`, `semgrep`, `test:coverage:check`,
+`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`, `semgrep`, `test:coverage:check`,
 `verify:openapi`, `verify:version`, and `composer audit --locked`. It does **not** cover
 Zizmor, `actionlint`, or the Renovate config, and the live pen test (step 12) runs
 locally only - so it is a pre-flight check rather than a full substitute for CI.
@@ -138,11 +160,23 @@ of linking it - a link to a file no clone contains is dead for every reader, not
 > database. Run `./vendor/bin/sail artisan migrate:fresh --seed` first and make sure the
 > stack serves HTTP on `localhost`, or the chain fails on step 11 of 12 rather than on
 > anything you changed.
+>
+> Seeding first is not sufficient on its own if the app and the suite share a database.
+> `phpunit.xml` forces `DB_DATABASE=testing` for the suite, and `.env.ci` points the app at
+> that same database, so step 4's `RefreshDatabase` clears the rows step 11 needs. Either keep
+> the app on its own database (`sample_api_app`, as `.env.example` sets) or re-seed between
+> step 4 and step 11. CI does not meet this because it runs those two gates as separate jobs,
+> each with its own database.
 
 > [!NOTE]
 > Step 11's admin login queues an audit write - with `QUEUE_CONNECTION=redis`, drain the
 > queue once before verifying:
 > `./vendor/bin/sail artisan queue:work --stop-when-empty`
+>
+> The queue must not be `sync` for this step. With a sync queue the webhook test ping is
+> processed inside the request, so the delivery is no longer pending and the example's
+> `last_status_code` / `last_error` shape fails while every other example passes. `phpunit.xml`
+> sets `sync` for the suite, so set the driver in the app's own `.env` for step 11.
 
 > [!NOTE]
 > These scripts **write to the working tree and to the database**, so re-seed between

@@ -58,8 +58,8 @@ enforced by CI, so update it manually when bumping the version.
 CI enforces sync via `composer verify:version` (also part of `composer ci`):
 
 ```bash
-composer verify:version
-# or: php scripts/verify-app-version.php
+./vendor/bin/sail composer verify:version
+# or: ./vendor/bin/sail php scripts/verify-app-version.php
 ```
 
 The script fails when OpenAPI drifts from `composer.json`, or when a tagged GitHub
@@ -71,7 +71,7 @@ Bumping `version` edits `composer.json`, and Composer's `content-hash` covers th
 field, so the bump also makes `composer.lock` stale. Refresh it in the same commit:
 
 ```bash
-composer update --lock
+./vendor/bin/sail composer update --lock
 ```
 
 `composer update --lock` rewrites the hash without changing a single locked version.

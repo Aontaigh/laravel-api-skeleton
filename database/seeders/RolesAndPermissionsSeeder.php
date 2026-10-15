@@ -154,28 +154,61 @@ final class RolesAndPermissionsSeeder extends Seeder
      * Run the seeder.
      *
      * Idempotent by design, so this is safe to call from a dated reseed migration as well as from
-     * `db:seed`: `findOrCreate` and `syncPermissions` converge on the declared matrix whether or
-     * not the rows already exist. That is what lets a repair migration reach databases that
-     * migrated before a permission was added, which the deploy path cannot do because
-     * `composer setup` runs `migrate --force` without `--seed`.
+     * `db:seed`: the upserts converge on the declared matrix whether or not the rows already
+     * exist. That is what lets a repair migration reach databases that migrated before a
+     * permission was added, which the deploy path cannot do because `composer setup` runs
+     * `migrate --force` without `--seed`.
      *
-     * The permission cache is reset **after** syncing, not before. Spatie caches the resolved
-     * permission set for the request, so a flush before the writes leaves that cache stale for
-     * anything that reads permissions later in the same process, and the very first authorisation
-     * check after a reseed would still see the pre-reseed matrix.
+     * The writes are single atomic `upsert` statements rather than `findOrCreate`'s
+     * SELECT-then-INSERT, because the read-then-write shape loses a race: two seeders sharing
+     * one database both miss the read and both write, and the loser's plain INSERT dies on the
+     * unique key (`1062 Duplicate entry`). An upsert turns that losing write into an UPDATE of
+     * the winner's row, so an overlapping run converges instead of erroring.
+     *
+     * The permission cache is flushed after the upserts and before the sync. Spatie caches the
+     * resolved permission collection, and a stale collection would not contain rows the upsert
+     * just created - resolving the grant names through it would then fail the sync. The flush
+     * cannot go before the upserts for the same reason it never could: anything reading
+     * permissions later in the process would still see the pre-reseed matrix until it runs.
      *
      * @return void
      */
     public function run(): void
     {
-        foreach (self::PERMISSIONS as $permission) {
-            Permission::findOrCreate($permission);
-        }
+        $now = now();
 
-        foreach (self::ROLE_PERMISSIONS as $roleName => $permissions) {
-            Role::findOrCreate($roleName)->syncPermissions($permissions);
-        }
+        Permission::upsert(
+            array_map(
+                static fn (string $permission): array => [
+                    'name' => $permission,
+                    'guard_name' => 'web',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                self::PERMISSIONS,
+            ),
+            ['name', 'guard_name'],
+            ['updated_at'],
+        );
+
+        Role::upsert(
+            array_map(
+                static fn (string $roleName): array => [
+                    'name' => $roleName,
+                    'guard_name' => 'web',
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ],
+                array_keys(self::ROLE_PERMISSIONS),
+            ),
+            ['name', 'guard_name'],
+            ['updated_at'],
+        );
 
         app(PermissionRegistrar::class)->forgetCachedPermissions();
+
+        foreach (self::ROLE_PERMISSIONS as $roleName => $permissions) {
+            Role::findByName($roleName)->syncPermissions($permissions);
+        }
     }
 }

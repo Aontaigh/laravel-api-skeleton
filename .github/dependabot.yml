@@ -33,6 +33,14 @@ updates:
           - dependencies
           - php
       open-pull-requests-limit: 10
+      # `laravel/framework` majors are deliberate migrations, not automated updates:
+      # the framework's upgrade guide, this repo's toolchain, and every consumer's
+      # contract move together, so the bump is taken by hand. Minor and patch
+      # updates still arrive weekly.
+      ignore:
+          - dependency-name: laravel/framework
+            update-types:
+                - version-update:semver-major
 
     # npm is the highest-volume surface here, so minor and patch bumps arrive as
     # one grouped pull request per week. Major bumps stay separate because each
@@ -65,3 +73,12 @@ updates:
           - dependencies
           - docker
       open-pull-requests-limit: 10
+      # Runtime image lines move by hand: a database or cache line change is a
+      # migration - config surface, wire behaviour, dump compatibility - and the
+      # compose stack has to be re-verified with it. Both sources pin a line rather
+      # than a version (`mysql:8.4`, `redis:alpine`), so ignoring the dependency
+      # forfeits no in-line update. `sail-*` images are built locally from the PHP
+      # line this repo already pins, so Dependabot never proposes them.
+      ignore:
+          - dependency-name: mysql
+          - dependency-name: redis

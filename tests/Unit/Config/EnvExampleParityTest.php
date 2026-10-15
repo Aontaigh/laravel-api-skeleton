@@ -76,7 +76,7 @@ final class EnvExampleParityTest extends UnitTestCase
         $keys = [];
 
         foreach (explode("\n", $content) as $line) {
-            if (preg_match('/^(?:#\s*)?([A-Z][A-Z0-9_]*)=/', $line, $matches) === 1) {
+            if (preg_match('/^\s*#?\s*([A-Za-z_][A-Za-z0-9_]*)\s*=/', $line, $matches) === 1) {
                 $keys[] = $matches[1];
             }
         }
@@ -153,7 +153,95 @@ final class EnvExampleParityTest extends UnitTestCase
     }
 
     /**
-     * Product and integration sections precede Frontend; security edge is last.
+     * Key extraction recognises every dotenv shape, not only SCREAMING_SNAKE_CASE.
+     *
+     * An extractor that only accepts `[A-Z]` as a key's first character misses
+     * keys the dotenv format allows (`_PRIVATE`, `privateKey`) and shapes a
+     * hand edit produces (leading whitespace, space before `=`), so a malformed
+     * or unconventional key would slip past the parity check entirely.
+     */
+    #[Test]
+    public function key_extraction_matches_the_dotenv_recognition_shapes(): void
+    {
+        // Arrange
+
+        $fixture = tempnam(sys_get_temp_dir(), 'env-parity-');
+        $this->assertIsString($fixture);
+
+        file_put_contents($fixture, implode("\n", [
+            '_PRIVATE=1',
+            'privateKey=2',
+            '  INDENTED_KEY=3',
+            'SPACED_KEY =4',
+            '# _COMMENTED_PRIVATE=5',
+            '# A note line with no assignment at all',
+        ]));
+
+        // Act
+
+        $keys = $this->keysInEnvFile($fixture);
+
+        unlink($fixture);
+
+        // Assert
+
+        $this->assertSame(
+            ['_PRIVATE', 'privateKey', 'INDENTED_KEY', 'SPACED_KEY', '_COMMENTED_PRIVATE'],
+            $keys,
+        );
+    }
+
+    /**
+     * Every section divider is separated from the content above it.
+     *
+     * A scripted reorder that joins sections without the blank line produces
+     * `FILESYSTEM_DISK=local` running straight into the next divider - the
+     * anatomy breach the `create-env-file` skill names, and easy to write
+     * with `join`. The only legal non-blank predecessors are the name line
+     * inside a three-line divider block and the file header's comment block
+     * above the first section.
+     */
+    #[Test]
+    public function env_files_separate_sections_with_one_blank_line(): void
+    {
+        $divider = '/^# -{69}$/';
+
+        foreach (['.env.example', '.env.ci'] as $file) {
+            $lines = explode("\n", (string) file_get_contents(base_path($file)));
+            $firstDivider = null;
+            $violations = [];
+
+            foreach ($lines as $index => $line) {
+                if (preg_match($divider, $line) !== 1) {
+                    continue;
+                }
+
+                $firstDivider ??= $index;
+
+                if ($index === $firstDivider) {
+                    continue;
+                }
+
+                $previous = $lines[$index - 1] ?? '';
+                $beforeThat = $lines[$index - 2] ?? '';
+
+                $isNameLine = $previous !== ''
+                    && str_starts_with($previous, '# ')
+                    && preg_match($divider, $beforeThat) === 1;
+
+                if ($previous !== '' && ! $isNameLine) {
+                    $violations[] = $index + 1;
+                }
+            }
+
+            // Act + Assert
+
+            $this->assertSame([], $violations, "{$file} has dividers with no blank line above them at lines: ".implode(', ', $violations));
+        }
+    }
+
+    /**
+     * Client build keys precede the vendor boundary; security edge is last.
      */
     #[Test]
     public function env_example_follows_canonical_section_order(): void
@@ -162,19 +250,22 @@ final class EnvExampleParityTest extends UnitTestCase
 
         $sections = $this->sectionNames(base_path('.env.example'));
 
-        $geoIp = array_search('GeoIP', $sections, true);
+        $sailPorts = array_search('Sail Ports', $sections, true);
         $frontend = array_search('Frontend', $sections, true);
+        $geoIp = array_search('GeoIP', $sections, true);
         $cors = array_search('CORS', $sections, true);
         $securityHeaders = array_search('Security Headers', $sections, true);
 
         // Assert
 
-        $this->assertNotFalse($geoIp);
+        $this->assertNotFalse($sailPorts);
         $this->assertNotFalse($frontend);
+        $this->assertNotFalse($geoIp);
         $this->assertNotFalse($cors);
         $this->assertNotFalse($securityHeaders);
-        $this->assertLessThan($frontend, $geoIp);
-        $this->assertLessThan($cors, $frontend);
+        $this->assertSame(1, $sailPorts);
+        $this->assertLessThan($geoIp, $frontend);
+        $this->assertLessThan($cors, $geoIp);
         $this->assertSame(count($sections) - 1, $securityHeaders);
     }
 
