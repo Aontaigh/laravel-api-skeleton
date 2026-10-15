@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.1] - 2026-10-15
+
+### Changed
+
+- **Dependency Bumps Land as One Release:** `giggsey/libphonenumber-for-php` to 9.0.41 - the one runtime bump here, which moves phone-number metadata and validation - plus `laravel/telescope` to 5.26.0, `larastan/larastan` to 3.13.0, `phpstan/phpstan-phpunit` to 2.1.1, `concurrently` to 10.0.6, `vite` to 8.3.4, and `shell-quote` to 1.12.0 as a transitive npm bump, while CI moves `shivammathur/setup-php` to 2.40.0 and `github/codeql-action` to 4.38.3 ([#33](https://github.com/Aontaigh/laravel-api-skeleton/pull/33), [#34](https://github.com/Aontaigh/laravel-api-skeleton/pull/34), [#36](https://github.com/Aontaigh/laravel-api-skeleton/pull/36), [#37](https://github.com/Aontaigh/laravel-api-skeleton/pull/37), [#38](https://github.com/Aontaigh/laravel-api-skeleton/pull/38), [#39](https://github.com/Aontaigh/laravel-api-skeleton/pull/39), [#40](https://github.com/Aontaigh/laravel-api-skeleton/pull/40)). Seven Dependabot pull requests landed as one release rather than seven, and each was green only against the `main` it branched from, which is not the same claim as the set being green together - so the combined tree was re-verified before the tag: the full `composer ci` chain, the frontend build, and the adversarial pen test
+
 ## [3.3.0] - 2026-10-15
 
 ### Changed
@@ -960,7 +966,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.1...HEAD
+[3.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.2...v3.3.0
 [3.2.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.1...v3.2.2
 [3.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.0...v3.2.1
