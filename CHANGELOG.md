@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.3] - 2026-10-16
+
+### Changed
+
+- **The Test Entries Outlive Composer's Timeout:** `test` and the composite `test:coverage:check` disable Composer's 300-second `process-timeout`, the way `test:coverage` already did - the composite spawns `composer test:coverage` as a child process, so the flag on `test:coverage` never covered it, and the suite's wall-clock moves either side of that limit with machine load. A run killed at it says nothing about the tests
+
+### Fixed
+
+- **The Seeded Guard Is Derived, Not Literal:** the seeder wrote `guard_name` as the literal `web` while the sync below resolves roles through `Guard::getDefaultName()`, so any other configured default guard seeded rows the same run could not find and the reseed died with `RoleDoesNotExist` instead of converging; the guard is now read once and used for the writes and the lookup. The reseed also takes an atomic lock for its write phase, with the meaning `migrate --isolated` gives a deploy - `syncPermissions` detaches a role's grants before re-attaching them, so overlapping runs can duplicate a pivot key or leave a role holding none - and the lock's duration is bounded, so a holder killed before it could release cannot block later runs
+- **The Host Port Comes From Compose:** `docs/testing.md` derived the host port by parsing `APP_PORT` out of `.env`, which misses every spelling Compose accepts (spaces around the `=`, single or double quotes, an inline comment) and misses an exported override entirely; it now asks Compose which port it published
+
 ## [3.3.2] - 2026-10-16
 
 ### Fixed
@@ -972,7 +983,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.2...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.3...HEAD
+[3.3.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.2...v3.3.3
 [3.3.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.1...v3.3.2
 [3.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.2...v3.3.0

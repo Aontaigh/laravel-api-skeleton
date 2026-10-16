@@ -67,7 +67,7 @@ This trips up nearly everyone, including agents:
 
 | Where You Run It                                                                     | Base URL                         | Why                                                                                                                    |
 | ------------------------------------------------------------------------------------ | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| **On the host** (`curl`, a browser, `httpClient`)                                    | `http://localhost:$APP_PORT/api` | `compose.yaml` publishes the container's port 80 as host port `${APP_PORT:-80}`, so read the real one from your `.env` |
+| **On the host** (`curl`, a browser, `httpClient`)                                    | `http://localhost:$APP_PORT/api` | `compose.yaml` publishes the container's port 80 as host port `${APP_PORT:-80}`, so ask Compose which one it published |
 | **Inside Sail** (`sail exec ... curl`, and everything in `scripts/pen-test-auth.sh`) | `http://localhost/api`           | port 80 is nginx _inside_ the container, always - `APP_PORT` never affects it                                          |
 
 A fresh clone ships `APP_URL=http://localhost` and no `APP_PORT`, so both rows
@@ -85,7 +85,7 @@ inside the container returns nothing - neither is a broken app. Check both
 namespaces, deriving the host port so the command works whatever you remapped:
 
 ```bash
-HP="$(grep -E '^APP_PORT=' .env | cut -d= -f2)"; HP="${HP:-80}"
+HP="$(docker compose port laravel.test 80 | awk -F: '{print $NF}')"
 curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:${HP}/api/users"     # host
 ./vendor/bin/sail exec laravel.test curl -s -o /dev/null -w '%{http_code}\n' \
   http://localhost/api/users                                                   # in container

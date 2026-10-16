@@ -6,6 +6,8 @@ namespace Database\Seeders;
 
 use App\Enums\RoleName;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Cache;
+use Spatie\Permission\Guard;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\PermissionRegistrar;
@@ -26,6 +28,23 @@ final class RolesAndPermissionsSeeder extends Seeder
     | Constants
     |--------------------------------------------------------------------------
     */
+
+    /**
+     * Serialises concurrent reseeds of the same matrix.
+     *
+     * Excluding anything requires a store every process shares - `database` and `redis` do; the
+     * `array` store does not, being per-process.
+     */
+    public const LOCK_NAME = 'roles-and-permissions-seeder';
+
+    /**
+     * How long the lock may be held before the store releases it on its own.
+     *
+     * The write phase takes well under a second, so this only guards a process that died before its
+     * `finally` ran: without a duration Laravel holds the lock effectively forever and every later
+     * reseed would return without repairing the matrix.
+     */
+    public const LOCK_TTL = 300;
 
     /**
      * Every permission string this application defines.
@@ -175,13 +194,50 @@ final class RolesAndPermissionsSeeder extends Seeder
      */
     public function run(): void
     {
+        /*
+         * Every task that applies the reseed migration runs this seeder, and `syncPermissions`
+         * detaches a role's grants before re-attaching them, so overlapping runs can duplicate a
+         * pivot key or leave a role holding none. This is the primitive `migrate --isolated` uses,
+         * with the same meaning: a run that cannot take the lock does not execute at all. The
+         * duration bounds a lock whose holder died before it could release.
+         */
+        $lock = Cache::lock(self::LOCK_NAME, self::LOCK_TTL);
+
+        if (! (bool) $lock->get()) {
+            return;
+        }
+
+        try {
+            $this->writeMatrix();
+        } finally {
+            $lock->release();
+        }
+    }
+
+    /**
+     * Write the declared matrix: upsert both tables, flush the cache, then grant.
+     *
+     * Runs under the seeder's lock, so the detach-then-attach inside `syncPermissions` cannot
+     * interleave with another run's.
+     *
+     * @return void
+     */
+    private function writeMatrix(): void
+    {
         $now = now();
+
+        /*
+         * Read the guard from the same derivation `Role::findByName` below resolves through: a
+         * literal here seeds rows this run cannot then find whenever the configured default guard
+         * is anything else, and the reseed dies on the sync instead of converging.
+         */
+        $guardName = Guard::getDefaultName(Permission::class);
 
         Permission::upsert(
             array_map(
                 static fn (string $permission): array => [
                     'name' => $permission,
-                    'guard_name' => 'web',
+                    'guard_name' => $guardName,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ],
@@ -195,7 +251,7 @@ final class RolesAndPermissionsSeeder extends Seeder
             array_map(
                 static fn (string $roleName): array => [
                     'name' => $roleName,
-                    'guard_name' => 'web',
+                    'guard_name' => $guardName,
                     'created_at' => $now,
                     'updated_at' => $now,
                 ],

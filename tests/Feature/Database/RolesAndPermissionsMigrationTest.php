@@ -9,6 +9,7 @@ use App\Policies\AuthAuditLogPolicy;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\Test;
@@ -249,5 +250,119 @@ final class RolesAndPermissionsMigrationTest extends TestCase
                 );
             }
         }
+    }
+
+    /**
+     * The guard written must be the one the sync then resolves roles through.
+     *
+     * `findOrCreate` derived `guard_name` from `Guard::getDefaultName()`, and the sync resolves the role
+     * through the same derivation, so a literal write seeds rows the same run cannot find on any other
+     * configured default guard - the reseed dies on the sync instead of converging.
+     */
+    #[Test]
+    public function it_seeds_under_the_configured_default_guard(): void
+    {
+        // Arrange
+
+        config([
+            'auth.guards.api' => ['driver' => 'sanctum', 'provider' => 'users'],
+            'auth.defaults.guard' => 'api',
+        ]);
+
+        // Act
+
+        (new RolesAndPermissionsSeeder)->run();
+
+        // Assert
+
+        $this->assertSame(
+            'api',
+            Permission::query()->where('name', 'audit-logs.list')->value('guard_name'),
+            'Permissions must be seeded under the configured default guard.',
+        );
+
+        $this->assertSame(
+            'audit-logs.list',
+            Permission::findByName('audit-logs.list')->name,
+            'A seeded permission must resolve by name under the configured guard.',
+        );
+    }
+
+    /**
+     * A run that cannot take the lock must not seed: the holder is already syncing the same roles.
+     *
+     * This is the meaning `migrate --isolated` gives a deploy - the second process does not execute and
+     * still exits successfully. The lock needs a shared store, so the test pins the `database` cache the
+     * deployed environments use; the `array` store is per-process and would hold nothing another run sees.
+     */
+    #[Test]
+    public function it_skips_seeding_while_another_run_holds_the_lock(): void
+    {
+        // Arrange
+
+        config(['cache.default' => 'database']);
+
+        Permission::query()->where('name', 'audit-logs.list')->delete();
+
+        $lock = Cache::lock(RolesAndPermissionsSeeder::LOCK_NAME, RolesAndPermissionsSeeder::LOCK_TTL);
+
+        $this->assertTrue($lock->get(), 'The test must hold the lock the seeder takes.');
+
+        // Act
+
+        (new RolesAndPermissionsSeeder)->run();
+
+        // Assert
+
+        $this->assertSame(
+            0,
+            Permission::query()->where('name', 'audit-logs.list')->count(),
+            'A run that cannot take the lock must not write.',
+        );
+
+        $lock->release();
+
+        (new RolesAndPermissionsSeeder)->run();
+
+        $this->assertSame(
+            1,
+            Permission::query()->where('name', 'audit-logs.list')->count(),
+            'Once the lock is free the reseed must run.',
+        );
+    }
+
+    /**
+     * A holder killed before releasing must not block later runs past the lock duration.
+     *
+     * The duration is the only thing that frees such a lock - the killed process never reached its
+     * `finally` - and an unbounded lock would leave every later reseed returning without repairing the
+     * matrix. The lock here is taken with the name and duration the seeder itself uses.
+     */
+    #[Test]
+    public function it_recovers_when_a_dead_holders_lock_expires(): void
+    {
+        // Arrange
+
+        config(['cache.default' => 'database']);
+
+        Permission::query()->where('name', 'audit-logs.list')->delete();
+
+        $dead = Cache::lock(RolesAndPermissionsSeeder::LOCK_NAME, RolesAndPermissionsSeeder::LOCK_TTL);
+
+        $this->assertTrue($dead->get(), 'The test must stand in for a holder that never releases.');
+
+        $this->travel(RolesAndPermissionsSeeder::LOCK_TTL + 1)->seconds();
+
+        // Act
+
+        (new RolesAndPermissionsSeeder)->run();
+
+        // Assert
+
+        $this->assertSame(
+            1,
+            Permission::query()->where('name', 'audit-logs.list')->count(),
+            'A dead holder must not block the reseed past the lock duration.',
+        );
     }
 }
