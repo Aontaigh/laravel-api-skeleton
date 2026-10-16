@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Semgrep Excludes an Upstream False Positive:** `p/php`'s `exec-use` rule began reporting plain Eloquent and factory calls - `Model::create`, `Factory::new`, `->query()` - with no `exec`, `shell_exec`, `system`, `passthru`, `popen`, or `proc_open` anywhere under `app/`, which failed the gate in CI and left nothing in the code to repair. The rule is excluded in `scripts/semgrep.sh` with that reason beside it, the way the GitHub-Actions tag rule already is; the rest of the pack still runs
 - **The Test Entries Outlive Composer's Timeout:** `test` and the composite `test:coverage:check` disable Composer's 300-second `process-timeout`, the way `test:coverage` already did - the composite spawns `composer test:coverage` as a child process, so the flag on `test:coverage` never covered it, and the suite's wall-clock moves either side of that limit with machine load. A run killed at it says nothing about the tests
 
 ### Fixed

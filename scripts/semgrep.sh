@@ -75,6 +75,12 @@ CONFIGS=(
 # Scorecard). Dependabot bumps action major tags weekly. Keep the rest of the pack.
 EXCLUDE_RULES=(
     --exclude-rule yaml.github-actions.security.github-actions-mutable-action-tag.github-actions-mutable-action-tag
+    # `exec-use` began reporting plain Eloquent and factory calls - `Model::create`, `Factory::new`,
+    # `->query()` - with no `exec`, `shell_exec`, `system`, `passthru`, `popen`, or `proc_open`
+    # anywhere under `app/`. That is an upstream `p/php` false positive rather than a finding, and
+    # there is nothing in the code to repair, so the rule is excluded until the pack corrects it.
+    # Keep the rest of the pack: every other security rule still runs.
+    --exclude-rule php.lang.security.exec-use.exec-use
 )
 
 # --error exits non-zero on any finding. --strict is omitted: Semgrep cannot
