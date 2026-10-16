@@ -116,24 +116,29 @@ once the tag is pushed: a stale pair passes silently and hides the next release'
 
 ## 3. Commit and Push, Then Wait for CI
 
-Stage everything the release ships. When the feature work is already committed,
-the release bump touches only these paths:
-
-```bash
-git add CHANGELOG.md composer.json docs/ .env.example .env.ci
-```
-
-When the release carries uncommitted feature work, stage the working tree too -
-the tag must point at a commit that contains both the feature and the version
-bump, and a release-files-only commit would let CI green-light a `main` that
-still lacks the feature:
+Stage the tree rather than a list of paths. When the feature work is already
+committed, the release bump touches these files - the changelog, `composer.json`,
+`composer.lock`, `docs/`, `.env.example`, `.env.ci`, and the link gate's in-flight
+exemption pair:
 
 ```bash
 git add -A
+git status --porcelain
 git commit -m "chore(release): prepare vX.Y.Z"
 git push origin main
 gh run watch --exit-status
 ```
+
+`git status --porcelain` must print nothing. A hand-written path list is how
+`composer.lock` goes missing: the bump edits `composer.json`, Composer's
+`content-hash` covers that field, so `composer update --lock` rewrites the lock in
+the same step - and a rewritten lock left unstaged still passes
+`composer lint:composer` locally, because that gate reads the working tree, while
+CI reads the commit and fails on the stale hash (`exit 2`, `# Lock file errors`).
+Staging the tree removes that class rather than one instance of it, and it covers a
+release carrying uncommitted feature work too: the tag must point at a commit
+containing both the feature and the version bump, and a release-files-only commit
+would let CI green-light a `main` that still lacks the feature.
 
 Push and tag with the account that holds write access to the repository - the
 publisher token needs push on `main` and release creation, so verify

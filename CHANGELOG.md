@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.3.2] - 2026-10-16
+
+### Fixed
+
+- **Release Runbook Staged a Path List, Not the Tree:** `docs/releasing.md` step 3 staged the bump with `git add CHANGELOG.md composer.json docs/ .env.example .env.ci`, which omits `composer.lock` - the file the same step's `composer update --lock` has just rewritten, because Composer's `content-hash` covers the `version` field the bump edits. Every local gate reads the working tree, so `composer lint:composer` passed with the lock left unstaged and only CI failed, on the pushed commit (`exit 2`, `# Lock file errors`). The step now stages the tree with `git add -A` and requires `git status --porcelain` to print nothing - the same guarantee Composer's lock guidance, `npm ci`, Cargo's `--locked`, and pnpm's CI-default `--frozen-lockfile` assume of a release commit
+
 ## [3.3.1] - 2026-10-15
 
 ### Changed
@@ -966,7 +972,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.2...HEAD
+[3.3.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.1...v3.3.2
 [3.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.0...v3.3.1
 [3.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.2...v3.3.0
 [3.2.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.1...v3.2.2
