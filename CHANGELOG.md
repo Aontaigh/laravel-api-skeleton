@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-10-25
+
 ### Added
 
 - **The CI Stack Is the Dev Stack:** `composer verify:service-parity` fails when a workflow's
@@ -1048,7 +1050,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.4.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.0...HEAD
+[3.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.3...v3.4.0
 [3.3.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.2...v3.3.3
 [3.3.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.1...v3.3.2
