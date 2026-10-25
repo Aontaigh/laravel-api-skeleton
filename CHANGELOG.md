@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **The Service Images Are Pinned and Current:** `compose.yaml` pins `mysql:8.4.13`, the newest
+  8.4 LTS patch, and moves the cache service to `valkey/valkey:9.1.2-alpine`, the BSD-licensed
+  Linux Foundation fork that speaks the protocol phpredis uses and that distributions and managed
+  clouds have consolidated on. Both carry a digest, so neither the MySQL patch nor the cache
+  engine can move under a clone. The service keeps the name `redis`, so every `REDIS_*` variable
+  is unchanged, but `sail-redis` has to be recreated when that line moves: a Redis 8 RDB is not
+  readable by Valkey 9
+
 ## [3.4.0] - 2026-10-25
 
 ### Added
@@ -301,11 +311,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   suspended-login behaviour, privilege-drift probes (roles, scoped PATs, machine tokens),
   and lifecycle edges (reset broker vs role change, client deactivation, ability reorder
   idempotence)
-- **Shared Link Gate:** `scripts/lint-links.sh` is now the canonical copy shared with
-  `courseco-app` and `integrations-hub`, with repository-specific paths and exemptions
-  isolated in one `Configuration` block. Per-repository differences are no longer edits
-  to the gate's logic, so a fix here reaches the other repositories on the next sync
-  instead of leaving three divergent copies
+- **Shared Link Gate:** `scripts/lint-links.sh` is now the canonical copy shared across
+  consuming repositories, with repository-specific paths and exemptions isolated in one
+  `Configuration` block. Per-repository differences are no longer edits to the gate's
+  logic, so a fix here reaches them on the next sync instead of leaving three divergent
+  copies
 - **Link Gate Entry Point:** Markdown link checking runs through `composer lint:links`
   only; the **Link Check** CI job invokes that composer script (with
   `markdown-link-check` as an npm devDependency), so the gate has one owner instead of

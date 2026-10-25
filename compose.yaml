@@ -31,7 +31,10 @@ services:
             - mysql
             - redis
     mysql:
-        image: 'mysql:8.4'
+        # MySQL 8.4 LTS at its newest published patch, digest-pinned so the patch cannot move under the
+        # lock file. 8.4 is the LTS every managed MySQL offers and is supported to 2032; 9.7 is the
+        # newer LTS line for a consumer who wants it, and 26.7 is Innovation rather than LTS.
+        image: 'mysql:8.4.13@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69'
         ports:
             - '${FORWARD_DB_PORT:-3306}:3306'
         environment:
@@ -56,7 +59,11 @@ services:
             retries: 3
             timeout: 5s
     redis:
-        image: 'redis:alpine'
+        # Valkey, the Linux Foundation fork of Redis OSS 7.2: wire-compatible with the protocol the app
+        # speaks through phpredis, and BSD-licensed rather than AGPL. `redis:8.8-alpine` is the drop-in
+        # alternative. The service name stays `redis` so every `REDIS_*` variable keeps working, and
+        # `sail-redis` must be recreated when this line changes: a Redis 8 RDB is not readable here.
+        image: 'valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11'
         ports:
             - '${FORWARD_REDIS_PORT:-6379}:6379'
         volumes:
