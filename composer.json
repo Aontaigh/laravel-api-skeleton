@@ -1,7 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "aontaigh/laravel-api-skeleton",
-    "version": "3.3.3",
+    "version": "3.4.0",
     "type": "project",
     "description": "Production-ready Laravel 13 API skeleton with Sanctum, Spatie permissions, and a consistent query-driven index pattern.",
     "keywords": [
@@ -13,7 +13,7 @@
     ],
     "license": "MIT",
     "require": {
-        "php": "^8.5",
+        "php": "^8.5.12",
         "geoip2/geoip2": "^3.4",
         "giggsey/libphonenumber-for-php": "^9.0",
         "laravel/framework": "^13.8",
@@ -85,6 +85,8 @@
         "analyse": [
             "./vendor/bin/phpstan analyse --memory-limit=512M"
         ],
+        "verify:php-version": "@php scripts/lint/check-php-version-parity.php",
+        "verify:php-cve-floor": "@php scripts/lint/check-php-cve-floor.php",
         "verify:openapi": "bash scripts/verify-openapi-examples.sh",
         "verify:version": "@php scripts/verify-app-version.php",
         "semgrep": [
@@ -96,6 +98,8 @@
             "@lint",
             "@lint:links",
             "@analyse",
+            "@verify:php-version",
+            "@verify:php-cve-floor",
             "@semgrep",
             "@test:coverage:check",
             "@verify:openapi",
@@ -134,6 +138,9 @@
         "optimize-autoloader": true,
         "preferred-install": "dist",
         "sort-packages": true,
+        "platform": {
+            "php": "8.5.12"
+        },
         "allow-plugins": {
             "php-http/discovery": true
         }

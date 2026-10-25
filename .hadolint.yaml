@@ -1,0 +1,44 @@
+# ---------------------------------------------------------------------
+# hadolint - The Rules This Dockerfile Deliberately Breaks
+# ---------------------------------------------------------------------
+#
+# The gate runs with `--failure-threshold warning`, so warnings and errors fail
+# it and the informational hints below are reported without blocking. Four
+# warnings are ignored here, each with the reason it would otherwise have to be
+# re-argued on every run.
+#
+# `docker/8.5/Dockerfile` is Sail's runtime, published by `php artisan
+# sail:install` and regenerated when Sail is upgraded, so every one of these is
+# inherited from upstream rather than introduced here. The exceptions are named
+# here, each with its reason, because obeying them would break the image.
+#
+# DL3008 - "Pin versions in apt get install".
+#   Pinning each of the thirty `php8.5-*` and helper packages would mean touching
+#   a version string every time Ubuntu or PHP ships a patch, and would break the
+#   build the day a superseded revision leaves the sury.org repository. Whether
+#   the base image should itself be pinned by digest is a separate decision.
+#
+# DL3016 - "Pin versions in npm".
+#   `npm install -g pnpm bun corepack` is what makes the container track the JS
+#   toolchain it exists to run: pinning those freezes the dev image at whichever
+#   release the file was written with, which is the opposite of the point of a
+#   local runtime.
+#
+# DL4006 - "Set the SHELL option -o pipefail before RUN with a pipe in it".
+#   The two pipelines are Sail's: `curl ... | php` for the Composer installer,
+#   and `curl ... | gpg --dearmor | tee` for the PostgreSQL keyring. A `SHELL`
+#   directive would change the shell every later `RUN` in the file uses, to patch
+#   a file Sail regenerates and that upstream ships without one. The exception is
+#   named here rather than applied.
+#
+# SC2046 - "Quote this to prevent word splitting".
+#   `apt-get install -y $(for ext in $PHP_EXTENSIONS; do echo "php8.5-$ext"; done)`
+#   splits on purpose: the substitution expands to the list of packages to
+#   install, and quoting it would ask apt for a single package whose name
+#   contains spaces.
+#
+ignored:
+    - DL3008
+    - DL3016
+    - DL4006
+    - SC2046

@@ -1,7 +1,7 @@
 services:
     laravel.test:
         build:
-            context: './vendor/laravel/sail/runtimes/8.5'
+            context: './docker/8.5'
             dockerfile: Dockerfile
             args:
                 WWWGROUP: '${WWWGROUP}'
@@ -19,6 +19,12 @@ services:
             IGNITION_LOCAL_SITES_PATH: '${PWD}'
         volumes:
             - '.:/var/www/html'
+            # `node_modules` is a volume of its own rather than part of the bind mount. It holds Linux
+            # native modules (Rolldown, Tailwind's oxide), so a shared directory means one `npm ci` on
+            # the host replaces them, and every JavaScript command in the container then fails with a
+            # missing native binding until the tree is rebuilt. The container owns this copy and
+            # installs it with `./vendor/bin/sail npm ci` (see docs/testing.md).
+            - 'sail-node-modules:/var/www/html/node_modules'
         networks:
             - sail
         depends_on:
@@ -71,4 +77,6 @@ volumes:
     sail-mysql:
         driver: local
     sail-redis:
+        driver: local
+    sail-node-modules:
         driver: local

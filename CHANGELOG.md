@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-10-25
+
+### Added
+
+- **The Runtime Is Pinned, Not Inferred:** `.php-version` (8.5.12) and `.nvmrc` (24.22.1, the
+  current Node LTS) are the canonical pins; `composer verify:php-version` fails a change that
+  lets `composer.json`, `config.platform.php`, the vendored image's `ARG PHP_VERSION`, a
+  `setup-php` step or a `setup-node` step disagree with them, and
+  `composer verify:php-cve-floor` fails below the patched release for the PHP line. Both run
+  as steps inside the existing `static-analysis` job, so the aggregate gate already requires
+  them
+- **A Vendored Sail Runtime:** `compose.yaml` builds `docker/8.5`, a committed copy of the Sail
+  runtime, because the arguments that pin PHP and Node cannot live in `vendor/`. A clone
+  without those four files cannot build the image at all
+- **Scanner Wrappers and Two New Gates:** `scripts/run-shellcheck.sh`,
+  `scripts/run-hadolint.sh`, `scripts/run-actionlint.sh` and `scripts/run-zizmor.sh` own their
+  pinned engine images, so the documented local command and the CI gate run one command, and
+  `hadolint` and `shellcheck` are new required jobs
+
+### Changed
+
+- **The Language Runtimes Move Up:** the PHP floor is `^8.5.12` with `config.platform.php`
+  pinned to match; the image installs PHP 8.5.12 and Node 24.22.1 exactly - the official
+  tarball, asserted at build time - and leaves npm as that Node release ships it (11.19.1)
+  instead of upgrading it unpinned
+- **`node_modules` Is a Volume the Container Owns:** it is no longer part of the bind mount, so
+  a host `npm ci` can no longer replace the container's Linux native modules and break every
+  JavaScript command until the tree is rebuilt
+- **Every Command Runs Through Sail, npm Included:** the cold start installs JavaScript
+  dependencies with `./vendor/bin/sail npm ci` and builds with
+  `./vendor/bin/sail npm run build`
+- **Dependencies Refreshed:** `composer update` and `npm update` through Sail
+
+### Fixed
+
+- **A Dead Assignment the New ShellCheck Gate Surfaced:** `scripts/pen-test-auth.sh` parsed a
+  third seeded id into `LIST_C` and never read it; the assignment is gone
+- **The Cold Start Could Not Reach a Booting App:** the old steps ran bare `composer install`
+  and `php artisan key:generate` on the host, which the `^8.5.12` floor breaks
+
 ## [3.3.3] - 2026-10-16
 
 ### Changed
@@ -984,7 +1024,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.3...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.4.0...HEAD
+[3.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.3...v3.4.0
 [3.3.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.2...v3.3.3
 [3.3.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.1...v3.3.2
 [3.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.0...v3.3.1

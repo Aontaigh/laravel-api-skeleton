@@ -1,10 +1,12 @@
 # Testing
 
 The full suite of checks to run before opening a pull request: PHPUnit suites,
-the coverage floor, static analysis, OpenAPI example verification, Semgrep,
-Zizmor, and the adversarial auth pen test. Run everything through Sail so the
-PHP version matches CI; CI ([.github/workflows/ci.yml](../.github/workflows/ci.yml))
-runs the same gates as parallel jobs behind one **All Quality Gates** check.
+the coverage floor, static analysis, the version parity and CVE-floor gates, OpenAPI
+example verification, Semgrep, Zizmor, the Dockerfile and shell lints, and the adversarial
+auth pen test. Run everything through Sail so the PHP version matches CI - both run the
+8.5.12 patch [`.php-version`](../.php-version) pins. CI
+([.github/workflows/ci.yml](../.github/workflows/ci.yml)) runs the same gates as parallel
+jobs behind one **All Quality Gates** check.
 
 ## Prerequisites
 
@@ -17,6 +19,21 @@ runs the same gates as parallel jobs behind one **All Quality Gates** check.
 The unit suite runs with `QUEUE_CONNECTION=sync` (set in `phpunit.xml`), so
 queued listeners (audit writes, notifications) execute inline and are
 assertable without a worker.
+
+**The vendored Sail runtime must be committed.** `compose.yaml` builds from `./docker/8.5`, so
+a clone without those four files cannot build the image at all: `docker compose build` fails
+on the missing build context, before anything in the application is involved. Verify with
+`git ls-files docker/8.5`, which must list `Dockerfile`, `php.ini`, `start-container`, and
+`supervisord.conf`. CI never notices this, because every GitHub Actions job runs PHP on the
+runner rather than in the image.
+
+**`node_modules` belongs to the container.** `compose.yaml` mounts the `sail-node-modules`
+volume over `/var/www/html/node_modules`, so the container owns a Linux tree while the host
+keeps its own macOS one. Native packages ship one binary per platform, and `npm ci` installs
+only the one matching the machine it ran on, so `./vendor/bin/sail npm ci` is the command that
+installs the container's copy; an `npm ci` on the host writes to the host tree the container
+never reads. The mount point is re-chowned to `sail` on every start
+(`docker/8.5/start-container`), so the volume stays writable on any host uid.
 
 ### What a Fresh Seed Gives You
 
@@ -98,57 +115,71 @@ wrong namespace, not that the API is down.
 
 Run in this order; stop at the first failure.
 
-Set this once, so the pinned scanner images below stay in step with `ci.yml`:
+Each scanner runs from a pinned container image through its wrapper, so the image pin, the
+threshold and the target live in one place and cannot drift from `ci.yml`. Override one only to
+try a newer engine:
 
 ```bash
+export HADOLINT_IMAGE=hadolint/hadolint:v2.15.1-debian@sha256:9a3944b7fddcb947d1ffd90829ac1a6e5c30479223358f249d8b96c7d0019e27
+export SHELLCHECK_IMAGE=koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
 export ZIZMOR_IMAGE=ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101
 export ACTIONLINT_IMAGE=rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
 ```
 
-**Everything except steps 1c, 7, 8, 9 and 10 runs through `./vendor/bin/sail`.** Step 1c is an npm check and
-runs on the host, where the pinned Node version lives. The project requires
-`^8.5`, and a host PHP older than that fails inside `platform_check.php` before any
+**Everything except steps 7, 7a, 7b, 8, 9 and 10 runs through `./vendor/bin/sail`**, npm
+included: `node_modules` is a volume the container owns (see [Prerequisites](#prerequisites)),
+so an `npm ci` on the host installs macOS native modules into a tree the container never reads.
+The project requires
+`^8.5.12` - the patch [`.php-version`](../.php-version) pins and `docker/8.5` builds - and a
+host PHP older than that fails inside `platform_check.php` before any
 code loads, so `php scripts/...` on the host is not interchangeable with
-`./vendor/bin/sail php scripts/...`. Switch the host runtime (`herd use php@8.5`,
-`asdf local php 8.5`) if you would rather not use Sail.
+`./vendor/bin/sail php scripts/...`. Switch the host runtime to one at or above that floor
+(`herd use php@8.5`, `asdf local php 8.5.12`) if you would rather not use Sail.
 
-| Step | Run It          | Command                                                                                                         | Checks                                                                                             | Pass Condition                                    |
-| ---- | --------------- | --------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
-| 1    | Sail            | `./vendor/bin/sail composer lint`                                                                               | Pint style check (`lint:fix` to auto-fix)                                                          | Exit 0                                            |
-| 1a   | Sail            | `./vendor/bin/sail composer lint:composer`                                                                      | `composer.json` and `composer.lock` are in sync - `--strict` fails on a stale hash                 | `is valid`                                        |
-| 1b   | Sail            | `./vendor/bin/sail composer lint:links`                                                                         | Markdown link and anchor resolution                                                                | `Link Lint Passed`                                |
-| 1c   | **host**        | `npm run lint:npm`                                                                                              | The lock's root `engines` range matches `package.json`, which `npm ci` never compares              | `Lock File Engines Match`                         |
-| 2    | Sail            | `./vendor/bin/sail composer analyse`                                                                            | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon)) | `No errors`                                       |
-| 3    | Sail            | `./vendor/bin/sail composer test`                                                                               | Full PHPUnit suite (unit + feature)                                                                | All pass                                          |
-| 4    | Sail            | `./vendor/bin/sail composer test:coverage:check`                                                                | Step 3 plus the 90% line-coverage gate over `app/`                                                 | `Coverage Gate Passed`, and `PHPUnit Warnings: 0` |
-| 5    | Sail            | `./vendor/bin/sail composer verify:version`                                                                     | `composer.json`, `docs/openapi.yaml`, and the git tag agree                                        | `is in Sync`                                      |
-| 6    | Sail            | `./vendor/bin/sail composer audit --locked`                                                                     | Known Composer advisories                                                                          | `No security vulnerability advisories found`      |
-| 7    | **host**        | `bash scripts/semgrep.sh`                                                                                       | SAST with Laravel security rules                                                                   | `0 findings`                                      |
-| 8    | host            | `docker run --rm -v "$PWD:/repo:ro" "$ZIZMOR_IMAGE" --config /repo/.github/zizmor.yml /repo/.github/workflows/` | GitHub Actions workflow audit, scoped to `.github/workflows/`                                      | Exit 0                                            |
-| 9    | host            | `docker run --rm -v "$PWD:/repo:ro" -w /repo "$ACTIONLINT_IMAGE"`                                               | Workflow syntax (`actionlint`)                                                                     | No output                                         |
-| 10   | host            | `npx --yes -p renovate renovate-config-validator`                                                               | `renovate.json` schema                                                                             | Exit 0                                            |
-| 11   | Sail, seeded DB | `./vendor/bin/sail composer verify:openapi`                                                                     | Replays every example in [openapi.yaml](openapi.yaml) against a live app                           | `All OpenAPI Examples Verified`                   |
-| 12   | Sail, seeded DB | `bash scripts/pen-test-auth.sh`                                                                                 | Live adversarial HTTP probes (see below)                                                           | `Fail: 0`                                         |
+| Step | Run It          | Command                                           | Checks                                                                                                               | Pass Condition                                    |
+| ---- | --------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------- |
+| 1    | Sail            | `./vendor/bin/sail composer lint`                 | Pint style check (`lint:fix` to auto-fix)                                                                            | Exit 0                                            |
+| 1a   | Sail            | `./vendor/bin/sail composer lint:composer`        | `composer.json` and `composer.lock` are in sync - `--strict` fails on a stale hash                                   | `is valid`                                        |
+| 1b   | Sail            | `./vendor/bin/sail composer lint:links`           | Markdown link and anchor resolution                                                                                  | `Link Lint Passed`                                |
+| 1c   | Sail            | `./vendor/bin/sail npm run lint:npm`              | The lock's root `engines` range matches `package.json`, which `npm ci` never compares                                | `Lock File Engines Match`                         |
+| 1d   | Sail            | `./vendor/bin/sail composer verify:php-version`   | `.php-version`, `composer.json`, `docker/8.5/Dockerfile`, and the workflows all declare one PHP and one Node version | `Runtime Version Parity Passed`                   |
+| 1e   | Sail            | `./vendor/bin/sail composer verify:php-cve-floor` | The pin, and the PHP running this gate, meet the patched release for their line                                      | `PHP Patch Verified`                              |
+| 2    | Sail            | `./vendor/bin/sail composer analyse`              | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon))                   | `No errors`                                       |
+| 3    | Sail            | `./vendor/bin/sail composer test`                 | Full PHPUnit suite (unit + feature)                                                                                  | All pass                                          |
+| 4    | Sail            | `./vendor/bin/sail composer test:coverage:check`  | Step 3 plus the 90% line-coverage gate over `app/`                                                                   | `Coverage Gate Passed`, and `PHPUnit Warnings: 0` |
+| 5    | Sail            | `./vendor/bin/sail composer verify:version`       | `composer.json`, `docs/openapi.yaml`, and the git tag agree                                                          | `is in Sync`                                      |
+| 6    | Sail            | `./vendor/bin/sail composer audit --locked`       | Known Composer advisories                                                                                            | `No security vulnerability advisories found`      |
+| 7    | **host**        | `bash scripts/semgrep.sh`                         | SAST with Laravel security rules                                                                                     | `0 findings`                                      |
+| 7a   | **host**        | `bash scripts/run-hadolint.sh`                    | `docker/8.5/Dockerfile`, the vendored Sail runtime, at the exceptions [`.hadolint.yaml`](../.hadolint.yaml) names    | `Hadolint Passed`                                 |
+| 7b   | **host**        | `bash scripts/run-shellcheck.sh`                  | ShellCheck over every tracked shell script, `docker/8.5/start-container` included                                    | `Shell Lint Passed`                               |
+| 8    | **host**        | `bash scripts/run-zizmor.sh`                      | GitHub Actions workflow audit, scoped to `.github/workflows/`                                                        | `Zizmor Passed`                                   |
+| 9    | **host**        | `bash scripts/run-actionlint.sh`                  | Workflow syntax (`actionlint`) plus the runner labels in [.github/actionlint.yaml](../.github/actionlint.yaml)       | `Actionlint Passed`                               |
+| 10   | host            | `npx --yes -p renovate renovate-config-validator` | `renovate.json` schema                                                                                               | Exit 0                                            |
+| 11   | Sail, seeded DB | `./vendor/bin/sail composer verify:openapi`       | Replays every example in [openapi.yaml](openapi.yaml) against a live app                                             | `All OpenAPI Examples Verified`                   |
+| 12   | Sail, seeded DB | `bash scripts/pen-test-auth.sh`                   | Live adversarial HTTP probes (see below)                                                                             | `Fail: 0`                                         |
 
-Steps 8 to 10 run on the host because each needs a Docker CLI the app container does
-not have; step 7 runs there for the same reason, as the Semgrep engine is an image.
+Steps 7a, 7b, 8, 9 and 10 run on the host because each needs a Docker CLI the app container
+does not have; step 7 runs there for the same reason, as the Semgrep engine is an image.
 
 Zizmor needs both the pinned image and CI's scope to reproduce CI:
 
-- **Use the pinned image.** `ZIZMOR_IMAGE` is exported at the top of this page and
-  defined in [ci.yml](../.github/workflows/ci.yml). `ghcr.io/woodruffw/zizmor:latest` reports 11
+- **Use the pinned image.** `scripts/run-zizmor.sh` pins it, and the `zizmor` job in
+  [ci.yml](../.github/workflows/ci.yml) calls that same script, so the local run and the gate
+  cannot resolve different engines. `ghcr.io/woodruffw/zizmor:latest` reports 11
   findings the pinned image does not, so `:latest` turns a green gate red for no reason.
 - **Scope it to `.github/workflows/`.** Pointing it at the repository root also reports
   findings from the vendored toolkit and exits non-zero.
 
-CI runs thirteen of the fourteen steps as ten parallel jobs, behind one `All Quality Gates`
+CI runs these steps as twelve parallel jobs, behind one `All Quality Gates`
 summary job. `All Quality Gates` fails when any other job fails, is cancelled, or is
 skipped - so a cancelled job fails the build even though nothing was reported as broken.
 
-`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`, `semgrep`, `test:coverage:check`,
+`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
+`verify:php-version`, `verify:php-cve-floor`, `semgrep`, `test:coverage:check`,
 `verify:openapi`, `verify:version`, and `composer audit --locked`. It does **not** cover
-Zizmor, `actionlint`, or the Renovate config, and the live pen test (step 12) runs
-locally only - so it is a pre-flight check rather than a full substitute for CI.
+Zizmor, `actionlint`, hadolint, ShellCheck, or the Renovate config, and the live pen test
+(step 12) runs locally only - so it is a pre-flight check rather than a full substitute for
+CI.
 
 A link that points at a gitignored local file (`.env.testing.local`, `.env.*.local`) resolves on
 the developer's machine and answers `400` on a runner, so step 1b passes locally and the **Link

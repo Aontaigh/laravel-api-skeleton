@@ -2492,7 +2492,6 @@ else
     IFS=';' read -r -a FILTER_PARTS <<<"$FILTER_IDS"
     LIST_A="$(printf '%s' "${FILTER_PARTS[0]:-}" | cut -d, -f1)"
     LIST_B="$(printf '%s' "${FILTER_PARTS[1]:-}" | cut -d, -f1)"
-    LIST_C="$(printf '%s' "${FILTER_PARTS[2]:-}" | cut -d, -f1)"
 
     # `user_id` sits behind `whenAttributeSelected`, so the sparse fieldset is what makes it readable
 # in the response - without it every row would omit the key the assertion needs.

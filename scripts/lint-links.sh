@@ -123,6 +123,10 @@ EXEMPT_LINK_PATTERNS=(
     # (`vPREV...vX.Y.Z` and `vX.Y.Z...HEAD`) and delete it once the tag resolves:
     # a stale pair passes silently and hides the next release's dead links. See
     # docs/releasing.md.
+    # In-flight pair for the v3.4.0 release being cut. Delete both once v3.4.0 is
+    # tagged on the remote.
+    'github\.com/Aontaigh/laravel-api-skeleton/compare/v3\.3\.3\.\.\.v3\.4\.0'
+    'github\.com/Aontaigh/laravel-api-skeleton/compare/v3\.4\.0\.\.\.HEAD'
 )
 
 # ---------------------------------------------------------------------------

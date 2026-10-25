@@ -31,11 +31,14 @@ permissions:
     actions: read
 
 env:
-    PHP_VERSION: '8.5'
     # Human-readable tool output in Actions logs (not agent JSON from laravel/pao).
     PAO_DISABLE: 'true'
-    ZIZMOR_IMAGE: ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101 # 1.30.1
-    ACTIONLINT_IMAGE: rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 # 1.7.12
+    # Exists only for the report-only SARIF re-run in the `zizmor` job, which
+    # needs `--format sarif` to report rather than block; the blocking audit
+    # itself (and the documented local command) reads the pin from
+    # `scripts/run-zizmor.sh`. The wrapper takes this value from the
+    # environment, so CI overrides its default rather than the two disagreeing.
+    ZIZMOR_IMAGE: ghcr.io/zizmorcore/zizmor:1.31.1@sha256:42d409dbb851d4c5d35a058cf042b828bea1e3f2884378c526eb0974780e18d9
 
 jobs:
     # ---------------------------------------------------------------------
@@ -53,7 +56,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
-                  php-version: ${{ env.PHP_VERSION }}
+                  php-version-file: '.php-version'
                   coverage: none
                   tools: composer:v2
 
@@ -149,7 +152,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
-                  php-version: ${{ env.PHP_VERSION }}
+                  php-version-file: '.php-version'
                   coverage: none
                   tools: composer:v2
 
@@ -160,6 +163,18 @@ jobs:
 
             - name: Run Larastan
               run: ./vendor/bin/phpstan analyse --memory-limit=512M --error-format=github
+
+            - name: Check Runtime Version Parity
+              # One PHP patch across `composer.json`, the Sail image and every job: a version
+              # that moves in one place and not the others fails here rather than in a build
+              # (scripts/lint/check-php-version-parity.php).
+              run: composer verify:php-version
+
+            - name: Check PHP CVE Patch Floor
+              # The runtime this job analyses with has to be at or above the patched floor for
+              # its PHP line, so a runner that silently resolved an older patch fails here
+              # rather than at test time (scripts/lint/check-php-cve-floor.php).
+              run: composer verify:php-cve-floor
 
     # ---------------------------------------------------------------------
     # Tests (PHPUnit, Against a Real MySQL Service) + Coverage
@@ -198,7 +213,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
-                  php-version: ${{ env.PHP_VERSION }}
+                  php-version-file: '.php-version'
                   extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif
                   coverage: pcov
                   tools: composer:v2
@@ -246,7 +261,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
-                  php-version: ${{ env.PHP_VERSION }}
+                  php-version-file: '.php-version'
                   coverage: none
                   tools: composer:v2
 
@@ -309,7 +324,7 @@ jobs:
             - name: Setup PHP
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
-                  php-version: ${{ env.PHP_VERSION }}
+                  php-version-file: '.php-version'
                   extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif
                   coverage: none
                   tools: composer:v2
@@ -415,9 +430,9 @@ jobs:
 
             - name: Audit Workflows
               id: audit
-              run: |
-                  docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" "${{ env.ZIZMOR_IMAGE }}" \
-                    --config /repo/.github/zizmor.yml /repo/.github/workflows/
+              # The wrapper owns the image pin, the config and the scope, so the documented
+              # local command and this gate cannot drift apart (scripts/run-zizmor.sh).
+              run: bash scripts/run-zizmor.sh
 
             # SARIF output always exits 0, so the gate above runs plain output and
             # this step re-runs for the upload file only.
@@ -449,6 +464,51 @@ jobs:
                   fi
 
     # ---------------------------------------------------------------------
+    # Dockerfile Lint (hadolint)
+    #
+    # hadolint is the only gate that reads the file the local stack is built
+    # from, `docker/8.5/Dockerfile`. The exceptions that file deliberately
+    # takes are named with their reasons in `.hadolint.yaml`.
+    # ---------------------------------------------------------------------
+    hadolint:
+        name: Hadolint
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Lint the Dockerfile
+              # The wrapper owns the image pin, the failure threshold and the target, so
+              # the documented local command and this gate cannot drift apart
+              # (scripts/run-hadolint.sh).
+              run: bash scripts/run-hadolint.sh
+
+    # ---------------------------------------------------------------------
+    # Shell Lint (shellcheck)
+    #
+    # The scripts this governs are the ones the bash rules govern: a tracked
+    # file whose name ends in `.sh` or whose first line carries a `sh` shebang,
+    # so a new script joins the gate by being committed with or without the
+    # extension.
+    # ---------------------------------------------------------------------
+    shellcheck:
+        name: ShellCheck
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Lint Shell Scripts
+              # The runner holds the selection rule, the image pin and the severity, so
+              # this job and the documented local command cannot drift apart
+              # (scripts/run-shellcheck.sh).
+              run: bash scripts/run-shellcheck.sh
+
+    # ---------------------------------------------------------------------
     # Workflow Lint (actionlint)
     # ---------------------------------------------------------------------
     workflow-lint:
@@ -466,8 +526,9 @@ jobs:
                   node-version-file: .nvmrc
 
             - name: Lint Workflows
-              run: |
-                  docker run --rm -v "$GITHUB_WORKSPACE:/repo:ro" -w /repo "${{ env.ACTIONLINT_IMAGE }}"
+              # The wrapper owns the image pin and the scope, so the documented local
+              # command and this gate cannot drift apart (scripts/run-actionlint.sh).
+              run: bash scripts/run-actionlint.sh
 
             - name: Validate Renovate Config
               run: npx --yes -p renovate renovate-config-validator
@@ -482,7 +543,7 @@ jobs:
         name: All Quality Gates
         runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 5
-        needs: [format, link-check, frontend, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, workflow-lint]
+        needs: [format, link-check, frontend, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, hadolint, shellcheck, workflow-lint]
         if: always()
         steps:
             - name: Require Every Gate to Pass
@@ -503,6 +564,8 @@ jobs:
                   check "OpenAPI Examples" "${{ needs.openapi-examples.result }}"
                   check "Semgrep" "${{ needs.semgrep.result }}"
                   check "Zizmor" "${{ needs.zizmor.result }}"
+                  check "Hadolint" "${{ needs.hadolint.result }}"
+                  check "ShellCheck" "${{ needs.shellcheck.result }}"
                   check "Lint Workflows" "${{ needs.workflow-lint.result }}"
                   if [ "$failed" -ne 0 ]; then
                       exit 1

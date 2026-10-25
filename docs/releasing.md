@@ -94,17 +94,37 @@ headings are for the GitHub release only.
 > sources: [`.github/workflows/ci.yml`](../.github/workflows/ci.yml) and `composer.json`
 > scripts.
 
-Local (Sail when host PHP is not 8.5):
+Local, in two halves - the PHP and JavaScript gates run through Sail, the Docker-backed
+scanners on the host:
 
 ```bash
 ./vendor/bin/sail artisan migrate:fresh --seed --force
-./vendor/bin/sail composer ci
+./vendor/bin/sail composer lint
+./vendor/bin/sail composer lint:composer
+./vendor/bin/sail composer lint:links
+./vendor/bin/sail npm run lint:npm
+./vendor/bin/sail composer verify:php-version
+./vendor/bin/sail composer verify:php-cve-floor
+./vendor/bin/sail composer analyse
+./vendor/bin/sail composer test:coverage:check
+./vendor/bin/sail composer verify:version
+./vendor/bin/sail composer audit --locked
+./vendor/bin/sail composer verify:openapi
+
+bash scripts/semgrep.sh
+bash scripts/run-hadolint.sh
+bash scripts/run-shellcheck.sh
+bash scripts/run-zizmor.sh
+bash scripts/run-actionlint.sh
 ```
 
-`composer ci` runs Pint, the Markdown link check, Larastan, Semgrep, PHPUnit with the
-90% coverage gate, OpenAPI example verification, app version sync
-(`composer verify:version`), and `composer audit`. OpenAPI verification replays every
-documented example against a served, seeded app, so seed before running the chain.
+Those Sail lines are what `composer ci` chains, minus `semgrep`. `./vendor/bin/sail
+composer ci` cannot stand in for them: `ci` includes `@semgrep`, and `scripts/semgrep.sh`
+needs a local Semgrep CLI or a Docker CLI, neither of which exists inside the app
+container - it exits 1 with `Semgrep Is Not Installed`. The scanner wrappers need that
+same Docker CLI, so all six scanner commands run on the host
+([testing.md](testing.md) steps 7 to 10). OpenAPI verification replays every documented
+example against a served, seeded app, so seed before running the chain.
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
 Sail port notes when Docker ports on your machine are already in use.

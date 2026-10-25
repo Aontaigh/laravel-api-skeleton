@@ -88,23 +88,49 @@ Pick your path by role - every route below lives in this README or the docs it l
 ## 🚀 Quick Start
 
 > [!IMPORTANT]
-> The project requires **PHP ^8.5**. If your host PHP is older, use Sail for every
-> command below (`./vendor/bin/sail …`). GitHub CI runs native PHP 8.5 - not Sail containers.
+> The project requires **PHP ^8.5.12**. If your host PHP is older, the cold start below
+> bootstraps through Docker and every command after it runs through Sail
+> (`./vendor/bin/sail …`), which is the same PHP the image and CI run. GitHub CI runs native
+> PHP read from [`.php-version`](.php-version) - not Sail containers.
+
+`compose.yaml` builds `docker/8.5`, the vendored copy of the Sail runtime: the four files
+(`Dockerfile`, `php.ini`, `supervisord.conf`, `start-container`) are committed with the repo
+rather than read out of `vendor/`, so the image is built from a file this repository owns and
+can pin. **Those four files must be committed.** A clone without them cannot build the image
+at all - `docker compose build` fails on the missing build context, before anything in the
+application is involved.
 
 ```bash
-composer install
 cp .env.example .env
-php artisan key:generate
 
-npm ci
-npm run build          # or: npm run dev, for the Vite dev server with HMR
+# `./vendor/bin/sail` is installed by Composer, so the first install needs an image that
+# already carries one. The official Sail Composer image ships PHP 8.4, below the `^8.5.12`
+# floor the lock declares, so the platform check is skipped for this one bootstrap step: the
+# container that serves the app is PHP 8.5.12 (`docker/8.5`), and every gate runs there.
+docker run --rm \
+  -u "$(id -u):$(id -g)" \
+  -v "$(pwd):/var/www/html" \
+  -w /var/www/html \
+  laravelsail/php84-composer:latest \
+  composer install --ignore-platform-reqs
 
-./vendor/bin/sail up -d
+./vendor/bin/sail up -d --build
+
+# `node_modules` is a volume of its own, so it starts empty: install into it once, through
+# Sail, before any npm script. The build writes `public/build/manifest.json`, which Laravel
+# needs or it answers `ViteManifestNotFoundException`.
+./vendor/bin/sail npm ci
+./vendor/bin/sail npm run build   # or: ./vendor/bin/sail npm run dev, for the Vite dev server
+
+./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
-The two `npm` steps need the Node version pinned in [`.nvmrc`](.nvmrc); without them Laravel
-answers `ViteManifestNotFoundException`, because it expects `public/build/manifest.json`.
+Every step runs in the container, npm included, so the toolchain is the one the image pins: Node
+24.22.1 from [`.nvmrc`](.nvmrc). A host `npm ci` installs macOS native modules into the bind
+mount, and the container never reads that tree - it mounts its own `node_modules` volume, which
+is why the empty volume is populated by `./vendor/bin/sail npm ci` rather than by an npm run on
+the host.
 
 Seeding creates one team ("Acme Corp") and one user per role. The full permission matrix
 lives in [docs/permissions.md](docs/permissions.md).
@@ -153,14 +179,20 @@ All routes below require `Authorization: Bearer {token}` unless noted.
 
 ```
 Your requirements could not be resolved to an installable set of packages.
-  - laravel/framework v13.x requires php ^8.5 -> your php version does not satisfy that requirement
+  - laravel/framework v13.x requires php ^8.5.12 -> your php version does not satisfy that requirement
 ```
 
-This project needs **PHP ^8.5**. The fix is not to relax the constraint: run every
-command through Sail, which ships a matching PHP image.
+This project needs **PHP ^8.5.12** - the patch [`.php-version`](.php-version) pins,
+`composer.json` declares through `require.php` and `config.platform.php`, and `docker/8.5`
+builds. The fix is not to relax the constraint. Do what [Quick Start](#quick-start) does:
+bootstrap the dependencies through the Sail Composer image, then run every command through
+Sail, which ships a matching PHP image.
 
 ```bash
-./vendor/bin/sail composer install
+docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" -w /var/www/html \
+  laravelsail/php84-composer:latest composer install --ignore-platform-reqs
+
+./vendor/bin/sail up -d
 ./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
@@ -383,12 +415,29 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 
 ## 📋 Requirements
 
-| Dependency        | Version                                                                                               |
-| ----------------- | ----------------------------------------------------------------------------------------------------- |
-| PHP               | ^8.5                                                                                                  |
-| Laravel           | ^13.8                                                                                                 |
-| Node (Vite build) | `^22.12.0 \|\| ^24.0.0 \|\| ^26.0.0` - `.nvmrc` pins 22.12.0; CI builds on the 22.12, 24 and 26 lines |
-| Docker (for Sail) | any recent version                                                                                    |
+| Dependency        | Version                                                                           |
+| ----------------- | --------------------------------------------------------------------------------- |
+| PHP               | `^8.5.12`                                                                         |
+| Laravel           | `^13.8`                                                                           |
+| Node (Vite build) | `^22.12.0 \|\| ^24.0.0 \|\| ^26.0.0`; CI builds on the 22.12, 24 and 26 lines     |
+| Docker (for Sail) | any recent version; `compose.yaml` builds `docker/8.5`, the vendored Sail runtime |
+
+Two files are **canonical**, and nothing else may disagree with them:
+
+| Component | Pin                       | Canonical File                 | Read By                                                                      |
+| --------- | ------------------------- | ------------------------------ | ---------------------------------------------------------------------------- |
+| PHP       | **8.5.12**                | [`.php-version`](.php-version) | `composer.json`, `docker/8.5/Dockerfile`, `ci.yml` (`php-version-file`)      |
+| Node      | **24.22.1** (npm 11.19.1) | [`.nvmrc`](.nvmrc)             | `docker/8.5/Dockerfile` (`ARG NODE_VERSION`), `ci.yml` (`node-version-file`) |
+
+`docker/8.5` asserts both at build time, and `composer verify:php-version` fails when
+`.php-version`, `composer.json` (`require.php` and `config.platform.php`) and the Dockerfile's
+`ARG PHP_VERSION` disagree - so the pin cannot move in one place and not the others.
+
+24.22.1 is the most recent Node LTS ("Krypton"), and it bundles npm 11.19.1. The image does
+**not** upgrade npm on its own: the pinned Node determines npm, so one pin covers both, and the
+runner's `npm ci` then uses the same npm the image has. `composer verify:php-cve-floor` guards
+the other direction - it fails when the pin, or the PHP running the gate, is below the patched
+release for its line.
 
 <a id="api"></a>
 
@@ -839,7 +888,7 @@ Trait coverage uses **real hosts** (feature tests and resource unit tests), not
 
 ## ✅ Quality Gates
 
-Run locally (Sail - matches PHP 8.5 when host PHP is older):
+Run locally (Sail - it is the pinned PHP 8.5.12, whatever the host runs):
 
 ```bash
 ./vendor/bin/sail composer lint:composer # composer.json and composer.lock agree
@@ -847,20 +896,32 @@ Run locally (Sail - matches PHP 8.5 when host PHP is older):
 ./vendor/bin/sail composer lint:fix      # Pint, auto-fix
 ./vendor/bin/sail composer lint:links    # Markdown links and anchors
 ./vendor/bin/sail composer analyse       # Larastan, level 10
+./vendor/bin/sail composer verify:php-version    # .php-version, composer.json and docker/8.5 agree
+./vendor/bin/sail composer verify:php-cve-floor  # the pin and the running PHP meet the patched floor
 ./vendor/bin/sail composer test          # PHPUnit
 ./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
 ./vendor/bin/sail composer verify:version        # composer.json / docs/openapi.yaml / git tag agree
 ./vendor/bin/sail composer ci            # the chain below
 ```
 
-The npm lock check runs on the host, where the pinned Node version lives:
+The npm lock check runs in the container too, so it reads the lock with the pinned Node:
 
 ```bash
-npm run lint:npm # package.json and the lock's root engines range agree
+./vendor/bin/sail npm run lint:npm # package.json and the lock's root engines range agree
 ```
 
-`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`, `semgrep`,
-`test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`.
+The two gates that read the vendored runtime - `docker/8.5/Dockerfile` and
+`docker/8.5/start-container` - run on the host as well, because each engine is a container
+image the app container cannot reach:
+
+```bash
+bash scripts/run-hadolint.sh   # Dockerfile lint, exceptions named in .hadolint.yaml
+bash scripts/run-shellcheck.sh # every tracked shell script, the vendored entrypoint included
+```
+
+`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
+`verify:php-version`, `verify:php-cve-floor`, `semgrep`, `test:coverage:check`,
+`verify:openapi`, `verify:version`, and `composer audit --locked`.
 It needs a seeded database and a served app, because `verify:openapi` replays every
 documented example against a live instance. It also needs the app on its own database
 whenever the suite shares one - see [Quality Gates](docs/testing.md#quality-gates) for
@@ -871,17 +932,18 @@ that caveat and the workaround:
 ./vendor/bin/sail composer ci
 ```
 
-It does **not** cover Zizmor, `actionlint`, the Renovate config, or the live pen test.
-The first three are separate CI jobs; the live pen test (step 12) runs locally only.
-See [docs/testing.md](docs/testing.md) for all fourteen steps, which of them run on the
-host rather than in Sail, and what each one writes.
+It does **not** cover Zizmor, `actionlint`, hadolint, ShellCheck, the Renovate config, or
+the live pen test. Those are separate CI jobs; the live pen test (step 12) runs locally
+only. See [docs/testing.md](docs/testing.md) for the full step list, which of them run on
+the host rather than in Sail, and what each one writes.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, an npm lock check, a Markdown link
-check, a Vite build across the Node lines `engines.node` declares, Larastan, PHPUnit with coverage,
-`composer audit`, OpenAPI example verification, Semgrep, Zizmor, `actionlint` with the
-Renovate config, and a summary gate on every pull request and push to `main`. Require the
+check, a Vite build across the Node lines `engines.node` declares, Larastan, the two version
+gates, PHPUnit with coverage, `composer audit`, OpenAPI example verification, Semgrep, Zizmor,
+`actionlint` with the Renovate config, a Dockerfile lint (hadolint), a shell lint (ShellCheck),
+and a summary gate on every pull request and push to `main`. Require the
 **All Quality Gates** check for branch protection. CI uses
-native PHP 8.5 with a MySQL service container - not Sail.
+native PHP 8.5.12 with a MySQL service container - not Sail.
 
 Run Semgrep locally on the host (Docker or a local CLI - not inside Sail):
 
@@ -924,7 +986,7 @@ Two consequences worth knowing:
 
 **Run It:** `./vendor/bin/sail composer test` for the suite, or step 4 in
 [docs/testing.md](docs/testing.md) for the full gate list with the coverage floor. Use Sail,
-not a host `php` - the project requires `^8.5`.
+not a host `php` - the project requires `^8.5.12`.
 
 **Unit tests** ([tests/Unit/](tests/Unit/)) pin logic without a database:
 
