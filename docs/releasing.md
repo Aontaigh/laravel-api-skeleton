@@ -176,7 +176,7 @@ git fetch --tags origin
 git rev-parse main            # note this SHA
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
 git push origin vX.Y.Z
-git rev-parse vX.Y.Z          # must equal the SHA above
+git rev-parse vX.Y.Z^{}       # the tagged commit, must equal the SHA above
 ```
 
 > [!WARNING]
