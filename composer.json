@@ -14,6 +14,9 @@
     "license": "MIT",
     "require": {
         "php": "^8.5.12",
+        "ext-igbinary": "*",
+        "ext-pdo_mysql": "*",
+        "ext-redis": "*",
         "geoip2/geoip2": "^3.4",
         "giggsey/libphonenumber-for-php": "^9.0",
         "laravel/framework": "^13.8",
@@ -87,6 +90,7 @@
         ],
         "verify:php-version": "@php scripts/lint/check-php-version-parity.php",
         "verify:php-cve-floor": "@php scripts/lint/check-php-cve-floor.php",
+        "verify:service-parity": "@php scripts/lint/check-service-parity.php",
         "verify:openapi": "bash scripts/verify-openapi-examples.sh",
         "verify:version": "@php scripts/verify-app-version.php",
         "semgrep": [
@@ -100,6 +104,7 @@
             "@analyse",
             "@verify:php-version",
             "@verify:php-cve-floor",
+            "@verify:service-parity",
             "@semgrep",
             "@test:coverage:check",
             "@verify:openapi",

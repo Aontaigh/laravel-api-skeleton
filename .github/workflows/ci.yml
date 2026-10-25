@@ -57,6 +57,10 @@ jobs:
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
                   php-version-file: '.php-version'
+                  # The same set every composer job installs, so a job that runs
+                  # `composer install` can satisfy the `ext-*` requirements in
+                  # `composer.json` (scripts/lint/check-service-parity.php).
+                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif, redis, igbinary
                   coverage: none
                   tools: composer:v2
 
@@ -153,6 +157,10 @@ jobs:
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
                   php-version-file: '.php-version'
+                  # The same set every composer job installs, so a job that runs
+                  # `composer install` can satisfy the `ext-*` requirements in
+                  # `composer.json` (scripts/lint/check-service-parity.php).
+                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif, redis, igbinary
                   coverage: none
                   tools: composer:v2
 
@@ -169,6 +177,12 @@ jobs:
               # that moves in one place and not the others fails here rather than in a build
               # (scripts/lint/check-php-version-parity.php).
               run: composer verify:php-version
+
+            - name: Check Service Stack Parity
+              # The database patch and the cache engine CI runs are the ones `compose.yaml`
+              # pins, and every job that installs the lock offers the extensions it requires
+              # (scripts/lint/check-service-parity.php).
+              run: composer verify:service-parity
 
             - name: Check PHP CVE Patch Floor
               # The runtime this job analyses with has to be at or above the patched floor for
@@ -191,7 +205,7 @@ jobs:
 
         services:
             mysql:
-                image: mysql:8.4
+                image: mysql:8.4.13@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
                 env:
                     MYSQL_ROOT_PASSWORD: password
                     MYSQL_USER: sail
@@ -214,7 +228,7 @@ jobs:
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
                   php-version-file: '.php-version'
-                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif
+                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif, redis, igbinary
                   coverage: pcov
                   tools: composer:v2
 
@@ -262,6 +276,10 @@ jobs:
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
                   php-version-file: '.php-version'
+                  # The same set every composer job installs, so a job that runs
+                  # `composer install` can satisfy the `ext-*` requirements in
+                  # `composer.json` (scripts/lint/check-service-parity.php).
+                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif, redis, igbinary
                   coverage: none
                   tools: composer:v2
 
@@ -293,7 +311,7 @@ jobs:
 
         services:
             mysql:
-                image: mysql:8.4
+                image: mysql:8.4.13@sha256:76f0358884cb92d9a086d24e5671c38048d3fef40f2588703d73eb55392d6b69
                 env:
                     MYSQL_ROOT_PASSWORD: password
                     MYSQL_USER: sail
@@ -307,7 +325,7 @@ jobs:
                     --health-timeout 5s
                     --health-retries 10
             redis:
-                image: redis:alpine
+                image: valkey/valkey:9.1.2-alpine@sha256:48332870af354a799964c0012ae1194a0bf2bf894eb508f945810596dc2d8d11
                 ports:
                     - 6379:6379
                 options: >-
@@ -325,7 +343,7 @@ jobs:
               uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
               with:
                   php-version-file: '.php-version'
-                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif
+                  extensions: pdo, pdo_mysql, mbstring, intl, bcmath, exif, redis, igbinary
                   coverage: none
                   tools: composer:v2
 

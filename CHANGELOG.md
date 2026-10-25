@@ -7,15 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **The CI Stack Is the Dev Stack:** `composer verify:service-parity` fails when a workflow's
+  `services:` image is not the `compose.yaml` pin for that role - CI ran `mysql:8.4` and
+  `redis:alpine` while a developer ran `mysql:8.4.13` and Valkey 9.1.2, so the one job that
+  exercises the production queue contract used a different cache engine than every local run -
+  and when a job that installs the lock does not offer an extension `composer.json` requires.
+  It runs in the `static-analysis` job, so the aggregate gate already requires it
+- **The Extensions the Application Needs Are Declared:** `composer.json` now requires
+  `ext-redis`, `ext-igbinary` and `ext-pdo_mysql`. The application could never run without
+  them - the cache connection defaults to phpredis and Predis is not installed - but an
+  install on a host that lacked them failed at runtime instead of at `composer install`. Every
+  CI job installs the extension set the Sail image carries for them, and that list is gated
+
 ### Changed
 
 - **The Service Images Are Pinned and Current:** `compose.yaml` pins `mysql:8.4.13`, the newest
   8.4 LTS patch, and moves the cache service to `valkey/valkey:9.1.2-alpine`, the BSD-licensed
   Linux Foundation fork that speaks the protocol phpredis uses and that distributions and managed
   clouds have consolidated on. Both carry a digest, so neither the MySQL patch nor the cache
-  engine can move under a clone. The service keeps the name `redis`, so every `REDIS_*` variable
-  is unchanged, but `sail-redis` has to be recreated when that line moves: a Redis 8 RDB is not
-  readable by Valkey 9
+  engine can move under a clone. CI runs those same two images. The service keeps the name
+  `redis`, so every `REDIS_*` variable is unchanged, but `sail-redis` has to be recreated when
+  that line moves: a Redis 8 RDB is not readable by Valkey 9.
 
 ## [3.4.0] - 2026-10-25
 

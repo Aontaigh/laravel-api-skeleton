@@ -105,6 +105,7 @@ scanners on the host:
 ./vendor/bin/sail npm run lint:npm
 ./vendor/bin/sail composer verify:php-version
 ./vendor/bin/sail composer verify:php-cve-floor
+./vendor/bin/sail composer verify:service-parity
 ./vendor/bin/sail composer analyse
 ./vendor/bin/sail composer test:coverage:check
 ./vendor/bin/sail composer verify:version

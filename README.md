@@ -898,6 +898,7 @@ Run locally (Sail - it is the pinned PHP 8.5.12, whatever the host runs):
 ./vendor/bin/sail composer analyse       # Larastan, level 10
 ./vendor/bin/sail composer verify:php-version    # .php-version, composer.json and docker/8.5 agree
 ./vendor/bin/sail composer verify:php-cve-floor  # the pin and the running PHP meet the patched floor
+./vendor/bin/sail composer verify:service-parity # CI matches compose.yaml's DB and cache, ext-* included
 ./vendor/bin/sail composer test          # PHPUnit
 ./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
 ./vendor/bin/sail composer verify:version        # composer.json / docs/openapi.yaml / git tag agree
@@ -920,8 +921,8 @@ bash scripts/run-shellcheck.sh # every tracked shell script, the vendored entryp
 ```
 
 `composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
-`verify:php-version`, `verify:php-cve-floor`, `semgrep`, `test:coverage:check`,
-`verify:openapi`, `verify:version`, and `composer audit --locked`.
+`verify:php-version`, `verify:php-cve-floor`, `verify:service-parity`, `semgrep`,
+`test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`.
 It needs a seeded database and a served app, because `verify:openapi` replays every
 documented example against a live instance. It also needs the app on its own database
 whenever the suite shares one - see [Quality Gates](docs/testing.md#quality-gates) for

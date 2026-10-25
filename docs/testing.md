@@ -144,6 +144,7 @@ code loads, so `php scripts/...` on the host is not interchangeable with
 | 1c   | Sail            | `./vendor/bin/sail npm run lint:npm`              | The lock's root `engines` range matches `package.json`, which `npm ci` never compares                                | `Lock File Engines Match`                         |
 | 1d   | Sail            | `./vendor/bin/sail composer verify:php-version`   | `.php-version`, `composer.json`, `docker/8.5/Dockerfile`, and the workflows all declare one PHP and one Node version | `Runtime Version Parity Passed`                   |
 | 1e   | Sail            | `./vendor/bin/sail composer verify:php-cve-floor` | The pin, and the PHP running this gate, meet the patched release for their line                                      | `PHP Patch Verified`                              |
+| 1f   | Sail            | `./vendor/bin/sail composer verify:service-parity` | CI's `services:` images are `compose.yaml`'s pinned database and cache, and every job that installs the lock offers the extensions it requires | `Service Stack Parity Passed`                     |
 | 2    | Sail            | `./vendor/bin/sail composer analyse`              | Larastan at level 10 with strict, deprecation, and PHPUnit rules ([phpstan.neon](../phpstan.neon))                   | `No errors`                                       |
 | 3    | Sail            | `./vendor/bin/sail composer test`                 | Full PHPUnit suite (unit + feature)                                                                                  | All pass                                          |
 | 4    | Sail            | `./vendor/bin/sail composer test:coverage:check`  | Step 3 plus the 90% line-coverage gate over `app/`                                                                   | `Coverage Gate Passed`, and `PHPUnit Warnings: 0` |
@@ -175,8 +176,8 @@ summary job. `All Quality Gates` fails when any other job fails, is cancelled, o
 skipped - so a cancelled job fails the build even though nothing was reported as broken.
 
 `composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
-`verify:php-version`, `verify:php-cve-floor`, `semgrep`, `test:coverage:check`,
-`verify:openapi`, `verify:version`, and `composer audit --locked`. It does **not** cover
+`verify:php-version`, `verify:php-cve-floor`, `verify:service-parity`, `semgrep`,
+`test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`. It does **not** cover
 Zizmor, `actionlint`, hadolint, ShellCheck, or the Renovate config, and the live pen test
 (step 12) runs locally only - so it is a pre-flight check rather than a full substitute for
 CI.
