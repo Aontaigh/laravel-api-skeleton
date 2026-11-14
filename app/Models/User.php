@@ -62,7 +62,16 @@ final class User extends Authenticatable implements MustVerifyEmail
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes that may be mass-assigned on registration and profile updates.
+     *
+     * The list covers the fields a caller may legitimately set; framework-owned columns such as
+     * `email_verified_at`, `suspended_at`, `session_version`, and `remember_token` are deliberately
+     * absent, so a crafted payload cannot mark itself verified, lift a suspension, or rotate session
+     * state.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'team_id',
         'name',
@@ -73,7 +82,14 @@ final class User extends Authenticatable implements MustVerifyEmail
         'mfa_method',
     ];
 
-    /** @var list<string> */
+    /**
+     * Attributes excluded from every array and JSON representation.
+     *
+     * Password hashes and remember-me tokens must never leave the API; keeping them here filters them even
+     * if a future controller returns the model without a Resource.
+     *
+     * @var list<string>
+     */
     protected $hidden = [
         'password',
         'remember_token',

@@ -24,6 +24,12 @@ final class GeoIpDatabase
     |--------------------------------------------------------------------------
     */
 
+    /**
+     * The opened MMDB reader, or null when the database is unavailable.
+     *
+     * Opened once in the constructor and reused for every lookup; a missing, unreadable, or corrupt file
+     * leaves this null so callers fail open instead of throwing during session registration.
+     */
     private readonly ?Reader $reader;
 
     /*

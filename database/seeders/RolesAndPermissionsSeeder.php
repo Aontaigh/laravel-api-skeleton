@@ -34,6 +34,8 @@ final class RolesAndPermissionsSeeder extends Seeder
      *
      * Excluding anything requires a store every process shares - `database` and `redis` do; the
      * `array` store does not, being per-process.
+     *
+     * @var string
      */
     public const LOCK_NAME = 'roles-and-permissions-seeder';
 
@@ -43,13 +45,16 @@ final class RolesAndPermissionsSeeder extends Seeder
      * The write phase takes well under a second, so this only guards a process that died before its
      * `finally` ran: without a duration Laravel holds the lock effectively forever and every later
      * reseed would return without repairing the matrix.
+     *
+     * @var int
      */
     public const LOCK_TTL = 300;
 
     /**
      * Every permission string this application defines.
      *
-     * @see docs/permissions.md for descriptions and enforcement locations
+     * Each entry is the exact ability string checked by `Gate` or Sanctum; the inline comments map a
+     * string to the endpoint that enforces it, and `docs/permissions.md` carries the longer reference.
      *
      * @var list<string>
      */
@@ -93,7 +98,8 @@ final class RolesAndPermissionsSeeder extends Seeder
     /**
      * Role name mapped to the permissions granted at seed time.
      *
-     * @see docs/permissions.md for the role matrix
+     * Every role named by `RoleName` maps to a subset of `PERMISSIONS`; the seeder syncs exactly this
+     * matrix, so a permission added above but omitted here is granted to nobody by default.
      *
      * @var array<string, list<string>>
      */

@@ -32,7 +32,14 @@ final class CacheHealthCheck implements SystemHealthCheck
     |--------------------------------------------------------------------------
     */
 
-    /** Seconds the throwaway probe key lives for, as a backstop if `forget()` is skipped by a failure. */
+    /**
+     * Seconds the throwaway probe key lives for, as a backstop if `forget()` is skipped by a failure.
+     *
+     * The key is normally removed immediately after the round trip; the TTL only covers a worker that dies
+     * between `put()` and `forget()`, so probe keys cannot accumulate.
+     *
+     * @var int
+     */
     private const int PROBE_KEY_TTL_SECONDS = 10;
 
     /*

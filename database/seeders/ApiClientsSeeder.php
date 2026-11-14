@@ -22,10 +22,24 @@ final class ApiClientsSeeder extends Seeder
     |--------------------------------------------------------------------------
     */
 
-    /** Public client ID for the seeded demo integration. */
+    /**
+     * Public client ID for the seeded demo integration.
+     *
+     * It is a fixed, non-secret identifier so the OpenAPI examples and local curl snippets can name the
+     * same client across reseeds; only the secret varies with configuration.
+     *
+     * @var string
+     */
     public const DEMO_CLIENT_ID = 'demo-integration-client';
 
-    /** Default plaintext secret for the seeded demo integration (local only). */
+    /**
+     * Default plaintext secret for the seeded demo integration (local only).
+     *
+     * The value is a placeholder used only in `local` and `testing`; the seeder prefers
+     * `api.demo_client_secret` when configured and refuses to run elsewhere.
+     *
+     * @var string
+     */
     public const DEMO_CLIENT_SECRET = 'DemoClientSecret12';
 
     /*

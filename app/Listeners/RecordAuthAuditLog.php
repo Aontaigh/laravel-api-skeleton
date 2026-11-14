@@ -29,11 +29,17 @@ final class RecordAuthAuditLog implements ShouldQueue
 
     /**
      * The number of times the queued listener may be attempted.
+     *
+     * Three attempts absorb a transient database or queue hiccup while still surfacing a persistent
+     * failure in the failed-jobs table instead of retrying forever.
      */
     public int $tries = 3;
 
     /**
      * The number of seconds the queued listener may run before timing out.
+     *
+     * The listener performs one insert plus a best-effort GeoIP lookup, so thirty seconds is ample; the
+     * cap frees the worker if a lookup hangs.
      */
     public int $timeout = 30;
 

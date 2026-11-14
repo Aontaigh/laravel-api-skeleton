@@ -45,6 +45,9 @@ final class ApiRateLimitSharedStoreTest extends TestCase
     /**
      * The `CACHE_STORE` values replaced for this class, so they can be restored.
      *
+     * Each channel is captured before `createApplication()` writes `database` into it; `tearDown()`
+     * restores all three so later suites keep the `array` store.
+     *
      * @var array{server: string|null, env: string|null, putenv: string|null}|null
      */
     private ?array $originalCacheStoreEnvironment = null;

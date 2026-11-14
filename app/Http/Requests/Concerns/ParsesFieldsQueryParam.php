@@ -104,6 +104,8 @@ a maximum size of data on all incoming parameters and payloads, such as maximum 
      * fieldset returns a response that looks complete but is missing the columns the caller asked
      * for, which is a correctness failure they cannot detect.
      *
+     * @var int
+     *
      * @see \App\Http\Requests\Concerns\ParsesIncludeQueryParam::MAX_RAW_LENGTH for the `include` bound
      */
     private const MAX_RAW_LENGTH = 255;

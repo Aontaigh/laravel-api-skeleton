@@ -39,11 +39,17 @@ final class ResetPasswordNotification extends Notification implements ShouldQueu
 
     /**
      * Number of times the notification may be attempted before failing.
+     *
+     * Three attempts cover a transient mail-transport failure; a permanent failure is recorded by the
+     * queue rather than retried indefinitely.
      */
     public int $tries = 3;
 
     /**
      * Seconds the notification may run before timing out.
+     *
+     * Rendering one mail message and handing it to the transport should complete well before thirty
+     * seconds, even when the mail queue is busy.
      */
     public int $timeout = 30;
 

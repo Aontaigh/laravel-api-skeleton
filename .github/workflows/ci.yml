@@ -548,6 +548,11 @@ jobs:
               # command and this gate cannot drift apart (scripts/run-actionlint.sh).
               run: bash scripts/run-actionlint.sh
 
+            - name: Lint Runner Labels
+              # actionlint accepts `ubuntu-latest` and cannot see `${{ ... }}`, so a
+              # moving alias in either position survives it (scripts/lint/lint-runner-labels.py).
+              run: python3 scripts/lint/lint-runner-labels.py
+
             - name: Validate Renovate Config
               run: npx --yes -p renovate renovate-config-validator
 

@@ -24,7 +24,14 @@ final class BasicUserAgentParser implements UserAgentParser
     |--------------------------------------------------------------------------
     */
 
-    /** Cap the attacker-controlled user-agent before parsing or storing. */
+    /**
+     * Cap the attacker-controlled user-agent before parsing or storing.
+     *
+     * Real user-agent headers are well under this size; truncating keeps a hostile megabyte header from
+     * being regex-scanned or persisted in full.
+     *
+     * @var int
+     */
     private const int MAX_LENGTH = 1024;
 
     /*

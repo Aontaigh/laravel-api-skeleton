@@ -29,10 +29,24 @@ final class RequestId
     |--------------------------------------------------------------------------
     */
 
-    /** Inbound header carrying a caller-supplied correlation ID. */
+    /**
+     * Inbound header carrying a caller-supplied correlation ID.
+     *
+     * An inbound value is honoured only when it is a short, header-safe token; otherwise `current()`
+     * generates a UUID rather than letting attacker input reach logs or response headers.
+     *
+     * @var string
+     */
     private const string HEADER = 'X-Request-ID';
 
-    /** Fallback inbound header (W3C Trace Context) when no request ID is sent. */
+    /**
+     * Fallback inbound header (W3C Trace Context) when no request ID is sent.
+     *
+     * The `traceparent` value carries a 32-hex-digit trace ID; `current()` uses it only when no valid
+     * `X-Request-ID` is present, so explicit correlation still wins.
+     *
+     * @var string
+     */
     private const string TRACEPARENT_HEADER = 'traceparent';
 
     /**
@@ -40,6 +54,8 @@ final class RequestId
      *
      * Correlation IDs are short opaque tokens; anything longer is either a
      * mistake or log-bloat abuse.
+     *
+     * @var int
      */
     private const int MAX_LENGTH = 128;
 
@@ -50,6 +66,8 @@ final class RequestId
      * `RememberLoginController` reads it for both the audit event and the
      * response), and each call must return the same value - otherwise the logs
      * and audit rows for one request cannot be joined.
+     *
+     * @var string
      */
     private const string ATTRIBUTE = 'request_id';
 

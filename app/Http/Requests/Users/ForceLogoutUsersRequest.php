@@ -25,6 +25,8 @@ final class ForceLogoutUsersRequest extends ApiFormRequest
      * The cap bounds the bulk force-logout fan-out - each ID revokes every
      * token and server session for the target, so an unbounded payload would
      * let one admin request stamp a huge invalidation wave in a single action.
+     *
+     * @var int
      */
     public const MAX_USER_IDS = 100;
 

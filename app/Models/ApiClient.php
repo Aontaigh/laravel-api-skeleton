@@ -41,7 +41,15 @@ final class ApiClient extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes that may be mass-assigned when creating or updating a client.
+     *
+     * The list covers the credential fields an Admin or the factory legitimately sets; `client_secret` is
+     * hashed by the caller before it reaches this array, and framework-managed keys stay out so a crafted
+     * payload cannot set them.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'user_id',
         'name',
@@ -52,7 +60,15 @@ final class ApiClient extends Model
         'last_used_at',
     ];
 
-    /** @var list<string> */
+    /**
+     * Attributes excluded from every array and JSON representation.
+     *
+     * `client_secret` is a bcrypt hash, but exposing it would still hand an attacker an offline-cracking
+     * target and let a client echo another client's credential; keeping it hidden means a future
+     * controller cannot leak it by returning the model directly.
+     *
+     * @var list<string>
+     */
     protected $hidden = [
         'client_secret',
     ];

@@ -71,7 +71,14 @@ final class SessionIndexControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var User a permissioned viewer with `sessions.list-own` */
+    /**
+     * A permissioned viewer with `sessions.list-own`.
+     *
+     * The viewer holds only the own-sessions permission, so the index must scope rows to their own
+     * sessions; created once in `setUp()` and reused by every case.
+     *
+     * @var User
+     */
     private User $viewer;
 
     /*

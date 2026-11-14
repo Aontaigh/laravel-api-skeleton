@@ -32,19 +32,29 @@ final class CspReportPayloadParser
      * generous headroom while still stopping an anonymous, unauthenticated
      * caller from using this endpoint to burn CPU on `json_decode` or fill
      * disk via the `csp-reports` log channel.
-    /**
-     * Reject the body before `json_decode` runs at all past this size.
-     * A CSP violation report is a handful of short fields; 16 KiB is
-     * generous headroom while still stopping an anonymous, unauthenticated
-     * caller from using this endpoint to burn CPU on `json_decode` or fill
-     * disk via the `csp-reports` log channel.
+     *
+     * @var int
      */
     private const int MAX_BODY_BYTES = 16 * 1024;
 
-    /** Cap every extracted string field before it reaches the log line. */
+    /**
+     * Cap every extracted string field before it reaches the log line.
+     *
+     * Each extracted field is truncated before logging, so a crafted report cannot inflate a log entry or
+     * smuggle kilobytes of attacker text into the `csp-reports` channel.
+     *
+     * @var int
+     */
     private const int MAX_FIELD_LENGTH = 2048;
 
-    /** `Content-Type` sent by the modern Reporting API (`report-to`). */
+    /**
+     * `Content-Type` sent by the modern Reporting API (`report-to`).
+     *
+     * The parser switches on this value to choose the array-of-reports shape; the legacy `report-uri`
+     * shape is everything else.
+     *
+     * @var string
+     */
     private const string REPORTING_API_CONTENT_TYPE = 'application/reports+json';
 
     /*

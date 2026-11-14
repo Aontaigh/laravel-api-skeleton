@@ -43,7 +43,14 @@ final class WebhookEndpoint extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes an Admin may mass-assign for a webhook subscription.
+     *
+     * The endpoint form sets the subscription fields, while the delivery job updates `failure_streak` and
+     * `disabled_at` as it observes failures; the key and timestamps stay framework-managed.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'user_id',
         'name',
@@ -55,7 +62,14 @@ final class WebhookEndpoint extends Model
         'disabled_at',
     ];
 
-    /** @var list<string> */
+    /**
+     * Attributes excluded from every array and JSON representation.
+     *
+     * The endpoint's HMAC signing secret is encrypted at rest and must never be serialised; hiding it here
+     * keeps it out of API responses and log context even if a controller returns the model directly.
+     *
+     * @var list<string>
+     */
     protected $hidden = [
         'secret',
     ];

@@ -22,7 +22,14 @@ final class MaxMindGeoIpLocator implements GeoIpLocator
     |--------------------------------------------------------------------------
     */
 
-    /** Cap attacker-influenced city names before persist. */
+    /**
+     * Cap attacker-influenced city names before persist.
+     *
+     * GeoLite2 city names are short, so the cap only bites on a malformed database record; truncating
+     * keeps an unexpected value from overflowing the `location_city` column.
+     *
+     * @var int
+     */
     private const int MAX_CITY_LENGTH = 255;
 
     /*

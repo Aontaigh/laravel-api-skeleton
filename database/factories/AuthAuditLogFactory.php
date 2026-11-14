@@ -20,7 +20,14 @@ final class AuthAuditLogFactory extends Factory
     |--------------------------------------------------------------------------
     */
 
-    /** @var class-string<AuthAuditLog> */
+    /**
+     * The model class this factory creates.
+     *
+     * Laravel uses the class-string to instantiate records and resolve the factory's model, so it must
+     * stay in sync with `definition()`.
+     *
+     * @var class-string<AuthAuditLog>
+     */
     protected $model = AuthAuditLog::class;
 
     /*

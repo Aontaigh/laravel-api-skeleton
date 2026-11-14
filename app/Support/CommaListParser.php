@@ -35,6 +35,8 @@ final class CommaListParser
      *
      * Sized against the largest vendor caps in the evidence (Reddit Ads allows 200 IDs, Zendesk
      * 100) while staying well inside a URL length budget for integer IDs.
+     *
+     * @var int
      */
     public const MAX_ITEMS = 100;
 

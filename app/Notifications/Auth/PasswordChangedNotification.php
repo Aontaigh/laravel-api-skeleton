@@ -39,16 +39,25 @@ final class PasswordChangedNotification extends Notification implements ShouldQu
 
     /**
      * Number of times the notification may be attempted before failing.
+     *
+     * Three attempts cover a transient mail-transport failure; the caller treats dispatch as best-effort,
+     * so a permanent failure is logged rather than surfaced to the user.
      */
     public int $tries = 3;
 
     /**
      * Seconds the notification may run before timing out.
+     *
+     * Rendering one security alert and handing it to the transport should complete well before thirty
+     * seconds, even when the mail queue is busy.
      */
     public int $timeout = 30;
 
     /**
      * When the password change succeeded, fixed at dispatch.
+     *
+     * The value is captured in the constructor and reused by the mail template, so the timestamp in the
+     * message matches the moment the change succeeded even if the queue is delayed.
      */
     private readonly Carbon $changedAt;
 

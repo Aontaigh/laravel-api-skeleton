@@ -155,12 +155,15 @@ code loads, so `php scripts/...` on the host is not interchangeable with
 | 7b   | **host**        | `bash scripts/run-shellcheck.sh`                  | ShellCheck over every tracked shell script, `docker/8.5/start-container` included                                    | `Shell Lint Passed`                               |
 | 8    | **host**        | `bash scripts/run-zizmor.sh`                      | GitHub Actions workflow audit, scoped to `.github/workflows/`                                                        | `Zizmor Passed`                                   |
 | 9    | **host**        | `bash scripts/run-actionlint.sh`                  | Workflow syntax (`actionlint`) plus the runner labels in [.github/actionlint.yaml](../.github/actionlint.yaml)       | `Actionlint Passed`                               |
+| 9a   | **host**        | `python3 scripts/lint/lint-runner-labels.py`      | Moving aliases (`ubuntu-latest`) in `runs-on`, including expression fallbacks actionlint cannot evaluate             | `Runner Label Lint Passed`                        |
 | 10   | host            | `npx --yes -p renovate renovate-config-validator` | `renovate.json` schema                                                                                               | Exit 0                                            |
 | 11   | Sail, seeded DB | `./vendor/bin/sail composer verify:openapi`       | Replays every example in [openapi.yaml](openapi.yaml) against a live app                                             | `All OpenAPI Examples Verified`                   |
 | 12   | Sail, seeded DB | `bash scripts/pen-test-auth.sh`                   | Live adversarial HTTP probes (see below)                                                                             | `Fail: 0`                                         |
 
 Steps 7a, 7b, 8, 9 and 10 run on the host because each needs a Docker CLI the app container
-does not have; step 7 runs there for the same reason, as the Semgrep engine is an image.
+does not have; step 7 runs there because its engine is either the pinned image or a matching
+host CLI.
+Step 9a also runs on the host, matching CI's `workflow-lint` job; it needs only Python 3.
 
 Zizmor needs both the pinned image and CI's scope to reproduce CI:
 
@@ -178,7 +181,7 @@ skipped - so a cancelled job fails the build even though nothing was reported as
 `composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
 `verify:php-version`, `verify:php-cve-floor`, `verify:service-parity`, `semgrep`,
 `test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`. It does **not** cover
-Zizmor, `actionlint`, hadolint, ShellCheck, or the Renovate config, and the live pen test
+Zizmor, `actionlint`, the runner-label lint, hadolint, ShellCheck, or the Renovate config, and the live pen test
 (step 12) runs locally only - so it is a pre-flight check rather than a full substitute for
 CI.
 

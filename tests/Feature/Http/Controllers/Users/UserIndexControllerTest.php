@@ -82,10 +82,24 @@ final class UserIndexControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var Team the Team the viewer belongs to */
+    /**
+     * The Team the viewer belongs to.
+     *
+     * Created before the viewer so `for($this->team)` can attach them; the index assertions rely on a
+     * second team existing to prove row scoping.
+     *
+     * @var Team
+     */
     private Team $team;
 
-    /** @var User a `manager` viewer: `users.list` but not `users.list-all` or `users.view-email` */
+    /**
+     * A `manager` viewer: `users.list` but not `users.list-all` or `users.view-email`.
+     *
+     * The restricted role means the index must hide other teams and the email column; created once in
+     * `setUp()` and reused by every case.
+     *
+     * @var User
+     */
     private User $viewer;
 
     /*

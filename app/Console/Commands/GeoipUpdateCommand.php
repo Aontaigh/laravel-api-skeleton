@@ -30,12 +30,18 @@ final class GeoipUpdateCommand extends Command
     /**
      * The name and signature of the console command.
      *
+     * The command takes no arguments or options: the account ID, licence key, and destination all come
+     * from `config/geoip.php` and the environment.
+     *
      * @var string
      */
     protected $signature = 'geoip:update';
 
     /**
      * The console command description.
+     *
+     * The text is shown by `php artisan list` and in the command's `--help` output, so it stays a short
+     * one-line explanation.
      *
      * @var string
      */

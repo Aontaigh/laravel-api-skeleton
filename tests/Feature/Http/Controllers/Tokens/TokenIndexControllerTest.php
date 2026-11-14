@@ -68,7 +68,14 @@ final class TokenIndexControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var User a permissioned viewer with `tokens.list-own` */
+    /**
+     * A permissioned viewer with `tokens.list-own`.
+     *
+     * The viewer holds only the own-tokens permission, so the index must scope rows to their own tokens;
+     * created once in `setUp()` and reused by every case.
+     *
+     * @var User
+     */
     private User $viewer;
 
     /*

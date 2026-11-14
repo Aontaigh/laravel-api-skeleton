@@ -27,12 +27,18 @@ final class RecordSystemHealthCommand extends Command
     /**
      * The name and signature of the console command.
      *
+     * The command takes no arguments or options; the registry decides which components run, and every
+     * result in a run shares one UTC timestamp.
+     *
      * @var string
      */
     protected $signature = 'health:record';
 
     /**
      * The console command description.
+     *
+     * The text is shown by `php artisan list` and in the command's `--help` output; it names the
+     * persistence side effect so scheduled runs are self-explanatory.
      *
      * @var string
      */

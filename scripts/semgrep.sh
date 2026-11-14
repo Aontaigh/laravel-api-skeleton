@@ -3,8 +3,9 @@
 # Static application security testing with Semgrep.
 #
 # Scans PHP, JavaScript/TypeScript, and CI YAML against the community packs plus
-# the repo's own rules, and exits non-zero on any finding. Runs a local Semgrep
-# CLI when present, otherwise the digest-pinned engine image.
+# the repo's own rules, and exits non-zero on any finding. Runs the pinned
+# engine: a local CLI only when it is the pinned release, otherwise the
+# digest-pinned image.
 #
 # Usage:
 #   scripts/semgrep.sh [semgrep args...]
@@ -22,18 +23,38 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd -P)"
 cd "${REPO_ROOT}"
 
-# Pin the engine by digest so CI and laptops run the same Semgrep. Override
-# with SEMGREP_IMAGE when testing a newer engine.
-SEMGREP_IMAGE="${SEMGREP_IMAGE:-semgrep/semgrep@sha256:acaac22ffc7b7cc5926de0751b223bce0b2491c33d18422fa72f632c78d81198}" # 1.177.0
+# Pin the engine by digest so CI and laptops run the same Semgrep. The tag
+# carries the release a local CLI has to match; the digest keeps the image
+# immutable. Override SEMGREP_IMAGE when testing a newer engine.
+SEMGREP_IMAGE="${SEMGREP_IMAGE:-semgrep/semgrep:1.177.0@sha256:acaac22ffc7b7cc5926de0751b223bce0b2491c33d18422fa72f632c78d81198}"
+
+# The release the pin names, derived from the reference rather than repeated,
+# so overriding SEMGREP_IMAGE moves both together. The digest goes first and
+# the tag is everything after the last colon: a registry reference may carry a
+# port (`localhost:5000/team/image:tag`), so the first colon is not the tag
+# separator.
+PINNED_VERSION="${SEMGREP_IMAGE%@*}"
+PINNED_VERSION="${PINNED_VERSION##*:}"
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
 
-# run_semgrep : exec the engine with the assembled ARGS (local CLI, else Docker)
+# run_semgrep : exec the pinned engine (local CLI only when it matches, else Docker)
 run_semgrep() {
     if command -v semgrep >/dev/null 2>&1; then
-        exec semgrep "${ARGS[@]}"
+        local local_version
+        local_version="$(semgrep --version 2>/dev/null | tail -n 1)"
+
+        if [[ "${local_version}" == "${PINNED_VERSION}" ]]; then
+            exec semgrep "${ARGS[@]}"
+        fi
+
+        if ! command -v docker >/dev/null 2>&1; then
+            echo "Semgrep Version Mismatch: local CLI is ${local_version:-unknown}, but the pin is ${PINNED_VERSION}" >&2
+            echo "NOTE: install the pinned release, or install Docker so the digest-pinned image runs it" >&2
+            exit 1
+        fi
     fi
 
     if command -v docker >/dev/null 2>&1; then

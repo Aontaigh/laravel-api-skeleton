@@ -37,7 +37,14 @@ final class ApiSecurityProbeTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var User an Admin viewer for probes that need broad access */
+    /**
+     * An Admin viewer shared by probes that need broad access.
+     *
+     * Created in `setUp()` with the full seeded permission matrix, so each probe can authenticate without
+     * repeating role setup.
+     *
+     * @var User
+     */
     private User $admin;
 
     /*

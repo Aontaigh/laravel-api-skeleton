@@ -24,7 +24,14 @@ final class PermissionAbilityCatalogTest extends UnitTestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * The fixed permission names the catalog resolves in these tests.
+     *
+     * The constructor's resolver closure returns this list, so assertions do not depend on the database or
+     * the seeder; the values mirror real permission strings.
+     *
+     * @var list<string>
+     */
     private const CATALOG_NAMES = [
         'roles.list',
         'tokens.list-own',

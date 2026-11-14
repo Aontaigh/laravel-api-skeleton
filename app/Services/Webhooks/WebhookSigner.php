@@ -19,7 +19,14 @@ final class WebhookSigner
     |--------------------------------------------------------------------------
     */
 
-    /** Signature version prefix framing every signature value. */
+    /**
+     * Signature version prefix framing every signature value.
+     *
+     * Receivers parse the value before the comma to select a verification algorithm, so a future scheme
+     * can ship alongside `v1` without ambiguity.
+     *
+     * @var string
+     */
     public const string VERSION_PREFIX = 'v1';
 
     /*

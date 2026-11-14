@@ -20,7 +20,14 @@ final class SystemHealthCheckFactory extends Factory
     |--------------------------------------------------------------------------
     */
 
-    /** @var class-string<SystemHealthCheck> */
+    /**
+     * The model class this factory creates.
+     *
+     * Laravel uses the class-string to instantiate records and resolve the factory's model, so it must
+     * stay in sync with `definition()`.
+     *
+     * @var class-string<SystemHealthCheck>
+     */
     protected $model = SystemHealthCheck::class;
 
     /*

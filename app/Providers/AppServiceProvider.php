@@ -60,11 +60,8 @@ final class AppServiceProvider extends ServiceProvider
      * Kept short so a slow HIBP endpoint cannot stall registration or
      * password reset; the verifier treats an unreachable HIBP as
      * "not compromised" either way.
-    /**
-     * Seconds to wait for HaveIBeenPwned before the HTTP client gives up.
-     * Kept short so a slow HIBP endpoint cannot stall registration or
-     * password reset; the verifier treats an unreachable HIBP as
-     * "not compromised" either way.
+     *
+     * @var int
      */
     private const int UNCOMPROMISED_TIMEOUT_SECONDS = 3;
 

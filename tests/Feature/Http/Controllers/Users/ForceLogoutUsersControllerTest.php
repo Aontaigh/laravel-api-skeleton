@@ -57,7 +57,14 @@ final class ForceLogoutUsersControllerTest extends TestCase
      * --------------
      */
 
-    /** @var User an admin viewer with `users.force-logout` */
+    /**
+     * An admin viewer with `users.force-logout`.
+     *
+     * Created in `setUp()` with the Admin role and a fixed email, so audit assertions can identify the
+     * actor without guessing at factory output.
+     *
+     * @var User
+     */
     private User $admin;
 
     /*

@@ -20,7 +20,14 @@ final class WebSessionFactory extends Factory
     |--------------------------------------------------------------------------
     */
 
-    /** @var class-string<WebSession> */
+    /**
+     * The model class this factory creates.
+     *
+     * Laravel uses the class-string to instantiate records and resolve the factory's model, so it must
+     * stay in sync with `definition()`.
+     *
+     * @var class-string<WebSession>
+     */
     protected $model = WebSession::class;
 
     /*

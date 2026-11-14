@@ -32,11 +32,17 @@ final class DispatchWebhookDeliveries implements ShouldQueue
 
     /**
      * The number of times the queued listener may be attempted.
+     *
+     * Three attempts cover a transient database failure during the fan-out; a permanent failure lands in
+     * the failed-jobs table for inspection rather than being retried forever.
      */
     public int $tries = 3;
 
     /**
      * The number of seconds the queued listener may run before timing out.
+     *
+     * The fan-out selects active endpoints and inserts one row each, so thirty seconds bounds a slow
+     * database while staying well above the expected work.
      */
     public int $timeout = 30;
 

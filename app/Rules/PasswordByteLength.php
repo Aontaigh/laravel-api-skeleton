@@ -33,6 +33,8 @@ final class PasswordByteLength implements ValidationRule
      *
      * bcrypt ignores everything past this boundary, so a longer password is not
      * a stronger secret - it is a prefix collision.
+     *
+     * @var int
      */
     public const int MAX_BYTES = 72;
 

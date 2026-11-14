@@ -22,25 +22,74 @@ final class PendingTwoFactor
     |--------------------------------------------------------------------------
     */
 
-    /** Session key holding the pending challenge's User ID. */
+    /**
+     * Session key holding the pending challenge's User ID.
+     *
+     * `begin()` writes the authenticated User's ID here and `resolve()` reads it back; the
+     * `auth.two_factor.` namespace keeps the key from colliding with unrelated session state.
+     *
+     * @var string
+     */
     public const string USER_ID_KEY = 'auth.two_factor.user_id';
 
-    /** Session key holding whether remember-me was requested at login. */
+    /**
+     * Session key holding whether remember-me was requested at login.
+     *
+     * The value is captured at login and replayed when the challenge succeeds, so a remember-me choice
+     * cannot be lost while the user fetches a code.
+     *
+     * @var string
+     */
     public const string REMEMBER_KEY = 'auth.two_factor.remember';
 
-    /** Session key holding the opaque token returned to stateless clients. */
+    /**
+     * Session key holding the opaque token returned to stateless clients.
+     *
+     * Stateless clients echo this token on send, verify, and status requests; session clients use it to
+     * keep the session token aligned with the cache entry.
+     *
+     * @var string
+     */
     public const string TOKEN_KEY = 'auth.two_factor.token';
 
-    /** Session key holding the device label submitted at login/register. */
+    /**
+     * Session key holding the device label submitted at login/register.
+     *
+     * The label is optional, so the key is only written when the caller supplied one; the success path
+     * reuses it when registering the Web Session.
+     *
+     * @var string
+     */
     public const string DEVICE_NAME_KEY = 'auth.two_factor.device_name';
 
-    /** Session key holding when the pending challenge expires. */
+    /**
+     * Session key holding when the pending challenge expires.
+     *
+     * `resolve()` compares this timestamp with the current time and discards an expired challenge, so a
+     * session cannot outlive the configured pending TTL.
+     *
+     * @var string
+     */
     public const string EXPIRES_AT_KEY = 'auth.two_factor.expires_at';
 
-    /** Cache key prefix for pending challenge payloads keyed by opaque token. */
+    /**
+     * Cache key prefix for pending challenge payloads keyed by opaque token.
+     *
+     * `begin()` stores the payload under this prefix plus the token; the cache TTL matches the pending
+     * window so the cache and session expiry cannot drift.
+     *
+     * @var string
+     */
     public const string PENDING_CACHE_PREFIX = 'two-factor-pending:';
 
-    /** Cache key prefix mapping a User ID to their current opaque pending token. */
+    /**
+     * Cache key prefix mapping a User ID to their current opaque pending token.
+     *
+     * The mapping lets a second login invalidate the previous token before issuing a new one, so only the
+     * latest challenge can be verified.
+     *
+     * @var string
+     */
     public const string PENDING_USER_PREFIX = 'two-factor-pending-user:';
 
     /*

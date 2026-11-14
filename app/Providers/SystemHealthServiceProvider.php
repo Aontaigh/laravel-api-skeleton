@@ -26,7 +26,14 @@ final class SystemHealthServiceProvider extends ServiceProvider
     |--------------------------------------------------------------------------
     */
 
-    /** The container tag every SystemHealthCheck implementation is registered under. */
+    /**
+     * The container tag every SystemHealthCheck implementation is registered under.
+     *
+     * `SystemHealthCheckRegistry` resolves every service under this tag, so adding a check is a tag entry
+     * plus its binding rather than an edit to a central registry list.
+     *
+     * @var string
+     */
     public const string CHECKS_TAG = 'system-health.checks';
 
     /*

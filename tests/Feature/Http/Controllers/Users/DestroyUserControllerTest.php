@@ -46,13 +46,33 @@ final class DestroyUserControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var Team the Team the manager viewer belongs to */
+    /**
+     * The Team shared by the manager and target member.
+     *
+     * Created first so the manager and target member can be attached with `for($this->team)`, which is
+     * what makes the cross-team policy assertions meaningful.
+     *
+     * @var Team
+     */
     private Team $team;
 
-    /** @var User a manager viewer with `users.delete` */
+    /**
+     * A manager viewer with `users.delete`.
+     *
+     * Holds the permission through the manager role; the tests use it as the authorised actor and a second
+     * team to prove scope enforcement.
+     *
+     * @var User
+     */
     private User $manager;
 
-    /** @var User a User on the manager's Team */
+    /**
+     * A User on the manager's Team.
+     *
+     * Used as the deletion target so the happy path and the cross-team denial exercise the same fixture.
+     *
+     * @var User
+     */
     private User $teamMember;
 
     /*

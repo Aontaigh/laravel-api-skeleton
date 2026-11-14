@@ -39,7 +39,14 @@ final class SystemHealthCheck extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes a health probe may persist.
+     *
+     * The recorder sets the component, result, and checked-at timestamp; the key and Eloquent timestamps
+     * stay framework-managed, so a probe cannot rewrite when a row was created.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'component',
         'status',

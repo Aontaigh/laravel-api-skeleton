@@ -35,7 +35,14 @@ final class CommaListRule implements ValidationRule
     |--------------------------------------------------------------------------
     */
 
-    /** The flat key each part is validated under, so a dotted attribute name cannot nest. */
+    /**
+     * The flat key each part is validated under, so a dotted attribute name cannot nest.
+     *
+     * Laravel resolves a dotted key as a nested path, so validating `filter.status` directly would look
+     * for a nested array and silently pass; a flat synthetic key makes the inner rule see the part itself.
+     *
+     * @var string
+     */
     private const PART_KEY = 'value';
 
     /*

@@ -32,7 +32,14 @@ final class SystemStatusController
     |--------------------------------------------------------------------------
     */
 
-    /** History window when the caller omits `days`. */
+    /**
+     * History window when the caller omits `days`.
+     *
+     * Ninety days covers a quarter of uptime history in one response; the request validates `days` against
+     * its own bounds, so this value is only the fallback when the parameter is absent.
+     *
+     * @var int
+     */
     private const int DEFAULT_DAYS = 90;
 
     /*

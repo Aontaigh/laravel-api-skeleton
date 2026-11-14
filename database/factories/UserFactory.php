@@ -24,7 +24,14 @@ final class UserFactory extends Factory
     |--------------------------------------------------------------------------
     */
 
-    /** @var string|null the current password being used by the factory */
+    /**
+     * Cached hash shared by every User this factory creates.
+     *
+     * Hashing is deliberately done once per process: the fixture's plaintext is the literal `password`,
+     * and reusing the hash keeps large factory runs fast.
+     *
+     * @var string|null
+     */
     protected static ?string $password = null;
 
     /*

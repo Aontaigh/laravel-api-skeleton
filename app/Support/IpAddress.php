@@ -34,11 +34,21 @@ final class IpAddress
 
     /**
      * Length of an IPv6 address in its packed binary form.
+     *
+     * `inet_pton()` returns the address as sixteen raw bytes, so masking and offset arithmetic are
+     * expressed against this length rather than magic numbers.
+     *
+     * @var int
      */
     private const int IPV6_BYTES = 16;
 
     /**
      * Bytes of prefix kept by the `/64` mask; the remaining bytes are zeroed.
+     *
+     * A `/64` keeps the first eight bytes and zeroes the rest, which is the subscriber boundary the rate
+     * limiter buckets on.
+     *
+     * @var int
      */
     private const int NETWORK_PREFIX_BYTES = 8;
 
@@ -46,11 +56,18 @@ final class IpAddress
      * Binary prefix of an IPv4-mapped IPv6 address (`::ffff:0:0/96`).
      *
      * Standard: [RFC 4291 section 2.5.5.1](https://www.rfc-editor.org/rfc/rfc4291#section-2.5.5.1).
+     *
+     * @var string
      */
     private const string IPV4_MAPPED_PREFIX = "\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\xff\xff";
 
     /**
      * Byte offset of the embedded IPv4 address inside an IPv4-mapped IPv6 address.
+     *
+     * Unwrapping the last four bytes recovers the real IPv4 caller, so IPv4-mapped requests do not all
+     * collapse into the `::/64` bucket.
+     *
+     * @var int
      */
     private const int IPV4_MAPPED_OFFSET = 12;
 

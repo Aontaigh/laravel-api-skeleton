@@ -49,7 +49,15 @@ final class AuthAuditLog extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes the audit writer may persist.
+     *
+     * Every column that records what happened is assignable so one event can be written in a single
+     * `create()`; the primary key and timestamps stay framework-managed, and no update path is exposed
+     * because audit rows are append-only.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'user_id',
         'actor_user_id',

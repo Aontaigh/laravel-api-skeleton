@@ -22,6 +22,8 @@ final class AuthAuditLogPolicy
      * A constant rather than an inline literal so the permission is greppable outward from the
      * Policy: the seeder, the tests, and the docs all name the same string, and a rename cannot
      * leave one of them behind.
+     *
+     * @var string
      */
     public const LIST_PERMISSION = 'audit-logs.list';
 

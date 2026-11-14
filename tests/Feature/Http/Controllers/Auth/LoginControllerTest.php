@@ -542,9 +542,10 @@ final class LoginControllerTest extends TestCase
         config(['api.password_max_length' => 32]);
 
         $existingPassword = 'Str0ng&VeryLongPassphrase#2026Extra';
+        $cap = config()->integer('api.password_max_length');
 
         $this->assertGreaterThan(
-            32,
+            $cap,
             strlen($existingPassword),
             'The fixture password must exceed the lowered cap for this test to mean anything',
         );

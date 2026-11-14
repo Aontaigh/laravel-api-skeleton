@@ -21,11 +21,17 @@ final class SendTwoFactorCodeNotification implements ShouldQueue
 
     /**
      * The number of times the queued listener may be attempted.
+     *
+     * Three attempts cover a transient mail-transport failure; after that the failure is recorded rather
+     * than retried indefinitely.
      */
     public int $tries = 3;
 
     /**
      * The number of seconds the queued listener may run before timing out.
+     *
+     * Rendering and handing one mail message to the transport should take well under thirty seconds; the
+     * cap protects the worker from a stuck transport.
      */
     public int $timeout = 30;
 

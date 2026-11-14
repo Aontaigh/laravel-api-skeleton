@@ -30,7 +30,11 @@ function keys_shape(mixed $object): mixed
 {
     if (is_array($object)) {
         if (array_is_list($object)) {
-            return $object === [] ? [] : [keys_shape($object[0])];
+            /*
+             * Keep every list item's shape so shapes_compatible can reject a
+             * response where only index 0 matches the documented item.
+             */
+            return array_map(keys_shape(...), $object);
         }
 
         $shape = [];
@@ -47,10 +51,63 @@ function keys_shape(mixed $object): mixed
     return get_debug_type($object);
 }
 
+/**
+ * Whether two key shapes are compatible.
+ *
+ * List shapes compare every actual item against the documented (first)
+ * expected item shape - a valid first row must not hide a broken later row.
+ * Leaves compare exactly, so a documented `null` only matches `null`.
+ *
+ * @param  mixed $expectedShape keys_shape() of the OpenAPI example
+ * @param  mixed $actualShape   keys_shape() of the live response
+ * @return bool  true when shapes align
+ */
+function shapes_compatible(mixed $expectedShape, mixed $actualShape): bool
+{
+    if (! is_array($expectedShape) || ! is_array($actualShape)) {
+        return $expectedShape === $actualShape;
+    }
+
+    $expectedIsList = array_is_list($expectedShape);
+    $actualIsList = array_is_list($actualShape);
+
+    if ($expectedIsList !== $actualIsList) {
+        return false;
+    }
+
+    if ($expectedIsList) {
+        if ($expectedShape === [] || $actualShape === []) {
+            return $expectedShape === $actualShape;
+        }
+
+        $expectedItem = $expectedShape[0];
+
+        foreach ($actualShape as $actualItemShape) {
+            if (! shapes_compatible($expectedItem, $actualItemShape)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    if (array_keys($expectedShape) !== array_keys($actualShape)) {
+        return false;
+    }
+
+    foreach ($expectedShape as $key => $expectedValue) {
+        if (! shapes_compatible($expectedValue, $actualShape[$key])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /** @var list<string> $errors */
 $errors = [];
 
-if (keys_shape($expected) !== keys_shape($actual)) {
+if (! shapes_compatible(keys_shape($expected), keys_shape($actual))) {
     $errors[] = 'Envelope Shape Mismatch'
         ."\n  expected: ".json_encode(keys_shape($expected), JSON_THROW_ON_ERROR)
         ."\n  actual:   ".json_encode(keys_shape($actual), JSON_THROW_ON_ERROR);

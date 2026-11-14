@@ -34,7 +34,14 @@ final class Team extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes that may be mass-assigned for a Team.
+     *
+     * `name` is the only user-editable column; the key and timestamps stay framework-managed, so a crafted
+     * request cannot rewrite them.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'name',
     ];

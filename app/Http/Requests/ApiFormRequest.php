@@ -22,7 +22,14 @@ abstract class ApiFormRequest extends FormRequest
     |--------------------------------------------------------------------------
     */
 
-    /** @var array<string, list<string>> */
+    /**
+     * Allow-list hints collected for the current validation failure.
+     *
+     * Subclasses record the accepted values for each rejected filter so `failedValidation()` can include
+     * them in the `422` envelope; the array is request-scoped with the FormRequest instance.
+     *
+     * @var array<string, list<string>>
+     */
     private array $allowListHints = [];
 
     /*

@@ -49,7 +49,14 @@ final class WebhookDelivery extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes the dispatcher and delivery job may persist.
+     *
+     * The dispatcher creates the row from these fields and the job mutates `status`, `attempts`,
+     * `next_retry_at`, `last_status_code`, `last_error`, and `delivered_at` in place as retries progress.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'uuid',
         'webhook_endpoint_id',

@@ -88,6 +88,8 @@ a maximum size of data on all incoming parameters and payloads, such as maximum 
      * Truncation is never an option here: silently dropping the tail of a fieldset produces a
      * response that looks complete but is not, so an oversized value is rejected instead.
      *
+     * @var int
+     *
      * @see self::fieldsQueryParamRules() for the same bound on `fields[…]`
      */
     private const MAX_RAW_LENGTH = 255;

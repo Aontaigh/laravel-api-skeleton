@@ -34,6 +34,8 @@ final class DateBoundaryParser
      * validates but binds midnight silently excludes the whole day the caller
      * named. The pattern anchors with `\z`, not `$`, which PCRE also matches
      * before a final newline.
+     *
+     * @var string
      */
     private const BARE_DATE_PATTERN = '/^\d{4}-\d{1,2}-\d{1,2}\z/';
 

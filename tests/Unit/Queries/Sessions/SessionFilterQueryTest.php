@@ -30,7 +30,14 @@ final class SessionFilterQueryTest extends UnitTestCase
     |--------------------------------------------------------------------------
     */
 
-    /** The authenticated viewer's ID. */
+    /**
+     * The authenticated viewer's ID.
+     *
+     * The query scopes rows to this ID and assertions compare the bound value against it; a distinctive
+     * number makes an accidental `0` or `null` binding obvious.
+     *
+     * @var int
+     */
     private const VIEWER_ID = 42;
 
     /*

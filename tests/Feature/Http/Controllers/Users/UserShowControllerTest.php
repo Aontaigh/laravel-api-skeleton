@@ -53,13 +53,33 @@ final class UserShowControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var Team the Team the viewer belongs to */
+    /**
+     * The Team the viewer and the target member belong to.
+     *
+     * Created first so both Users can be attached with `for($this->team)`, letting the show assertions
+     * distinguish in-team access from cross-team denial.
+     *
+     * @var Team
+     */
     private Team $team;
 
-    /** @var User a `manager` viewer: `users.list` but not `users.list-all` or `users.view-email` */
+    /**
+     * A `manager` viewer: `users.list` but not `users.list-all` or `users.view-email`.
+     *
+     * The restricted role means the show response must omit the email column; created once in `setUp()`
+     * and reused by every case.
+     *
+     * @var User
+     */
     private User $viewer;
 
-    /** @var User a User on the viewer's Team */
+    /**
+     * A User on the viewer's Team.
+     *
+     * Used as the show target so the happy path and the cross-team denial exercise the same fixture.
+     *
+     * @var User
+     */
     private User $teamMember;
 
     /*

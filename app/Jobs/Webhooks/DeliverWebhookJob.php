@@ -44,7 +44,14 @@ final class DeliverWebhookJob implements ShouldQueue
     |--------------------------------------------------------------------------
     */
 
-    /** Longest backoff between attempts, in seconds (one hour). */
+    /**
+     * Longest backoff between attempts, in seconds (one hour).
+     *
+     * Backoff doubles per attempt up to this ceiling, so a receiver that is down for hours is retried at a
+     * steady hourly rate rather than at an unbounded interval.
+     *
+     * @var int
+     */
     private const int MAX_BACKOFF_SECONDS = 3600;
 
     /*
@@ -63,6 +70,9 @@ final class DeliverWebhookJob implements ShouldQueue
 
     /**
      * The number of seconds the job may run before timing out.
+     *
+     * A single HTTP send has no useful reason to run longer; capping it frees the worker for other
+     * deliveries and keeps a hung receiver from occupying the queue.
      */
     public int $timeout = 30;
 

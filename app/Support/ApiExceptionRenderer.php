@@ -36,6 +36,8 @@ final class ApiExceptionRenderer
      * fixed by [RFC 6749 section 5.2](https://www.rfc-editor.org/rfc/rfc6749#section-5.2) rather
      * than by house style. Scoping the exception to a single path keeps every other endpoint on
      * `{status, status_code, message, data, meta}`.
+     *
+     * @var string
      */
     private const OAUTH_TOKEN_PATH = 'api/oauth/token';
 

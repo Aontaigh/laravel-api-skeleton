@@ -42,7 +42,14 @@ final class WebSession extends Model
     |--------------------------------------------------------------------------
     */
 
-    /** @var list<string> */
+    /**
+     * Attributes the session tracker may persist.
+     *
+     * Login and activity-touch paths write these fields directly; `session_id` is the Laravel session
+     * identifier used to match the current cookie, so framework-managed keys stay out.
+     *
+     * @var list<string>
+     */
     protected $fillable = [
         'user_id',
         'session_id',

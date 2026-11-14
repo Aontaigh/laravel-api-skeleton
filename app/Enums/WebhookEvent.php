@@ -40,12 +40,8 @@ enum WebhookEvent: string
      * target one endpoint directly), but delivery rows carry it, so filters
      * and the OpenAPI contract accept the value wherever an event identifier
      * is filtered or documented.
-    /**
-     * Synthetic event for test pings.
-     * Outside the `cases()` catalog on purpose: nobody subscribes to it (pings
-     * target one endpoint directly), but delivery rows carry it, so filters
-     * and the OpenAPI contract accept the value wherever an event identifier
-     * is filtered or documented.
+     *
+     * @var string
      */
     public const string PING = 'webhook.ping';
 

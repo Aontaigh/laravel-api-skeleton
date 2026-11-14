@@ -59,7 +59,14 @@ final class ResetPasswordControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var User the User recovering via the reset link */
+    /**
+     * The User recovering through the reset link.
+     *
+     * Created per test with a known old password so assertions can prove the reset rotated it and left the
+     * account otherwise intact.
+     *
+     * @var User
+     */
     private User $user;
 
     /*

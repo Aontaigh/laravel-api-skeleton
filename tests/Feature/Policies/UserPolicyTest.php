@@ -33,7 +33,14 @@ final class UserPolicyTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var UserPolicy the policy under test */
+    /**
+     * The policy instance under test.
+     *
+     * Constructed once in `setUp()` after the permission matrix is seeded, so every test method exercises
+     * the same policy object against a fresh database.
+     *
+     * @var UserPolicy
+     */
     private UserPolicy $policy;
 
     /*

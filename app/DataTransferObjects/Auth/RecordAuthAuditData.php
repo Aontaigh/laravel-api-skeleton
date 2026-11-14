@@ -23,19 +23,20 @@ final readonly class RecordAuthAuditData
     /**
      * Create a new RecordAuthAuditData value object.
      *
-     * @param AuthAuditEvent $event                 the authentication event type
-     * @param AuditOutcome   $outcome               the activity outcome: succeeded, failed, or refused
-     * @param int|null       $userId                the affected User ID when known (session owner, suspended account)
-     * @param int|null       $actorUserId           the authenticated actor performing a privileged action when they differ
-     * @param string|null    $email                 the email address attempted or used
-     * @param string|null    $ipAddress             the client IP address
-     * @param string|null    $userAgent             the client user agent
-     * @param int|null       $personalAccessTokenId the issued Sanctum token ID when applicable
-     * @param int|null       $apiClientId           the API client ID for client-credentials exchange
-     * @param bool           $rememberMe            whether remember-me was requested
-     * @param string|null    $locationCity          the city resolved from the IP at persist time
-     * @param string|null    $locationCountry       the ISO 3166-1 alpha-2 country resolved at persist time
-     * @param string|null    $requestId             the request correlation ID for joining logs and responses
+     * @param AuthAuditEvent                 $event                     the authentication event type
+     * @param AuditOutcome                   $outcome                   the activity outcome: succeeded, failed, or refused
+     * @param ClientIneligibilityReason|null $clientIneligibilityReason the rule a client-credentials exchange failed, when the refusal was not a plain credential mismatch
+     * @param int|null                       $userId                    the affected User ID when known (session owner, suspended account)
+     * @param int|null                       $actorUserId               the authenticated actor performing a privileged action when they differ
+     * @param string|null                    $email                     the email address attempted or used
+     * @param string|null                    $ipAddress                 the client IP address
+     * @param string|null                    $userAgent                 the client user agent
+     * @param int|null                       $personalAccessTokenId     the issued Sanctum token ID when applicable
+     * @param int|null                       $apiClientId               the API client ID for client-credentials exchange
+     * @param bool                           $rememberMe                whether remember-me was requested
+     * @param string|null                    $locationCity              the city resolved from the IP at persist time
+     * @param string|null                    $locationCountry           the ISO 3166-1 alpha-2 country resolved at persist time
+     * @param string|null                    $requestId                 the request correlation ID for joining logs and responses
      */
     public function __construct(
         public AuthAuditEvent $event,

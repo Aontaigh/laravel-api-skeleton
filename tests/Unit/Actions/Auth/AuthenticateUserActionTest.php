@@ -32,6 +32,8 @@ final class AuthenticateUserActionTest extends UnitTestCase
      * The literal is a bcrypt string, but the value here is arbitrary: it only
      * exists so Mockery can assert the exact argument Hash::check() receives.
      * It does not need to match the configured argon2id driver.
+     *
+     * @var string
      */
     private const TIMING_NORMALISATION_HASH = '$2y$04$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi';
 

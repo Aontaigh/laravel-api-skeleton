@@ -25,7 +25,14 @@ final class PermissionAbilityCatalog
     |--------------------------------------------------------------------------
     */
 
-    /** Ability value that grants every permission Sanctum checks for. */
+    /**
+     * Ability value that grants every permission Sanctum checks for.
+     *
+     * Sanctum treats `*` as matching every ability check, so the catalog accepts it as a deliberate
+     * unrestricted grant instead of trying to resolve it as a permission name.
+     *
+     * @var string
+     */
     private const WILDCARD_ABILITY = '*';
 
     /*

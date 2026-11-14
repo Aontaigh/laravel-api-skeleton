@@ -47,16 +47,31 @@ final class TrustedProxies
 
     /**
      * Environment variable holding the explicit override list.
+     *
+     * It is read with `getenv()` before the container boots, so it must be exported into the process
+     * rather than placed only in `.env`.
+     *
+     * @var string
      */
     private const string OVERRIDE_VARIABLE = 'TRUSTED_PROXIES';
 
     /**
      * Prefix of the per-environment default variable, e.g. `TRUSTED_PROXIES_PRODUCTION`.
+     *
+     * The environment name is upper-cased and non-alphanumerics become underscores, so `staging-eu`
+     * resolves `TRUSTED_PROXIES_STAGING_EU`.
+     *
+     * @var string
      */
     private const string DEFAULT_PREFIX = 'TRUSTED_PROXIES_';
 
     /**
      * Environments that are directly exposed and must trust nothing by default.
+     *
+     * `local` and `testing` are reached directly, so trusting a forwarded header there would let any
+     * caller spoof its address; every other environment must opt in explicitly.
+     *
+     * @var list<string>
      */
     private const array UNTRUSTED_ENVIRONMENTS = ['local', 'testing'];
 

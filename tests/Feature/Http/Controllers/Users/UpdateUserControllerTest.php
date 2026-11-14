@@ -52,13 +52,33 @@ final class UpdateUserControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
-    /** @var Team the Team the manager viewer belongs to */
+    /**
+     * The Team shared by the manager and target member.
+     *
+     * Created first so the manager and target member can be attached with `for($this->team)`, which is
+     * what makes the team-scoped update assertions meaningful.
+     *
+     * @var Team
+     */
     private Team $team;
 
-    /** @var User a manager viewer with `users.update` */
+    /**
+     * A manager viewer with `users.update`.
+     *
+     * Holds the permission through the manager role; the tests use it as the authorised actor and a second
+     * team to prove scope enforcement.
+     *
+     * @var User
+     */
     private User $manager;
 
-    /** @var User a User on the manager's Team */
+    /**
+     * A User on the manager's Team.
+     *
+     * Used as the update target so the happy path and the cross-team denial exercise the same fixture.
+     *
+     * @var User
+     */
     private User $teamMember;
 
     /*

@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-11-14
+
+### Added
+
+- **Workflow Runner Labels Are Gated:** `scripts/lint/lint-runner-labels.py` fails a workflow
+  that names a moving GitHub-hosted alias (`ubuntu-latest`, `macos-latest`) directly, in a
+  `runs-on` sequence or mapping, or as the `||` fallback inside an expression - forms
+  `actionlint` accepts or cannot statically evaluate. The `workflow-lint` job runs it, so a
+  repository that resolves its runner from `${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}`
+  cannot quietly ship the moving fallback the variable was meant to remove. README and
+  `docs/testing.md` carry the local command (step 9a)
+- **Environment Parity Covers Duplicates and Shadowed Defaults:** `EnvExampleParityTest` now
+  fails when `.env.example` or `.env.ci` declares one key on two lines, because dotenv keeps
+  the last declaration and turns an edit to the first into a silent no-op, and when an empty
+  declaration (`KEY=`, `KEY=""`, or the reserved `empty` / `(empty)`) hides a non-empty
+  `env()` default. The reader handles quotes, inline comments, and nested defaults, so a
+  closure or array default is compared whole
+
+### Changed
+
+- **Semgrep Pins the Release, Not Only the Digest:** `scripts/semgrep.sh` tags the engine image
+  `1.177.0` beside its digest and derives the release from that reference. A host CLI runs only
+  when it is that release; a newer `brew` install falls back to the digest-pinned image instead
+  of scanning with a different rule set, and a mismatched CLI with no Docker fails with both
+  versions named
+- **OpenAPI Examples Check Every List Row:** `scripts/openapi-compare-envelope.php` kept only
+  the first list item's shape, so a valid first row hid a later row with a missing or mistyped
+  field. It now keeps every actual item's shape and compares each against the documented item,
+  while leaves still compare exactly - a documented `null` does not match a concrete value
+- **Dependencies Refreshed:** `composer update --with-all-dependencies` moved 96 packages
+  within the existing constraints - `laravel/framework` 13.38.0 to 13.42.0, Symfony 8.1.9 to
+  8.1.11, PHPUnit 13.4.3 to 13.4.7, Larastan 3.13.2 to 3.15.0, and
+  `spatie/laravel-permission` 8.3.2 to 8.5.0 among them - and dropped `theseer/tokenizer`,
+  which PHPUnit's coverage package no longer requires. No major-version jump or `composer.json`
+  constraint change is included
+- **Class Member Docblocks Completed:** 91 application, test, factory, and seeder files gained
+  193 `@var` tags on constants and properties plus 27 missing `@param` / `@return` descriptions
+  the structure convention requires, and 14 malformed nested `/**` blocks that had accumulated
+  inside existing docblocks were repaired. Comment-only: the executable token stream of every
+  file is unchanged
+- **APP_VERSION Placeholders Caught Up:** the commented overrides in `.env.example` and
+  `.env.ci` still named 3.4.0 through the v3.5.0 release; both now track 3.5.1
+
+### Fixed
+
+- **Composer Audit Is Clean Again:** the lock carried 10 advisories across 7 packages -
+  `laravel/framework`, `phpunit/phpunit`, and five Symfony components - and
+  `composer audit --locked` failed the release. The refresh above clears every one; the gate
+  now reports no security vulnerability advisories
+- **Level 10 Survives the Upgraded Rules:** the newer PHPStan/PHPUnit releases surfaced two
+  test-only type findings: a fixture-length guard compared two literals PHPStan could prove
+  always true, and `VerifyEmailNotificationTest` read Laravel 13.42's now-nullable
+  `MailMessage::$actionUrl` without narrowing it. The guard reads the configured cap and the
+  test narrows the URL, so neither finding is suppressed
+
 ## [3.5.0] - 2026-10-25
 
 ### Added
@@ -1050,7 +1105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.1...HEAD
+[3.5.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.3...v3.4.0
 [3.3.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.2...v3.3.3

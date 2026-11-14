@@ -18,7 +18,14 @@ final readonly class SystemHealthCheckResult
     |--------------------------------------------------------------------------
     */
 
-    /** Maximum characters persisted for a message, matching the `message` column. */
+    /**
+     * Maximum characters persisted for a message, matching the `message` column.
+     *
+     * The constructor truncates with `mb_substr()` at this boundary, so a verbose upstream diagnostic
+     * cannot overflow the column or push past the public status endpoint's payload budget.
+     *
+     * @var int
+     */
     public const int MAX_MESSAGE_LENGTH = 255;
 
     /*

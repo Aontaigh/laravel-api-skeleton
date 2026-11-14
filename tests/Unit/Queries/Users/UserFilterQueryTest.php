@@ -28,7 +28,14 @@ final class UserFilterQueryTest extends UnitTestCase
     |--------------------------------------------------------------------------
     */
 
-    /** Team the non-admin viewer belongs to. */
+    /**
+     * Team the non-admin viewer belongs to.
+     *
+     * The viewer is built with this `team_id` and the query's team filter must bind the same value; a
+     * distinctive number keeps it distinguishable from other IDs in the where list.
+     *
+     * @var int
+     */
     private const VIEWER_TEAM_ID = 7;
 
     /*

@@ -918,6 +918,7 @@ image the app container cannot reach:
 ```bash
 bash scripts/run-hadolint.sh   # Dockerfile lint, exceptions named in .hadolint.yaml
 bash scripts/run-shellcheck.sh # every tracked shell script, the vendored entrypoint included
+python3 scripts/lint/lint-runner-labels.py # workflow runner labels actionlint cannot evaluate
 ```
 
 `composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
@@ -933,20 +934,20 @@ that caveat and the workaround:
 ./vendor/bin/sail composer ci
 ```
 
-It does **not** cover Zizmor, `actionlint`, hadolint, ShellCheck, the Renovate config, or
-the live pen test. Those are separate CI jobs; the live pen test (step 12) runs locally
-only. See [docs/testing.md](docs/testing.md) for the full step list, which of them run on
-the host rather than in Sail, and what each one writes.
+It does **not** cover Zizmor, `actionlint`, the runner-label lint, hadolint, ShellCheck, the
+Renovate config, or the live pen test. Those are separate CI jobs; the live pen test (step 12)
+runs locally only. See [docs/testing.md](docs/testing.md) for the full step list, which of them
+run on the host rather than in Sail, and what each one writes.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, an npm lock check, a Markdown link
 check, a Vite build across the Node lines `engines.node` declares, Larastan, the two version
 gates, PHPUnit with coverage, `composer audit`, OpenAPI example verification, Semgrep, Zizmor,
-`actionlint` with the Renovate config, a Dockerfile lint (hadolint), a shell lint (ShellCheck),
-and a summary gate on every pull request and push to `main`. Require the
-**All Quality Gates** check for branch protection. CI uses
-native PHP 8.5.12 with a MySQL service container - not Sail.
+`actionlint` and the runner-label lint, the Renovate config, a Dockerfile lint (hadolint), a
+shell lint (ShellCheck), and a summary gate on every pull request and push to `main`. Require
+the **All Quality Gates** check for branch protection. CI uses native PHP 8.5.12 with a MySQL
+service container - not Sail.
 
-Run Semgrep locally on the host (Docker or a local CLI - not inside Sail):
+Run Semgrep locally on the host (Docker, or a local CLI at the pinned release - not inside Sail):
 
 ```bash
 bash scripts/semgrep.sh
@@ -971,6 +972,10 @@ fallback keeps forks and fresh clones on a known-good label when the variable is
 The label is pinned deliberately. `ubuntu-latest` moves between LTS releases on a multi-week
 rollout ([actions/runner-images#14748](https://github.com/actions/runner-images/issues/14748)),
 which annotates every job on the run page and changes the image under you without a commit.
+
+`scripts/lint/lint-runner-labels.py` enforces the pin: it fails a workflow that names a
+moving alias (`ubuntu-latest`, `macos-latest`) directly, in a `runs-on` sequence or mapping,
+or as the `||` fallback inside an expression - forms `actionlint` accepts or cannot evaluate.
 
 Two consequences worth knowing:
 

@@ -61,15 +61,17 @@ final class VerifyEmailNotificationTest extends UnitTestCase
         // Act
 
         $mail = (new VerifyEmailNotification)->toMail($user);
+        $actionUrl = $mail->actionUrl;
 
         // Assert
 
+        $this->assertNotNull($actionUrl);
         $this->assertSame('Verify Your E-Mail Address', $mail->subject);
         $this->assertSame('Verify E-Mail Address', $mail->actionText);
-        $this->assertStringContainsString('/api/auth/email/verify/7/', $mail->actionUrl);
-        $this->assertStringContainsString(sha1($user->getEmailForVerification()), $mail->actionUrl);
-        $this->assertStringContainsString('expires=', $mail->actionUrl);
-        $this->assertStringContainsString('signature=', $mail->actionUrl);
+        $this->assertStringContainsString('/api/auth/email/verify/7/', $actionUrl);
+        $this->assertStringContainsString(sha1($user->getEmailForVerification()), $actionUrl);
+        $this->assertStringContainsString('expires=', $actionUrl);
+        $this->assertStringContainsString('signature=', $actionUrl);
     }
 
     /**
