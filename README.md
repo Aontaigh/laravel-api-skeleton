@@ -905,25 +905,32 @@ Run locally (Sail - it is the pinned PHP 8.5.12, whatever the host runs):
 ./vendor/bin/sail composer ci            # the chain below
 ```
 
-The npm lock check runs in the container too, so it reads the lock with the pinned Node:
+The npm checks run in the container too, so they read the lock with the pinned Node:
 
 ```bash
-./vendor/bin/sail npm run lint:npm # package.json and the lock's root engines range agree
+./vendor/bin/sail npm run lint:npm    # package.json and the lock's node + npm engine ranges agree
+./vendor/bin/sail npm run audit:prod  # critical advisories in production npm dependencies
 ```
 
-The two gates that read the vendored runtime - `docker/8.5/Dockerfile` and
+`.npmrc` sets `min-release-age=7`, which needs npm 11.10.0 or newer; `package.json`'s
+`engines.npm` plus `engine-strict=true` make an older npm fail `npm ci` instead of silently
+ignoring the policy.
+
+The gates that read the vendored runtime - `docker/8.5/Dockerfile` and
 `docker/8.5/start-container` - run on the host as well, because each engine is a container
-image the app container cannot reach:
+image (or the Docker CLI itself) the app container cannot reach:
 
 ```bash
 bash scripts/run-hadolint.sh   # Dockerfile lint, exceptions named in .hadolint.yaml
 bash scripts/run-shellcheck.sh # every tracked shell script, the vendored entrypoint included
-python3 scripts/lint/lint-runner-labels.py # workflow runner labels actionlint cannot evaluate
+python3 scripts/lint/lint-runner-labels.py    # workflow runner labels actionlint cannot evaluate
+python3 scripts/lint/check-base-image-refs.py # every FROM / COPY --from is digest-pinned and resolves
 ```
 
 `composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
 `verify:php-version`, `verify:php-cve-floor`, `verify:service-parity`, `semgrep`,
-`test:coverage:check`, `verify:openapi`, `verify:version`, and `composer audit --locked`.
+`test:coverage:check`, `verify:openapi`, `verify:version`, `composer audit --locked`, and
+`audit:npm`.
 It needs a seeded database and a served app, because `verify:openapi` replays every
 documented example against a live instance. It also needs the app on its own database
 whenever the suite shares one - see [Quality Gates](docs/testing.md#quality-gates) for
@@ -935,17 +942,18 @@ that caveat and the workaround:
 ```
 
 It does **not** cover Zizmor, `actionlint`, the runner-label lint, hadolint, ShellCheck, the
-Renovate config, or the live pen test. Those are separate CI jobs; the live pen test (step 12)
-runs locally only. See [docs/testing.md](docs/testing.md) for the full step list, which of them
-run on the host rather than in Sail, and what each one writes.
+base image reference check, the Renovate config, or the live pen test. Those are separate CI
+jobs; the live pen test (step 12) runs locally only. See [docs/testing.md](docs/testing.md) for
+the full step list, which of them run on the host rather than in Sail, and what each one writes.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, an npm lock check, a Markdown link
 check, a Vite build across the Node lines `engines.node` declares, Larastan, the two version
-gates, PHPUnit with coverage, `composer audit`, OpenAPI example verification, Semgrep, Zizmor,
-`actionlint` and the runner-label lint, the Renovate config, a Dockerfile lint (hadolint), a
-shell lint (ShellCheck), and a summary gate on every pull request and push to `main`. Require
-the **All Quality Gates** check for branch protection. CI uses native PHP 8.5.12 with a MySQL
-service container - not Sail.
+gates, PHPUnit with coverage, `composer audit` and a production-only `npm audit`, OpenAPI example
+verification, Semgrep, Zizmor, `actionlint` and the runner-label lint, the Renovate config, a
+Dockerfile lint (hadolint), a base image reference resolution check, a shell lint (ShellCheck),
+and a summary gate on every pull request and push to `main`. Require the **All Quality Gates**
+check for branch protection. CI uses native PHP 8.5.12 with a MySQL service container - not
+Sail.
 
 Run Semgrep locally on the host (Docker, or a local CLI at the pinned release - not inside Sail):
 

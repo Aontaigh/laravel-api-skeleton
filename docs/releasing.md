@@ -110,11 +110,13 @@ scanners on the host:
 ./vendor/bin/sail composer test:coverage:check
 ./vendor/bin/sail composer verify:version
 ./vendor/bin/sail composer audit --locked
+./vendor/bin/sail npm run audit:prod
 ./vendor/bin/sail composer verify:openapi
 
 bash scripts/semgrep.sh
 bash scripts/run-hadolint.sh
 bash scripts/run-shellcheck.sh
+python3 scripts/lint/check-base-image-refs.py
 bash scripts/run-zizmor.sh
 bash scripts/run-actionlint.sh
 ```
@@ -122,8 +124,8 @@ bash scripts/run-actionlint.sh
 Those Sail lines are what `composer ci` chains, minus `semgrep`. `./vendor/bin/sail
 composer ci` cannot stand in for them: `ci` includes `@semgrep`, and `scripts/semgrep.sh`
 needs a local Semgrep CLI or a Docker CLI, neither of which exists inside the app
-container - it exits 1 with `Semgrep Is Not Installed`. The scanner wrappers need that
-same Docker CLI, so all six scanner commands run on the host
+container - it exits 1 with `Semgrep Is Not Installed`. The scanner wrappers and the
+base image probe need that same Docker CLI, so all six host commands run there
 ([testing.md](testing.md) steps 7 to 10). OpenAPI verification replays every documented
 example against a served, seeded app, so seed before running the chain.
 

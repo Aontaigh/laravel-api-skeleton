@@ -15,8 +15,9 @@
 # DL3008 - "Pin versions in apt get install".
 #   Pinning each of the thirty `php8.5-*` and helper packages would mean touching
 #   a version string every time Ubuntu or PHP ships a patch, and would break the
-#   build the day a superseded revision leaves the sury.org repository. Whether
-#   the base image should itself be pinned by digest is a separate decision.
+#   build the day a superseded revision leaves the sury.org repository. The base
+#   image itself is pinned by tag and index digest at the top of the file, and
+#   `scripts/lint/check-base-image-refs.py` resolves it against the registry.
 #
 # DL3016 - "Pin versions in npm".
 #   `npm install -g pnpm bun corepack` is what makes the container track the JS

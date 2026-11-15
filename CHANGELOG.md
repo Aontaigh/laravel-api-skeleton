@@ -7,6 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-11-15
+
+### Added
+
+- **npm's Release-Age Policy Is Enforced, Not Assumed:** `.npmrc` sets
+  `min-release-age=7`, which npm added in 11.10.0; npm 10 ignores the key silently, and the
+  Node 22 matrix leg shipped npm 10.9. `package.json` now declares `engines.npm >=11.10.0`,
+  and `engine-strict=true` turns an older npm into `EBADENGINE` at `npm ci` instead of a
+  policy that was never read. The frontend matrix installs npm 11.19.1 - the version the
+  `.nvmrc` Node and the Sail image bundle - before `npm ci`, and verifies the version
+- **Production npm Advisories Gate the Security Audit:** the `audit` job now runs
+  `npm audit --omit=dev --audit-level=critical` (`npm run audit:prod`) beside
+  `composer audit`, so a critical advisory in a dependency that ships fails CI. Dev-only
+  advisories stay on Dependabot's surface, where an unfixable transitive range cannot block
+  every merge
+- **Base Image References Are Resolved, and the Sail Base Is Pinned:**
+  `docker/8.5/Dockerfile` pins Ubuntu Noble by tag and index digest, following Docker's
+  build best practices and the OSSF Scorecard Pinned-Dependencies check.
+  `scripts/lint/check-base-image-refs.py` requires every `FROM` and `COPY --from=` to carry
+  a digest and resolves it against its registry with `docker buildx imagetools inspect`,
+  retries rate-limited probes as inconclusive, and runs as the new `base-images` CI job.
+  Dependabot's `/docker/8.5` entry refreshes the digest within the tag while leaving the
+  Noble line a deliberate migration
+
+### Changed
+
+- **The npm Lock Check Covers Both Engine Ranges:** `scripts/check-npm-lock.mjs` compares
+  `engines.node` and `engines.npm` between `package.json` and the lock's root metadata, so
+  the new npm floor cannot go stale in `package-lock.json` unnoticed
+
 ## [3.5.1] - 2026-11-14
 
 ### Added
@@ -1106,6 +1136,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
 [Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.1...HEAD
+[3.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.1...v3.6.0
 [3.5.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.0...v3.5.1
 [3.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.4.0...v3.5.0
 [3.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.3...v3.4.0

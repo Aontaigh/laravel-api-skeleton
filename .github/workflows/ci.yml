@@ -6,9 +6,11 @@ name: CI
 #   - Larastan Level 10 + strict + deprecation rules (static analysis)
 #   - PHPUnit + coverage gate (>= 90% line coverage on `app/`)
 #   - composer audit (any advisory in production deps = fail)
+#   - npm audit (critical advisories in production deps = fail)
 #   - Semgrep SAST (PHP, Laravel security, and GitHub Actions rule packs)
 #   - App version sync (composer.json vs OpenAPI; tag on release builds)
 #   - OpenAPI example verification (live responses vs docs/openapi.yaml)
+#   - Base image references (every FROM / COPY --from resolves in its registry)
 #
 # Each gate is its own job so a failure in one (e.g. a Pint nit) does not
 # mask failures in another (e.g. a Larastan regression). All jobs are
@@ -121,7 +123,7 @@ jobs:
             matrix:
                 # The floor `engines.node` declares, plus the LTS and Current
                 # lines, so the support range is verified rather than asserted.
-                # `.nvmrc` keeps local development on the 22 line, and the other
+                # `.nvmrc` keeps local development on the 24 line, and the other
                 # Node jobs read it.
                 node-version: ['22.12.0', '24', '26']
         steps:
@@ -134,6 +136,24 @@ jobs:
               with:
                   node-version: ${{ matrix.node-version }}
                   cache: npm
+
+            - name: Install the Pinned npm
+              # `min-release-age` in `.npmrc` needs npm 11.10.0+ (npm/cli#8965). The Node 22
+              # line still ships npm 10.9, which ignores the key silently, so the install
+              # below would look like it enforced a policy it never read. `engines.npm` plus
+              # `engine-strict=true` makes an older npm fail `npm ci` with EBADENGINE, and
+              # this step supplies the floor before that check. 11.19.1 is the npm bundled
+              # with the `.nvmrc` Node (24.22.1) and the Sail image, so every leg tests the
+              # npm local development runs.
+              # zizmor: ignore[adhoc-packages] intentional toolchain pin: npm 11 for min-release-age support.
+              run: |
+                  npm install npm@11.19.1 --prefix "$RUNNER_TEMP/npm" --no-save
+                  echo "$RUNNER_TEMP/npm/node_modules/.bin" >> "$GITHUB_PATH"
+
+            - name: Verify npm Version
+              run: |
+                  npm --version
+                  test "$(npm --version)" = "11.19.1"
 
             - name: Install Dependencies
               run: npm ci
@@ -259,9 +279,14 @@ jobs:
                   retention-days: 14
 
     # ---------------------------------------------------------------------
-    # Security Audit (composer audit)
+    # Security Audit (composer audit + npm audit)
     #
-    # Fails the job if any advisory is found for a production dependency.
+    # Fails the job if any advisory is found for a production dependency in
+    # either ecosystem. The npm half is scoped with `--omit=dev` because the
+    # dev tree is not what ships; a dev-only advisory surfaces through
+    # Dependabot instead of blocking every merge on an unfixable transitive
+    # range. `--audit-level=critical` is the severity floor npm documents for
+    # `npm audit` and keeps the gate about shipped risk rather than noise.
     # ---------------------------------------------------------------------
     audit:
         name: Security Audit
@@ -290,6 +315,20 @@ jobs:
 
             - name: Run Composer Audit
               run: composer audit --locked --no-ansi
+
+            - name: Setup Node
+              uses: actions/setup-node@v7
+              with:
+                  node-version-file: .nvmrc
+                  cache: npm
+
+            - name: Install JavaScript Dependencies
+              run: npm ci
+
+            - name: Run npm Audit (Production Dependencies Only)
+              # `--omit=dev` audits what ships, and `--audit-level=critical` is the
+              # severity floor in `package.json`'s `audit:prod` script.
+              run: npm run audit:prod
 
     # ---------------------------------------------------------------------
     # OpenAPI Examples (Live Envelope Shape vs docs/openapi.yaml)
@@ -504,6 +543,30 @@ jobs:
               run: bash scripts/run-hadolint.sh
 
     # ---------------------------------------------------------------------
+    # Base Image References (registry resolution)
+    #
+    # `docker/8.5/Dockerfile` pins its Ubuntu base by tag and index digest, so
+    # the build never resolves a moving tag. The cost is that a digest the
+    # registry prunes stops resolving, and a build is the worst place to learn
+    # that. The script also fails a reference that carries no digest, so a
+    # regenerated Dockerfile cannot quietly return to a moving tag. `docker
+    # buildx imagetools inspect` reads the index without pulling layers; a
+    # rate-limited or unanswered probe is reported as inconclusive rather than
+    # as a dead reference (scripts/lint/check-base-image-refs.py).
+    # ---------------------------------------------------------------------
+    base-images:
+        name: Base Image References
+        runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v7
+              with:
+                  persist-credentials: false
+
+            - name: Resolve Base Image References
+              run: python3 scripts/lint/check-base-image-refs.py
+
+    # ---------------------------------------------------------------------
     # Shell Lint (shellcheck)
     #
     # The scripts this governs are the ones the bash rules govern: a tracked
@@ -566,7 +629,7 @@ jobs:
         name: All Quality Gates
         runs-on: ${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}
         timeout-minutes: 5
-        needs: [format, link-check, frontend, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, hadolint, shellcheck, workflow-lint]
+        needs: [format, link-check, frontend, static-analysis, tests, audit, openapi-examples, semgrep, zizmor, hadolint, base-images, shellcheck, workflow-lint]
         if: always()
         steps:
             - name: Require Every Gate to Pass
@@ -588,6 +651,7 @@ jobs:
                   check "Semgrep" "${{ needs.semgrep.result }}"
                   check "Zizmor" "${{ needs.zizmor.result }}"
                   check "Hadolint" "${{ needs.hadolint.result }}"
+                  check "Base Image References" "${{ needs.base-images.result }}"
                   check "ShellCheck" "${{ needs.shellcheck.result }}"
                   check "Lint Workflows" "${{ needs.workflow-lint.result }}"
                   if [ "$failed" -ne 0 ]; then

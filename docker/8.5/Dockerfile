@@ -1,4 +1,13 @@
-FROM ubuntu:24.04
+# Noble is the line the sury.org PHP PPA and the vendored Sail runtime target. The tag keeps
+# that line readable; the index digest fixes the exact image a clone builds. Docker's build
+# best practices recommend the digest for reproducibility
+# (https://docs.docker.com/build/building/best-practices/#pin-base-image-versions), and the
+# OSSF Scorecard Pinned-Dependencies check treats a tag-only `FROM` as unpinned
+# (https://github.com/ossf/scorecard/blob/main/docs/checks.md#pinned-dependencies). A digest
+# opts out of automatic tag moves, so Dependabot's `/docker/8.5` entry refreshes it within
+# this tag and `scripts/lint/check-base-image-refs.py` fails a pruned reference at review
+# time rather than at a build.
+FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5
 
 LABEL maintainer="Taylor Otwell"
 

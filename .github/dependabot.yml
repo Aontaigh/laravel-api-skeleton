@@ -82,3 +82,28 @@ updates:
       ignore:
           - dependency-name: mysql
           - dependency-name: redis
+
+    # The Sail runtime's Dockerfile. The entry above reads `compose.yaml` at the
+    # repository root; this one reads `docker/8.5/Dockerfile`, whose Ubuntu base
+    # is pinned by tag and index digest. Ignoring all three semver update types
+    # leaves digest-only updates enabled (dependabot/dependabot-core#6628): the
+    # Noble line is a deliberate migration tied to the sury.org PPA, while a
+    # republished digest carries the security fixes that a pin would otherwise
+    # hide. `scripts/lint/check-base-image-refs.py` fails a pruned digest in
+    # review instead of at build time.
+    - package-ecosystem: docker
+      directory: /docker/8.5
+      schedule:
+          interval: weekly
+      cooldown:
+          default-days: 7
+      labels:
+          - dependencies
+          - docker
+      open-pull-requests-limit: 3
+      ignore:
+          - dependency-name: ubuntu
+            update-types:
+                - version-update:semver-major
+                - version-update:semver-minor
+                - version-update:semver-patch

@@ -1,7 +1,7 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
     "name": "aontaigh/laravel-api-skeleton",
-    "version": "3.5.1",
+    "version": "3.6.0",
     "type": "project",
     "description": "Production-ready Laravel 13 API skeleton with Sanctum, Spatie permissions, and a consistent query-driven index pattern.",
     "keywords": [
@@ -96,6 +96,7 @@
         "semgrep": [
             "bash scripts/semgrep.sh"
         ],
+        "audit:npm": "npm run audit:prod",
         "lint:composer": "composer validate --strict --no-check-publish --no-check-version --no-ansi",
         "ci": [
             "@lint:composer",
@@ -109,7 +110,8 @@
             "@test:coverage:check",
             "@verify:openapi",
             "@verify:version",
-            "composer audit --locked --no-ansi"
+            "composer audit --locked --no-ansi",
+            "@audit:npm"
         ],
         "post-autoload-dump": [
             "Illuminate\\Foundation\\ComposerScripts::postAutoloadDump",
