@@ -123,7 +123,6 @@ EXEMPT_LINK_PATTERNS=(
     # (`vPREV...vX.Y.Z` and `vX.Y.Z...HEAD`) and delete it once the tag resolves:
     # a stale pair passes silently and hides the next release's dead links. See
     # docs/releasing.md.
-    'compare/v3\.6\.0\.\.\.v4\.0\.0$|compare/v4\.0\.0\.\.\.HEAD$'
 )
 
 # ---------------------------------------------------------------------------
