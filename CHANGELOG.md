@@ -7,6 +7,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.0] - 2026-11-18
+
+### Added
+
+- **Audit Actor Include:** `GET /api/audit-logs` now accepts `include=actor` beside
+  `include=user`, so a row answers both who the event happened to and who performed it.
+  The acting principal differs from the subject for a privileged action on another User's
+  account and is `null` for a self-service action or a system event. `requiredSelectColumns()`
+  keeps `actor_user_id` in the SQL select only while the include is requested.
+- **Compact User Reference Payload:** `UserReferenceResource` (`id`, `name`, `email`, `phone`,
+  `created_at`, each sparse-aware) replaces `UserResource` for an included party on Audit Logs
+  and Web Sessions. The profile payload emits roles, permissions, team, and MFA state, which a
+  page of rows repeated per party. The permission-gated `email` allow-list is unchanged: a
+  viewer without `users.view-email` receives no `email` key at all.
+- **`__Host-` Session Cookie:** `SessionCookieName` applies the browser-enforced `__Host-`
+  prefix when the cookie is `Secure`, scoped to `Path=/`, and carries no `Domain`, which stops
+  a sibling subdomain planting a session identifier the application would trust. Plain-HTTP
+  local development and any deployment pinning `SESSION_DOMAIN` or a non-root path keep the
+  unprefixed name, because a browser drops an illegal prefixed cookie silently.
+- **Cross-Origin Isolation Headers:** every response carries `Cross-Origin-Opener-Policy:
+  same-origin` and `Cross-Origin-Resource-Policy: same-origin`. CORP is consulted for no-cors
+  loads only, so a CORS-approved `fetch()` from a browser frontend is unaffected.
+- **`testing` SQLite File Is Ignored:** a host-side `artisan test` writes a database named by
+  `phpunit.xml` into the working directory; it is now gitignored rather than one `git add -A`
+  away from being committed.
+
+### Changed
+
+- **API Reference Requires Authentication (breaking):** `/api/docs` and `/api/openapi.yaml`
+  now sit behind `auth:sanctum` plus `throttle:60,1` in every environment and answer the `401`
+  envelope to a guest. The specification enumerates every path, field, enum, and error code, so
+  publishing it anonymously hands an attacker the reconnaissance work ASVS 13.4.5 and OWASP
+  API9:2023 expect the application to withhold. `EnsureCanViewApiDocs`, the `api-docs`
+  middleware group, and `API_DOCS_BASIC_AUTH_USER` / `API_DOCS_BASIC_AUTH_PASSWORD` are
+  removed. A consumer that relied on public docs must send a bearer token or a signed-in
+  session.
+- **Environment Template Defaults Are Secure (breaking):** `.env.example` ships
+  `APP_DEBUG=false`, `LOG_LEVEL=warning`, `SESSION_ENCRYPT=true`, and
+  `SESSION_SECURE_COOKIE=true`. A template copied onto a plain-HTTP hostname the browser does
+  not treat as trustworthy loses sign-in until `SESSION_SECURE_COOKIE=false` is set in a local
+  `.env`; the header note explains why. `SESSION_ENCRYPT=true` changes the stored payload
+  format, so existing sessions are invalidated on upgrade.
+- **CORS Headers Are Named:** `allowed_headers` lists the documented headers plus
+  `X-XSRF-TOKEN` instead of `*`, so a client sending a header the contract never defined is
+  visible rather than silently accepted. `exposed_headers` publishes `Retry-After` and the
+  `X-RateLimit-*` family so a cross-origin client can back off before it is refused.
 ## [3.6.0] - 2026-11-15
 
 ### Added
@@ -1135,50 +1181,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.0...HEAD
+[4.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.6.0...v4.0.0
 [3.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.1...v3.6.0
-[3.5.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.0...v3.5.1
-[3.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.4.0...v3.5.0
-[3.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.3...v3.4.0
-[3.3.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.2...v3.3.3
-[3.3.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.1...v3.3.2
-[3.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.3.0...v3.3.1
-[3.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.2...v3.3.0
-[3.2.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.1...v3.2.2
-[3.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.2.0...v3.2.1
-[3.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.1.0...v3.2.0
-[3.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.2...v3.1.0
-[3.0.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.1...v3.0.2
-[3.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.0.0...v3.0.1
-[3.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.1.0...v3.0.0
-[2.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.1...v2.1.0
-[2.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v2.0.0...v2.0.1
-[2.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.1...v2.0.0
-[1.16.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.16.0...v1.16.1
-[1.16.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.4...v1.16.0
-[1.15.4]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.3...v1.15.4
-[1.15.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.2...v1.15.3
-[1.15.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.1...v1.15.2
-[1.15.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.15.0...v1.15.1
-[1.15.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.3...v1.15.0
-[1.14.3]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.2...v1.14.3
-[1.14.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.1...v1.14.2
-[1.14.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.14.0...v1.14.1
-[1.14.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.13.0...v1.14.0
-[1.13.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.12.0...v1.13.0
-[1.12.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.11.0...v1.12.0
-[1.11.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.10.0...v1.11.0
-[1.10.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.9.0...v1.10.0
-[1.9.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.1...v1.9.0
-[1.8.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.8.0...v1.8.1
-[1.8.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.7.0...v1.8.0
-[1.7.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.6.0...v1.7.0
-[1.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.5.0...v1.6.0
-[1.5.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.4.0...v1.5.0
-[1.4.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.1...v1.4.0
-[1.3.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.3.0...v1.3.1
-[1.3.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.1...v1.3.0
-[1.2.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.2.0...v1.2.1
-[1.2.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.1.0...v1.2.0
-[1.1.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v1.0.0...v1.1.0
-[1.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.0.0

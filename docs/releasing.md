@@ -24,6 +24,7 @@ This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 - [ ] 6. GitHub release published per [GitHub release format](#github-release-format) (emoji
       section headings, unwrapped bullets, **Full Changelog** footer - do not paste
       `CHANGELOG.md` verbatim)
+- [ ] 7. The in-flight compare exemptions deleted, as their own commit, pushed after the tag
 
 ## Release Flow
 
@@ -121,6 +122,11 @@ bash scripts/run-zizmor.sh
 bash scripts/run-actionlint.sh
 ```
 
+`composer lint:links` shells out to `markdown-link-check`, which lives in the
+container's `node_modules` volume: run `./vendor/bin/sail npm ci` once after
+bringing a fresh stack up, or the gate stops with `markdown-link-check Is Not
+Installed`.
+
 Those Sail lines are what `composer ci` chains, minus `semgrep`. `./vendor/bin/sail
 composer ci` cannot stand in for them: `ci` includes `@semgrep`, and `scripts/semgrep.sh`
 needs a local Semgrep CLI or a Docker CLI, neither of which exists inside the app
@@ -131,6 +137,11 @@ example against a served, seeded app, so seed before running the chain.
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
 Sail port notes when Docker ports on your machine are already in use.
+
+**Permission errors.** The app runs as `sail` (uid 1000) in the container. A gate that fails
+with `Failed to open stream: Permission denied` against `storage/`, `vendor/`, or
+`public/build` means an earlier root run created those files, not that the tree is broken -
+`docker compose exec --user root laravel.test chown -R 1000:1000 /var/www/html` restores it.
 
 The link gate exempts the two compare URLs for the release being cut - `v{prev}...v{new}` and
 `v{new}...HEAD` - in [`scripts/lint-links.sh`](../scripts/lint-links.sh), because GitHub 404s a
@@ -259,6 +270,18 @@ gh release create vX.Y.Z \
   --title "vX.Y.Z" \
   --notes-file /tmp/release-notes.md
 gh release view vX.Y.Z --web
+```
+
+## 6. Remove the In-Flight Exemptions
+
+The pair you added in step 3 now resolves, and leaving it would hide the next release's dead
+compare links. Delete the line from `scripts/lint-links.sh`, then commit and push it on its own:
+
+```bash
+./vendor/bin/sail composer lint:links
+git add scripts/lint-links.sh
+git commit -m "chore(release): drop the in-flight compare exemptions"
+git push origin main
 ```
 
 To fix an already-published release that used the wrong format:
