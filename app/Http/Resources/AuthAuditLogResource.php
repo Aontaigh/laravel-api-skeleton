@@ -115,7 +115,11 @@ final class AuthAuditLogResource extends JsonResource
             ),
             'user' => $this->whenLoaded(
                 'user',
-                fn (): UserResource => new UserResource($this->resource->user),
+                fn (): UserReferenceResource => new UserReferenceResource($this->resource->user),
+            ),
+            'actor' => $this->whenLoaded(
+                'actor',
+                fn (): UserReferenceResource => new UserReferenceResource($this->resource->actor),
             ),
         ];
     }

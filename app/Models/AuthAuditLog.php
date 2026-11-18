@@ -113,6 +113,20 @@ final class AuthAuditLog extends Model
     }
 
     /**
+     * Get the User who performed the event on another User's behalf.
+     *
+     * Null for a self-service action, where `user` is the actor, and for a
+     * system event. Signed-in support access writes both parties, which is what
+     * lets an audit row answer "who did this to whom" without joining.
+     *
+     * @return BelongsTo<User, $this> the acting User relationship
+     */
+    public function actor(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'actor_user_id');
+    }
+
+    /**
      * Get the API client linked to a client-credentials exchange.
      *
      * @return BelongsTo<ApiClient, $this>

@@ -4162,8 +4162,10 @@ components:
       schema:
         type: string
         maxLength: 255
-        example: user
-      description: Comma-Separated Eager Loads. Allowed `user`.
+        example: user,actor
+      description: |-
+        Comma-Separated Eager Loads. Allowed: `user` (the subject of the event),
+        `actor` (the principal who performed it, null for a self-service action).
 
     QueryFieldsUsers:
       name: fields[users]
@@ -4649,6 +4651,28 @@ components:
             $ref: '#/components/schemas/Permission'
           description: Present Only When `include=permissions` Was Requested
 
+    UserReference:
+      type: object
+      description: |-
+        The compact identity a listing carries for an included User: the keys a
+        `fields[users]` select asked for. Roles, permissions, and MFA state stay
+        on the profile payload, so a page of rows does not repeat them per party.
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        phone:
+          oneOf:
+            - type: string
+            - type: 'null'
+        created_at:
+          type: string
+          format: date-time
+
     User:
       type: object
       required: [id]
@@ -4746,7 +4770,7 @@ components:
           type: boolean
           description: True when the inbound request session ID matches this registry row
         user:
-          $ref: '#/components/schemas/User'
+          $ref: '#/components/schemas/UserReference'
 
     ApiClient:
       type: object
@@ -4839,7 +4863,9 @@ components:
         created_at:
           $ref: '#/components/schemas/ApiDateTime'
         user:
-          $ref: '#/components/schemas/User'
+          $ref: '#/components/schemas/UserReference'
+        actor:
+          $ref: '#/components/schemas/UserReference'
 
     ClientTokenExchangeRequest:
       type: object

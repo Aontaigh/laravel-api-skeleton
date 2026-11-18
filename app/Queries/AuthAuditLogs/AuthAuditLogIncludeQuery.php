@@ -70,6 +70,7 @@ final class AuthAuditLogIncludeQuery
         foreach ($allowed as $include) {
             $with += match ($include) {
                 'user' => ['user' => $this->userConstraint($userFields, $allowedUserFields)],
+                'actor' => ['actor' => $this->userConstraint($userFields, $allowedUserFields)],
                 default => throw new InvalidArgumentException("Unmapped Include: {$include}"),
             };
         }
@@ -84,7 +85,11 @@ final class AuthAuditLogIncludeQuery
     */
 
     /**
-     * Build the eager-load constraint closure for the `user` relation.
+     * Build the eager-load constraint closure for a User relation.
+     *
+     * Shared by `user` and `actor`: both name a person through the same
+     * reference payload, so they must apply the same allow-list or one party
+     * would expose a column the other withholds.
      *
      * @param list<string>|null $userFields        sparse User columns from `fields[users]`
      * @param list<string>|null $allowedUserFields permission-aware allow-list, or null for the base set

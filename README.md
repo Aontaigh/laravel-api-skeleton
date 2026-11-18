@@ -680,7 +680,14 @@ Admin-only read-only index of rows in `auth_audit_logs`. Requires the `Admin`
 role (and `audit-logs.list`). Supports `filter[search]` (email),
 `filter[event]`, `filter[user_id]`, `filter[api_client_id]`, `filter[from]` /
 `filter[to]` date bounds, sparse `fields[auth_audit_logs]`,
-`include=user`, and the standard sort and pagination params.
+`include=user,actor`, and the standard sort and pagination params.
+
+`include=user` names the subject of the event; `include=actor` names the principal
+who performed it, which differs for a privileged action on another User's account
+and is `null` for a self-service action or a system event. Both parties serialise
+through [UserReferenceResource](app/Http/Resources/UserReferenceResource.php) -
+the compact identity, not the profile - so `fields[users]` trims them and a page
+of rows never repeats roles or permissions per party.
 
 Each row also carries the resolved `location_city` and `location_country` for the recorded
 IP (MaxMind GeoLite2 via `geoip:update`; lookups fail open when the database is absent), and an
@@ -779,7 +786,7 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
 | Input validation          | FormRequests; `422` envelope via `ApiResponse`                                                                                                                                                                                                                                                                                                                                                                                                                                            | [app/Support/ApiResponse.php](app/Support/ApiResponse.php)                                                                                                                                                                                                            |
 | Request correlation       | `X-Request-ID` accepted (or W3C `traceparent` trace ID, else fresh UUID) on every response; threaded through logs and audit rows                                                                                                                                                                                                                                                                                                                                                          | [EnsureRequestId](app/Http/Middleware/EnsureRequestId.php), [RequestId](app/Support/RequestId.php)                                                                                                                                                                    |
 | XSS hardening             | Plain-text attribute sanitisation on name updates and token names                                                                                                                                                                                                                                                                                                                                                                                                                         | [SanitisesPlainTextAttributes](app/Http/Requests/Concerns/SanitisesPlainTextAttributes.php)                                                                                                                                                                           |
-| API documentation         | Scalar UI at `/api/docs`; optional HTTP Basic Auth                                                                                                                                                                                                                                                                                                                                                                                                                                        | [routes/web.php](routes/web.php), [EnsureCanViewApiDocs](app/Http/Middleware/EnsureCanViewApiDocs.php)                                                                                                                                                                |
+| API documentation         | Scalar UI at `/api/docs`; both docs routes require `auth:sanctum`                                                                                                                                                                                                                                                                                                                                                                                                                        | [routes/web.php](routes/web.php)                                                                                                                                                                                                                                     |
 | Debug tooling             | Telescope behind `viewTelescope` gate (Admin only, local only)                                                                                                                                                                                                                                                                                                                                                                                                                            | [AppServiceProvider](app/Providers/AppServiceProvider.php)                                                                                                                                                                                                            |
 
 Report vulnerabilities privately before opening a public issue - see
@@ -1025,8 +1032,8 @@ probes hostile input; [FailClosedRevocationTest](tests/Feature/Actions/Sessions/
 proves a failing session store still recalls every cookie;
 [SystemStatusControllerTest](tests/Feature/Http/Controllers/SystemHealth/SystemStatusControllerTest.php)
 covers the public status page; [ListenerRegistrationTest](tests/Feature/Listeners/ListenerRegistrationTest.php)
-pins exactly-once audit and OTP dispatch. [ApiDocsTest](tests/Feature/Http/ApiDocsTest.php) covers `/api/docs`,
-`/api/openapi.yaml`, and optional HTTP Basic Auth.
+pins exactly-once audit and OTP dispatch. [ApiDocsTest](tests/Feature/Http/ApiDocsTest.php) covers
+`/api/docs` and `/api/openapi.yaml`, including the `auth:sanctum` gate on both.
 
 **No trait harness classes** - concern behaviour is proved through Support unit tests and
 feature or resource tests on production FormRequests and Resources, not `tests/Support/`
@@ -1048,8 +1055,8 @@ This starter deliberately omits features you would add per product:
 - File uploads or real-time broadcasting
 
 > [!IMPORTANT]
-> Set `API_DOCS_BASIC_AUTH_USER` and `API_DOCS_BASIC_AUTH_PASSWORD` in production if you
-> want `/api/docs` behind HTTP Basic Auth instead of public.
+> `/api/docs` and `/api/openapi.yaml` require `auth:sanctum` in every environment.
+> Send a bearer token (or a signed-in session) or you receive the `401` envelope.
 
 ### Known Limitations
 

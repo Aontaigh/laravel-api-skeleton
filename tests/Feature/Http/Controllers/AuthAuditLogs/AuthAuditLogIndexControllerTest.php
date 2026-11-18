@@ -278,6 +278,71 @@ final class AuthAuditLogIndexControllerTest extends TestCase
     }
 
     /**
+     * Eager-load the acting principal when include=actor is requested.
+     *
+     * A support access view writes both parties: the subject in `user` and the
+     * administrator in `actor`. Without this include an operator can see that an
+     * event happened without being able to name who performed it.
+     */
+    #[Test]
+    public function it_includes_the_actor_when_requested(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var User $subject */
+        $subject = User::factory()->user()->create(['name' => 'Audit Subject']);
+        /** @var User $actor */
+        $actor = User::factory()->admin()->create(['name' => 'Support Admin']);
+        AuthAuditLog::factory()->for($subject)->create(['actor_user_id' => $actor->id]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson(
+            '/api/audit-logs?include=user,actor&fields[users]=id,name',
+        );
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.user.name', 'Audit Subject');
+        $response->assertJsonPath('data.0.actor.name', 'Support Admin');
+        $response->assertJsonPath('data.0.actor.id', $actor->id);
+        $response->assertJsonMissingPath('data.0.actor.email');
+    }
+
+    /**
+     * Answer a null actor for a self-service event, where nobody acted on the
+     * subject's behalf.
+     *
+     * Null rather than an absent key: the include was requested, so the shape
+     * stays stable between rows that have an actor and rows that do not.
+     */
+    #[Test]
+    public function it_answers_a_null_actor_for_a_self_service_event(): void
+    {
+        // Arrange
+
+        /** @var User $admin */
+        $admin = User::factory()->admin()->create();
+        /** @var User $subject */
+        $subject = User::factory()->user()->create();
+        AuthAuditLog::factory()->for($subject)->create(['actor_user_id' => null]);
+
+        // Act
+
+        /** @var TestResponse<JsonResponse> $response */
+        $response = $this->actingAs($admin)->getJson('/api/audit-logs?include=user,actor');
+
+        // Assert
+
+        $response->assertOk();
+        $response->assertJsonPath('data.0.actor', null);
+    }
+
+    /**
      * Respect the permission-aware email allow-list on nested user includes.
      *
      * An admin with `users.view-email` who asks for `fields[users]=email`

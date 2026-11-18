@@ -42,9 +42,13 @@ final class AuthAuditLogQueryConstraints
      * Unknown keys answer `422`, so the endpoint can never be pushed into eager-loading an
      * unlisted relation.
      *
+     * `user` is the subject of the event; `actor` is the principal who performed it. They
+     * differ for a support access view, where an administrator acts on another User's
+     * account, and the actor is null for a self-service action or a system event.
+     *
      * @var list<string>
      */
-    public const ALLOWED_INCLUDES = ['user'];
+    public const ALLOWED_INCLUDES = ['user', 'actor'];
 
     /**
      * Sparse fieldset columns every viewer may request via `fields[auth_audit_logs]=`.
@@ -174,6 +178,10 @@ final class AuthAuditLogQueryConstraints
 
         if (in_array('user', $includes, true)) {
             $required[] = 'user_id';
+        }
+
+        if (in_array('actor', $includes, true)) {
+            $required[] = 'actor_user_id';
         }
 
         return $required;

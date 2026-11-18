@@ -100,7 +100,7 @@ final class WebSessionResource extends JsonResource
             ),
             'user' => $this->whenLoaded(
                 'user',
-                fn (User $user): UserResource => new UserResource($user),
+                fn (User $user): UserReferenceResource => new UserReferenceResource($user),
             ),
         ];
     }
