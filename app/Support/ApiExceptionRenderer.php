@@ -72,16 +72,16 @@ final class ApiExceptionRenderer
     /**
      * Whether the request should receive JSON API envelope responses.
      *
+     * The docs routes are included: they are authenticated API surfaces in this
+     * skeleton, so an unauthenticated request answers with the 401 envelope
+     * rather than an HTML page.
+     *
      * @param  Request $request the inbound request
-     * @return bool    true when API routes (except docs) should use the envelope
+     * @return bool    true when API routes should use the envelope
      */
     public static function isApiRequest(Request $request): bool
     {
-        if (! $request->is('api/*')) {
-            return false;
-        }
-
-        return ! $request->is('api/docs', 'api/openapi.yaml');
+        return $request->is('api/*');
     }
 
     /*

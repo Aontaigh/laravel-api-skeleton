@@ -6,19 +6,26 @@ namespace Tests\Feature\Http;
 
 use App\Http\Controllers\Api\ShowApiDocsController;
 use App\Http\Controllers\Api\ShowOpenApiSpecController;
-use App\Http\Middleware\EnsureCanViewApiDocs;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use Tests\TestCase;
 
 /**
- * Feature tests for hosted Scalar API documentation routes.
+ * Feature tests for the hosted Scalar API documentation routes.
+ *
+ * Both documents describe the whole API surface, so they sit behind the
+ * `auth:sanctum` guard: a guest receives the 401 envelope, and a session or
+ * bearer token is served the page.
  */
 #[CoversClass(ShowApiDocsController::class)]
 #[CoversClass(ShowOpenApiSpecController::class)]
-#[CoversClass(EnsureCanViewApiDocs::class)]
 final class ApiDocsTest extends TestCase
 {
+    use RefreshDatabase;
+
     /*
     |--------------------------------------------------------------------------
     | Tests
@@ -26,11 +33,48 @@ final class ApiDocsTest extends TestCase
     */
 
     /**
-     * Serve the Scalar docs page.
+     * A guest receives the standard authentication envelope for the docs page.
      */
     #[Test]
-    public function it_serves_the_scalar_docs_page(): void
+    public function it_rejects_a_guest_requesting_the_docs_page(): void
     {
+        // Act
+
+        $response = $this->get('/api/docs');
+
+        // Assert
+
+        $response->assertUnauthorized();
+        $response->assertJsonPath('status_code', 401);
+        $response->assertJsonPath('message', 'Authentication Required');
+    }
+
+    /**
+     * A guest receives the standard authentication envelope for the spec file.
+     */
+    #[Test]
+    public function it_rejects_a_guest_requesting_the_openapi_specification(): void
+    {
+        // Act
+
+        $response = $this->get('/api/openapi.yaml');
+
+        // Assert
+
+        $response->assertUnauthorized();
+        $response->assertJsonPath('status_code', 401);
+    }
+
+    /**
+     * Serve the Scalar docs page to an authenticated principal.
+     */
+    #[Test]
+    public function it_serves_the_scalar_docs_page_to_an_authenticated_user(): void
+    {
+        // Arrange
+
+        Sanctum::actingAs(User::factory()->create(), ['*']);
+
         // Act
 
         $response = $this->get('/api/docs');
@@ -44,11 +88,15 @@ final class ApiDocsTest extends TestCase
     }
 
     /**
-     * Serve the OpenAPI specification.
+     * Serve the OpenAPI specification to an authenticated principal.
      */
     #[Test]
-    public function it_serves_the_openapi_specification(): void
+    public function it_serves_the_openapi_specification_to_an_authenticated_user(): void
     {
+        // Arrange
+
+        Sanctum::actingAs(User::factory()->create(), ['*']);
+
         // Act
 
         $response = $this->get('/api/openapi.yaml');
@@ -65,66 +113,25 @@ final class ApiDocsTest extends TestCase
     }
 
     /**
-     * Require basic auth for docs when credentials are configured.
+     * A machine client holding a bearer token reads the specification too, so
+     * tooling can regenerate an SDK from the deployed contract.
      */
     #[Test]
-    public function it_requires_basic_auth_for_docs_when_credentials_are_configured(): void
+    public function it_serves_the_openapi_specification_to_a_bearer_token_client(): void
     {
         // Arrange
 
-        config()->set('api.docs_basic_auth.user', 'docs');
-        config()->set('api.docs_basic_auth.password', 'secret');
+        $user = User::factory()->create();
+        $token = $user->createToken('docs-tooling')->plainTextToken;
 
         // Act
 
-        $unauthenticated = $this->get('/api/docs');
-        $authenticated = $this->withBasicAuth('docs', 'secret')->get('/api/docs');
+        $response = $this->withHeader('Authorization', 'Bearer '.$token)->get('/api/openapi.yaml');
 
         // Assert
 
-        $unauthenticated->assertUnauthorized();
-        $authenticated->assertOk();
-    }
+        $response->assertOk();
 
-    /**
-     * Require basic auth for the OpenAPI spec when credentials are configured.
-     */
-    #[Test]
-    public function it_requires_basic_auth_for_the_openapi_spec_when_credentials_are_configured(): void
-    {
-        // Arrange
-
-        config()->set('api.docs_basic_auth.user', 'docs');
-        config()->set('api.docs_basic_auth.password', 'secret');
-
-        // Act
-
-        $unauthenticated = $this->get('/api/openapi.yaml');
-        $authenticated = $this->withBasicAuth('docs', 'secret')->get('/api/openapi.yaml');
-
-        // Assert
-
-        $unauthenticated->assertUnauthorized();
-        $authenticated->assertOk();
-    }
-
-    /**
-     * Reject incorrect basic auth credentials.
-     */
-    #[Test]
-    public function it_rejects_incorrect_basic_auth_credentials(): void
-    {
-        // Arrange
-
-        config()->set('api.docs_basic_auth.user', 'docs');
-        config()->set('api.docs_basic_auth.password', 'secret');
-
-        // Act
-
-        $response = $this->withBasicAuth('docs', 'wrong-password')->get('/api/docs');
-
-        // Assert
-
-        $response->assertUnauthorized();
+        $this->assertStringContainsString('openapi: 3.1', $response->streamedContent());
     }
 }

@@ -31,7 +31,6 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->trustProxies(at: \App\Support\TrustedProxies::all());
 
         $middleware->alias([
-            'api-docs' => \App\Http\Middleware\EnsureCanViewApiDocs::class,
             'active.account' => \App\Http\Middleware\EnsureAccountIsActive::class,
             'session.version' => \App\Http\Middleware\EnsureSessionVersionMatches::class,
             'session.touch' => \App\Http\Middleware\TouchWebSessionActivity::class,

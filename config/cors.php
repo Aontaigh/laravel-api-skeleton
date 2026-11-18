@@ -14,7 +14,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Browser-based frontends need CORS headers when they call this API from a
-    | they call this API from a different origin. Bearer-token requests do not
+    | different origin. Bearer-token requests do not
     | require supports_credentials; set CORS_SUPPORTS_CREDENTIALS=true only for
     | Sanctum cookie / CSRF SPA auth (see SANCTUM_STATEFUL_DOMAINS).
     |
@@ -42,9 +42,41 @@ return [
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    /*
+     * Named rather than `['*']`: the accepted headers are the ones this API
+     * documents plus the Sanctum CSRF header. A wildcard here turns every preflight
+     * into "anything goes" and loses the ability to notice a client sending a
+     * header the contract never defined. Add a name here when a documented
+     * consumer needs one.
+     */
 
-    'exposed_headers' => [],
+    'allowed_headers' => [
+        'Accept',
+        'Authorization',
+        'Content-Type',
+        'Origin',
+        'X-Requested-With',
+        'X-XSRF-TOKEN',
+    ],
+
+    /*
+     * Rate-limit headers are readable by a cross-origin client so it can back off
+     * before receiving a 429.
+     */
+
+    'exposed_headers' => [
+        'Retry-After',
+        'X-RateLimit-Limit',
+        'X-RateLimit-Remaining',
+    ],
+
+    /*
+     * Note before reading a response: `fruitcake/php-cors` sets
+     * `Access-Control-Allow-Origin` on every response without comparing the
+     * request when the allowlist holds exactly one origin. A browser still
+     * refuses it because the value does not match its own origin, so nothing
+     * leaks, but a present header is not proof that an origin was allowed.
+     */
 
     'max_age' => (int) env('CORS_MAX_AGE', 3600),
 

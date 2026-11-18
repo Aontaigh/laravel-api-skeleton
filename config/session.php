@@ -2,7 +2,15 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Str;
+use App\Support\SessionCookieName;
+
+/*
+ * `env()` answers mixed and `SESSION_DOMAIN` may be absent, null or an empty
+ * string. Normalising once here keeps the resolver's contract a plain
+ * `string|null` and keeps the ternary out of the config array.
+ */
+$sessionDomain = env('SESSION_DOMAIN');
+$sessionDomain = is_string($sessionDomain) ? $sessionDomain : null;
 
 return [
 
@@ -123,15 +131,23 @@ return [
     | Session Cookie Name
     |--------------------------------------------------------------------------
     |
-    | Here you may change the name of the session cookie that is created by
-    | the framework. Typically, you should not need to change this value
-    | since doing so does not grant a meaningful security improvement.
+    | The name is derived rather than fixed so the `__Host-` prefix is applied
+    | only where a browser will accept it (`Secure`, `Path=/`, no `Domain`).
+    | An illegal `__Host-` cookie is dropped silently, so a deployment that
+    | pins `SESSION_DOMAIN` or a non-root path keeps the plain name instead of
+    | losing sign-in. Override with `SESSION_COOKIE` only if the prefix is
+    | illegal on that host.
     |
     */
 
     'cookie' => env(
         'SESSION_COOKIE',
-        Str::slug((string) env('APP_NAME', 'laravel')).'-session'
+        SessionCookieName::resolve(
+            secure: filter_var(env('SESSION_SECURE_COOKIE', true), FILTER_VALIDATE_BOOL),
+            domain: $sessionDomain,
+            path: (string) env('SESSION_PATH', '/'),
+            appName: (string) env('APP_NAME', 'laravel'),
+        )
     ),
 
     /*

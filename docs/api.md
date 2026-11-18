@@ -22,10 +22,9 @@ stay same-origin - no CORS configuration needed.
 3. Issue a token (see [README Quick Start](../README.md#quick-start))
 4. Click **Authentication** in Scalar → paste `Bearer {token}` → try any endpoint
 
-**`production` Lock-down:** set `API_DOCS_BASIC_AUTH_USER` and
-`API_DOCS_BASIC_AUTH_PASSWORD` in `.env`. Both routes (`/api/docs` and
-`/api/openapi.yaml`) then require HTTP Basic Auth. API endpoints remain protected
-by Sanctum regardless.
+**`production` Lock-down:** both `/api/docs` and `/api/openapi.yaml` require
+`auth:sanctum` in every environment. Sign in (or paste a bearer token) before
+opening the page; an unauthenticated request receives the `401` envelope.
 
 | Piece               | Location                                                                               |
 | ------------------- | -------------------------------------------------------------------------------------- |
@@ -34,7 +33,7 @@ by Sanctum regardless.
 | Docs controller     | [ShowApiDocsController](../app/Http/Controllers/Api/ShowApiDocsController.php)         |
 | Spec controller     | [ShowOpenApiSpecController](../app/Http/Controllers/Api/ShowOpenApiSpecController.php) |
 | Scalar Blade view   | [api-docs.blade.php](../resources/views/api-docs.blade.php)                            |
-| Optional Basic Auth | [EnsureCanViewApiDocs](../app/Http/Middleware/EnsureCanViewApiDocs.php)                |
+| Route guard         | `auth:sanctum` plus `throttle:60,1` in [routes/web.php](../routes/web.php)             |
 | Spec path config    | `config/api.php` → `openapi_spec`                                                      |
 | Feature tests       | [ApiDocsTest](../tests/Feature/Http/ApiDocsTest.php)                                   |
 

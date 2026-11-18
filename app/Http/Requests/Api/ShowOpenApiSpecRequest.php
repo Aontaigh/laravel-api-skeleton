@@ -24,7 +24,7 @@ final class ShowOpenApiSpecRequest extends ApiFormRequest
     /**
      * Determine whether the User is authorised to make this request.
      *
-     * @return bool always true; Basic Auth is middleware when configured
+     * @return bool always true; the route guard enforces authentication
      */
     public function authorize(): bool
     {

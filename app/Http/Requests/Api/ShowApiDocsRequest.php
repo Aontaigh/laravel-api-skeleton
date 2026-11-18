@@ -11,8 +11,8 @@ use App\Http\Requests\ApiFormRequest;
  *
  * Takes no input - the controller renders the interactive reference page. The
  * request class exists for signature consistency, so the controller always
- * type-hints a FormRequest. Optional HTTP Basic Auth is applied by the
- * `api-docs` middleware group, not here.
+ * type-hints a FormRequest. Authentication is enforced by the `auth:sanctum`
+ * route guard, not here.
  */
 final class ShowApiDocsRequest extends ApiFormRequest
 {
@@ -25,7 +25,7 @@ final class ShowApiDocsRequest extends ApiFormRequest
     /**
      * Determine whether the User is authorised to make this request.
      *
-     * @return bool always true; Basic Auth is middleware when configured
+     * @return bool always true; the route guard enforces authentication
      */
     public function authorize(): bool
     {

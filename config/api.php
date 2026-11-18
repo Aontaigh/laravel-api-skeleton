@@ -326,11 +326,6 @@ return [
 
     'password_forgot_url' => env('API_PASSWORD_FORGOT_URL'),
 
-    'docs_basic_auth' => [
-        'user' => env('API_DOCS_BASIC_AUTH_USER'),
-        'password' => env('API_DOCS_BASIC_AUTH_PASSWORD'),
-    ],
-
     'openapi_spec' => 'docs/openapi.yaml',
 
 ];

@@ -62,6 +62,18 @@ final class SecurityHeaders
         $headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), browsing-topics=()');
 
         /*
+         * Isolate the browsing context from cross-origin windows (COOP) and
+         * stop another origin embedding any response as a no-cors subresource
+         * (CORP). CORP is consulted for no-cors loads only, so a browser
+         * frontend calling this API with a CORS-approved `fetch()` is
+         * unaffected even when `CORS_ALLOWED_ORIGINS` lists a different site;
+         * what it blocks is a hostile page probing or hotlinking a response
+         * through <img>, <script>, or a navigation.
+         */
+        $headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+        $headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+
+        /*
          * HSTS only matters over TLS; skip it on plain-http local dev.
          */
         if (App::environment('production', 'staging') || $request->isSecure()) {

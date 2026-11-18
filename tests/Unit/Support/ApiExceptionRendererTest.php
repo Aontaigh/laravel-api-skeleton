@@ -55,6 +55,10 @@ final class ApiExceptionRendererTest extends UnitTestCase
     /**
      * Request paths mapped to whether they use the API error envelope.
      *
+     * The docs routes are included: they require `auth:sanctum` in this
+     * skeleton, so an unauthenticated request must answer with the 401
+     * envelope rather than an HTML page or an empty 401 body.
+     *
      * @return array<string, array{0: string, 1: bool}>
      */
     public static function apiRequestProvider(): array
@@ -62,10 +66,12 @@ final class ApiExceptionRendererTest extends UnitTestCase
         return [
             'users index' => ['/api/users', true],
             'nested resource' => ['/api/users/1', true],
-            'scalar docs' => ['/api/docs', false],
-            'openapi spec' => ['/api/openapi.yaml', false],
+            'scalar docs' => ['/api/docs', true],
+            'openapi spec' => ['/api/openapi.yaml', true],
+            'docs sub-path' => ['/api/docs/anything', true],
             'health check' => ['/up', false],
             'web root' => ['/', false],
+            'spa login' => ['/login', false],
         ];
     }
 }

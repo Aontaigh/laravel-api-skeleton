@@ -29,3 +29,6 @@ _ide_helper.php
 Homestead.json
 Homestead.yaml
 Thumbs.db
+
+# SQLite file a host-side `artisan test` writes when no connection is set
+/testing
