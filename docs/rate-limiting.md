@@ -298,13 +298,13 @@ curl -sS -D - -o /dev/null -X POST http://localhost:8090/api/auth/login \
 
 ## Coverage Gaps
 
-Every authenticated `/api` route is covered by a limiter — the baseline or a
-dedicated one — and the credentials, telemetry, and webhook surfaces carry their
+Every authenticated `/api` route is covered by a limiter - the baseline or a
+dedicated one - and the credentials, telemetry, docs, and webhook surfaces carry their
 own. The deliberate exceptions follow.
 
 | Path                                     | Limiting | Why                                                                                                              |
 | ---------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |
-| `GET /api/docs`, `GET /api/openapi.yaml` | none     | Static content, fetched once per session; the interactive reference must not throttle while a reader explores it |
+| `GET /api/docs`, `GET /api/openapi.yaml` | `throttle:60,1` | Both routes require `auth:sanctum`; the fixed limiter leaves room for a reader exploring the reference |
 | `GET /.well-known/security.txt`          | none     | Static, and a security control that must always answer                                                           |
 | The welcome page (`GET /`)               | none     | A static landing view (`view('welcome')`); it serves no data and no principal                                    |
 

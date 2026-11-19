@@ -324,3 +324,5 @@ Demo client credentials: `client_id` `demo-integration-client`, secret `DemoClie
 2. Document it in the table above.
 3. Enforce it in a Policy method (or `FormRequest::authorize()` delegating to one).
 4. Cover the allow and deny paths in feature tests.
+
+Security engineering rules: [security-engineering-standards.md](security-engineering-standards.md).

@@ -436,3 +436,6 @@ After changing an endpoint: update [openapi.yaml](openapi.yaml), re-run step 5,
 and check [README.md](../README.md) and [permissions.md](permissions.md) still
 match. Release notes go to [CHANGELOG.md](../CHANGELOG.md) under
 `[Unreleased]`.
+
+Security engineering rules: [security-engineering-standards.md](security-engineering-standards.md).
+Measured evidence: [platform-assurance.md](platform-assurance.md).

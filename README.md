@@ -63,7 +63,7 @@ you can copy into greenfield APIs or port legacy endpoints toward over time.
 - 🖥️ Device **Web Session** registry with per-device revocation, fail-closed store handling, and an append-only **Auth Audit Log**
 - 📡 Outbound **Webhooks** with signed deliveries (HMAC, retry with backoff, auto-disable) and SSRF-screened targets
 - 🛡️ Admin **account suspension** (suspend / unsuspend), a public `/health` probe, and a public `/api/status` uptime page
-- 📖 Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with hosted [Scalar](https://scalar.com) docs at `/api/docs` (`local` and `production`)
+- 📖 Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with authenticated [Scalar](https://scalar.com) docs at `/api/docs` (`local` and `production`)
 - 🐳 Dockerised local dev via [Laravel Sail](https://laravel.com/docs/sail)
 - ✅ 90% line-coverage CI gate with parallel quality jobs
 
@@ -386,7 +386,7 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | Doc                                              | Purpose                                                                                    |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
 | [README.md](README.md)                           | 📌 Orientation, quick start, architecture summary                                          |
-| [/api/docs](http://localhost/api/docs)           | Scalar interactive reference - try endpoints in the browser                                |
+| [/api/docs](http://localhost/api/docs)           | Scalar interactive reference (authenticated) - try endpoints in the browser               |
 | [docs/openapi.yaml](docs/openapi.yaml)           | 📄 OpenAPI 3.1 source file (also at `/api/openapi.yaml`)                                   |
 | [docs/api.md](docs/api.md)                       | 🖥️ Scalar setup, preview, import, and sync checklist                                       |
 | [docs/permissions.md](docs/permissions.md)       | 🔐 Permission strings, role matrix, Policy links                                           |
@@ -395,6 +395,8 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 | [docs/releasing.md](docs/releasing.md)           | 🏷️ Cutting a release - changelog, gates, tag, GitHub publish                               |
 | [docs/branch-hygiene.md](docs/branch-hygiene.md) | 🧹 Post-merge branch cleanup and Dependabot handling                                       |
 | [docs/testing.md](docs/testing.md)               | 🧪 Quality gates, test suites, coverage floor, pen test                                    |
+| [docs/security-engineering-standards.md](docs/security-engineering-standards.md) | 🔐 Engineering contract - threat model, access control, auth, audit, and gates |
+| [docs/platform-assurance.md](docs/platform-assurance.md) | 📋 Measured assurance - what ships, what does not, and how every change is verified |
 
 <a id="stack"></a>
 
@@ -795,6 +797,10 @@ Report vulnerabilities privately before opening a public issue - see
 [SECURITY.md](SECURITY.md). Disclosure contact details are served at
 [`/.well-known/security.txt`](public/.well-known/security.txt) (RFC 9116).
 
+The engineering rules behind this table are in
+[docs/security-engineering-standards.md](docs/security-engineering-standards.md); the
+measured evidence is in [docs/platform-assurance.md](docs/platform-assurance.md).
+
 <a id="architecture"></a>
 
 ## 🏗 Architecture
@@ -876,6 +882,8 @@ docs/
 ├── performance.md        # Scale trade-offs
 ├── releasing.md          # Release runbook
 ├── branch-hygiene.md     # Post-merge cleanup and Dependabot handling
+├── security-engineering-standards.md # Engineering contract
+├── platform-assurance.md # Measured assurance story
 └── testing.md            # Quality gates, suites, coverage floor, pen test
 resources/views/          # Scalar embed and welcome page
 routes/

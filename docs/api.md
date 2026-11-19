@@ -1,7 +1,7 @@
 # API Reference
 
 Machine-readable contract: [openapi.yaml](openapi.yaml) (OpenAPI 3.1), served at
-**`/api/openapi.yaml`** in every environment.
+**`/api/openapi.yaml`** in every environment (authenticated).
 
 Human-oriented endpoint guides and permission notes live in the [README](../README.md)
 and [permissions.md](permissions.md). The OpenAPI spec is the source of truth for
@@ -22,7 +22,7 @@ stay same-origin - no CORS configuration needed.
 3. Issue a token (see [README Quick Start](../README.md#quick-start))
 4. Click **Authentication** in Scalar → paste `Bearer {token}` → try any endpoint
 
-**`production` Lock-down:** both `/api/docs` and `/api/openapi.yaml` require
+**Authentication Required:** both `/api/docs` and `/api/openapi.yaml` require
 `auth:sanctum` in every environment. Sign in (or paste a bearer token) before
 opening the page; an unauthenticated request receives the `401` envelope.
 
