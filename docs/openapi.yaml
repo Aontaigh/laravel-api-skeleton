@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: Laravel API Starter
-  version: 4.0.0
+  version: 4.0.1
   description: |
     Production-ready Laravel 13 API with Sanctum bearer authentication, Spatie
     roles and permissions, and a consistent query-driven index pattern.
@@ -142,7 +142,8 @@ info:
     | Scope | Default limit |
     | --- | --- |
     | General API (`throttle:api`) | 500 requests / minute / user (or IP when unauthenticated) |
-    | Login and registration (`POST /auth/login`, `POST /auth/register`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
+    | Login (`POST /auth/login`) | 5 requests / minute / email+IP, plus a 20 requests / minute per-IP ceiling |
+    | Registration (`POST /auth/register`) | 5 requests / minute / email+IP, plus a 10 requests / minute per-IP ceiling |
     | Two-factor send (`POST /auth/two-factor/send`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
     | Two-factor verify (`POST /auth/two-factor/verify`) | 5 requests / minute / pending-challenge+IP, plus a 20 requests / minute per-IP ceiling |
     | Two-factor status (`GET /auth/two-factor/status`) | 60 requests / minute / pending-challenge+IP |
@@ -205,12 +206,13 @@ paths:
       tags: [Health]
       summary: Health Check
       description: |
-        Public uptime probe - no auth, no throttling. Returns the application
+        Public uptime probe - no auth, per-IP throttled. Returns the application
         version and whether the primary database answers `select 1`. Returns
         `503 Service Unavailable` when the database is unreachable.
 
         Served at the **root** (`/health`), outside the `/api` prefix.
       operationId: health
+      security: []
       servers:
         - url: /
           description: Root - Health Probe Bypasses the /api Prefix
@@ -562,7 +564,7 @@ paths:
               properties:
                 token:
                   type: string
-                  maxLength: 128
+                  maxLength: 64
                   description: Reset token from the e-mailed reset link
                 email:
                   type: string
@@ -655,9 +657,9 @@ paths:
         using the OAuth2 `client_credentials` grant. Tokens default to a **30**-day
         lifetime (`API_CLIENT_TOKEN_EXPIRATION_DAYS`).
 
-        Invalid credentials and suspended service users return `422` with a generic
-        `Invalid Credentials` message on the `client_id` field. Successful and
-        failed exchanges are recorded in `auth_audit_logs`.
+        Invalid credentials and suspended service users return `400` with an RFC 6749
+        `error` body and a `WWW-Authenticate` challenge. Successful and failed
+        exchanges are recorded in `auth_audit_logs`.
       operationId: oauthToken
       security: []
       requestBody:
@@ -676,8 +678,20 @@ paths:
               examples:
                 ClientTokenExchangeSuccess:
                   $ref: '#/components/examples/ClientTokenExchangeSuccess'
-        '422':
-          $ref: '#/components/responses/ValidationError'
+        '400':
+          description: Invalid OAuth Request
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [error]
+                properties:
+                  error:
+                    type: string
+                    example: invalid_client
+                  error_description:
+                    type: string
+                    example: Client Authentication Failed
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -734,7 +748,7 @@ paths:
         '302':
           description: Redirect to the SPA verification-result page.
         '403':
-          $ref: '#/components/responses/Unauthorized'
+          $ref: '#/components/responses/Forbidden'
 
   /auth/email/resend:
     post:
@@ -745,7 +759,8 @@ paths:
         body - it acts on the current User only, so it cannot enumerate or spam
         arbitrary addresses. Idempotent: an already-verified account receives
         the same generic success without dispatching another mail. Records an
-        `Email Verification Sent` audit row.
+        `Email Verification Sent` audit row. Suspended accounts receive `403
+        Account Suspended`.
       operationId: resendEmailVerification
       security:
         - bearerAuth: []
@@ -761,6 +776,8 @@ paths:
                   $ref: '#/components/examples/EmailResendSuccess'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
@@ -3645,7 +3662,7 @@ components:
         message: Service Healthy
         data:
           database: up
-          version: 4.0.0
+          version: 4.0.1
         meta: {}
 
     HealthUnavailable:
@@ -3672,7 +3689,7 @@ components:
             locale: en
             timezone: UTC
           php:
-            version: 8.5.0
+            version: 8.5.12
             sapi: fpm-fcgi
           server:
             os: Linux
@@ -4408,7 +4425,7 @@ components:
           example: up
         version:
           type: string
-          example: 4.0.0
+          example: 4.0.1
           description: Semantic version from `composer.json` (override with `APP_VERSION`)
 
     AppInfo:
@@ -5262,7 +5279,7 @@ components:
           description: The Caller's Current Password for Verification
         password:
           type: string
-          minLength: 8
+          minLength: 12
           description: The New Password
         password_confirmation:
           type: string

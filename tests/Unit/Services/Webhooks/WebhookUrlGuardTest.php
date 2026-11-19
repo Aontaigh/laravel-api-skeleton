@@ -71,6 +71,13 @@ final class WebhookUrlGuardTest extends UnitTestCase
             'link-local metadata IP' => ['http://169.254.169.254/latest', [], false],
             'private hostname' => ['https://internal.example/hooks', ['internal.example' => ['10.0.0.5']], false],
             'unresolvable hostname' => ['https://missing.example/hooks', [], false],
+            'cgnat literal' => ['https://100.64.0.1/hooks', [], false],
+            'cgnat hostname' => ['https://cgnat.example/hooks', ['cgnat.example' => ['100.64.0.1']], false],
+            'public IPv6 literal' => ['https://[2606:4700:4700::1111]/hooks', [], true],
+            '6to4 private literal' => ['https://[2002:7f00:1::]/hooks', [], false],
+            '6to4 public literal' => ['https://[2002:5db8:d822::]/hooks', [], true],
+            'IPv4-mapped private literal' => ['https://[::ffff:127.0.0.1]/hooks', [], false],
+            'NAT64 private literal' => ['https://[64:ff9b::127.0.0.1]/hooks', [], false],
             'not a URL' => ['not a url at all', [], false],
         ];
     }

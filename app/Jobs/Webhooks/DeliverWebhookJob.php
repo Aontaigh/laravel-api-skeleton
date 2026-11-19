@@ -8,6 +8,7 @@ use App\Enums\WebhookDeliveryStatus;
 use App\Models\WebhookDelivery;
 use App\Models\WebhookEndpoint;
 use App\Services\Webhooks\WebhookSigner;
+use App\Services\Webhooks\WebhookUrlGuard;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -16,6 +17,7 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Throwable;
 
 /**
  * Delivers one queued webhook delivery to its endpoint.
@@ -66,15 +68,16 @@ final class DeliverWebhookJob implements ShouldQueue
      * Mirrors `api.webhook_delivery_max_attempts`: the worker-level cap is the
      * backstop when the row-level retry accounting below is ever bypassed.
      */
-    public int $tries = 8;
+    public int $tries;
 
     /**
      * The number of seconds the job may run before timing out.
      *
-     * A single HTTP send has no useful reason to run longer; capping it frees the worker for other
-     * deliveries and keeps a hung receiver from occupying the queue.
+     * Derived from `api.webhook_delivery_timeout_seconds` plus headroom so the
+     * worker never kills an in-flight HTTP send that the configured timeout
+     * still allows.
      */
-    public int $timeout = 30;
+    public int $timeout;
 
     /*
     |--------------------------------------------------------------------------
@@ -89,7 +92,10 @@ final class DeliverWebhookJob implements ShouldQueue
      */
     public function __construct(
         public readonly WebhookDelivery $delivery,
-    ) {}
+    ) {
+        $this->tries = config()->integer('api.webhook_delivery_max_attempts');
+        $this->timeout = config()->integer('api.webhook_delivery_timeout_seconds') + 20;
+    }
 
     /*
     |--------------------------------------------------------------------------
@@ -107,15 +113,26 @@ final class DeliverWebhookJob implements ShouldQueue
      * the row update), so receivers must treat `Webhook-Id` as an idempotency
      * key - documented on the endpoint.
      *
-     * @param  WebhookSigner $signer the payload signer
+     * @param  WebhookSigner   $signer the payload signer
+     * @param  WebhookUrlGuard $guard  re-screens the target URL at send time
      * @return void
      */
-    public function handle(WebhookSigner $signer): void
+    public function handle(WebhookSigner $signer, WebhookUrlGuard $guard): void
     {
         /** @var WebhookDelivery|null $delivery */
         $delivery = WebhookDelivery::query()->find($this->delivery->id);
 
         if ($delivery === null) {
+            return;
+        }
+
+        /*
+         * A redelivered job can run after the row was already delivered (the
+         * worker crashed between the send and the queue ack); resending would
+         * duplicate the webhook, and a late failure would overwrite the
+         * delivered state.
+         */
+        if ($delivery->status === WebhookDeliveryStatus::Delivered) {
             return;
         }
 
@@ -128,6 +145,20 @@ final class DeliverWebhookJob implements ShouldQueue
          */
         if (! $endpoint->is_active) {
             $delivery->forceFill(['status' => WebhookDeliveryStatus::Exhausted])->save();
+
+            return;
+        }
+
+        /*
+         * Re-screen at send time: DNS can change between registration and
+         * delivery, so a target that was public when saved may now resolve to
+         * a private address. A failed screen is a delivery failure, never a
+         * send.
+         */
+        if (! $guard->allows($endpoint->url)) {
+            $delivery->forceFill(['attempts' => $delivery->attempts + 1])->save();
+
+            $this->recordFailure($delivery, $endpoint, null, 'Webhook URL Failed Delivery-Time SSRF Screen');
 
             return;
         }
@@ -169,6 +200,38 @@ final class DeliverWebhookJob implements ShouldQueue
         } catch (HttpClientException $exception) {
             $this->recordFailure($delivery, $endpoint, null, mb_substr($exception->getMessage(), 0, 1024));
         }
+    }
+
+    /**
+     * Mark the delivery exhausted when the worker exhausts its retries.
+     *
+     * The row-level accounting normally marks exhaustion; this is the backstop
+     * for a worker-level kill (timeout or uncaught exception) so the delivery
+     * never stays silently `Failed`.
+     *
+     * @param  Throwable|null $exception the exception that killed the job
+     * @return void
+     */
+    public function failed(?Throwable $exception): void
+    {
+        $delivery = WebhookDelivery::query()->find($this->delivery->id);
+
+        /*
+         * At-least-once queues can run the same delivery twice: a duplicate
+         * attempt that dies after another worker already delivered must not
+         * overwrite the delivered row with an exhausted one.
+         */
+        if ($delivery === null || $delivery->status === WebhookDeliveryStatus::Delivered) {
+            return;
+        }
+
+        $delivery->forceFill([
+            'status' => WebhookDeliveryStatus::Exhausted,
+            'last_error' => $exception === null
+                ? 'Webhook delivery job failed'
+                : mb_substr($exception->getMessage(), 0, 1024),
+            'next_retry_at' => null,
+        ])->save();
     }
 
     /*
@@ -213,9 +276,11 @@ final class DeliverWebhookJob implements ShouldQueue
          * Atomic increment: parallel delivery jobs for the same endpoint must
          * not lose each other's failures to a read-modify-write race.
          * `increment()` issues one `SET failure_streak = failure_streak + 1`
-         * statement and syncs the new value back onto the model.
+         * statement and updates the model's attribute; its return value is the
+         * affected-row count, so read the attribute for the new streak.
          */
-        $streak = $endpoint->increment('failure_streak');
+        $endpoint->increment('failure_streak');
+        $streak = $endpoint->failure_streak;
 
         if ($streak >= config()->integer('api.webhook_auto_disable_after_failures')) {
             $endpoint->forceFill(['is_active' => false, 'disabled_at' => now()]);

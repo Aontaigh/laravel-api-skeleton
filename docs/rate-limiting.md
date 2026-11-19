@@ -161,8 +161,8 @@ from [IPv6 Callers](#ipv6-callers).
 | `auth-verification`          | `POST /auth/email/resend`                                                               | User ID plus the address                                                                        | 3/min                                 | `API_EMAIL_VERIFICATION_RATE_LIMIT_PER_MINUTE`                                                                           |
 | `email-verify`               | `GET /auth/email/verify/{id}/{hash}`                                                    | the address ceiling only                                                                        | ceiling 15/min                        | `API_EMAIL_VERIFY_IP_CEILING_PER_MINUTE`                                                                                 |
 | `auth-password-change`       | `PATCH /me/password`                                                                    | User ID plus the address, plus the address ceiling                                              | 5/min, ceiling 15/min                 | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE`                                              |
-| `auth-sessions-revoke`       | `DELETE /sessions/current`, `DELETE /sessions/others`, `DELETE /sessions/{web_session}` | User ID plus the address, plus the address ceiling                                              | 5/min, ceiling 15/min                 | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE`                                              |
-| `api-tokens`                 | `POST /tokens`, `POST /users/{user}/tokens`                                             | the User ID; the caller's address for a guest                                                   | 10/min                                | `API_TOKEN_RATE_LIMIT_PER_MINUTE`                                                                                        |
+| `auth-sessions-revoke`       | `DELETE /sessions/current`, `DELETE /sessions/others`, `DELETE /sessions/{web_session}` | User ID plus the address, plus the address ceiling                                              | 5/min, ceiling 15/min                 | `API_AUTH_RATE_LIMIT_PER_MINUTE`, `API_AUTH_SESSIONS_REVOKE_IP_CEILING_PER_MINUTE`                                              |
+| `api-tokens`                 | `POST /tokens`, `POST /users/{user}/tokens`, `POST /clients`, `POST /clients/{client}/rotate-secret` | the User ID; the caller's address for a guest                                                   | 10/min                                | `API_TOKEN_RATE_LIMIT_PER_MINUTE`                                                                                        |
 | `api-webhooks`               | the outbound-emitting webhook routes (create, test ping, rotate secret)                 | the User ID; the caller's address for a guest                                                   | 10/min                                | `API_WEBHOOK_RATE_LIMIT_PER_MINUTE`                                                                                      |
 | `api-status`                 | `GET /status`, `GET /app-info`                                                          | the address                                                                                     | 30/min                                | `API_STATUS_RATE_LIMIT_PER_MINUTE`                                                                                       |
 | `health`                     | `GET /health` (the `web` group)                                                         | the address                                                                                     | 60/min                                | `API_HEALTH_RATE_LIMIT_PER_MINUTE`                                                                                       |
@@ -188,9 +188,9 @@ close that:
   broader than the composite so a NAT full of legitimate Users is not locked out
   by one careless client.
 
-The per-address ceiling is dropped when `APP_ENV=local` because the test suite
-drives many requests from one address. A local green run therefore says nothing
-about the ceiling: prove it against a deployed environment or a shared store.
+The per-address ceiling is dropped when `APP_ENV=local` only; the testing
+environment still enforces it. A local green run therefore says nothing about
+the ceiling: prove it against a deployed environment or a shared store.
 
 ### Why the Telemetry Routes Are Per-Address
 
@@ -298,8 +298,9 @@ curl -sS -D - -o /dev/null -X POST http://localhost:8090/api/auth/login \
 
 ## Coverage Gaps
 
-Every `/api` route is covered by the baseline, and the credentials, telemetry,
-and webhook surfaces carry their own limiter. The rest is deliberate.
+Every authenticated `/api` route is covered by a limiter — the baseline or a
+dedicated one — and the credentials, telemetry, and webhook surfaces carry their
+own. The deliberate exceptions follow.
 
 | Path                                     | Limiting | Why                                                                                                              |
 | ---------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------------------- |

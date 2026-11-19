@@ -349,6 +349,27 @@ final class EmailVerificationTest extends TestCase
     }
 
     /**
+     * Reject the resend for a suspended account.
+     */
+    #[Test]
+    public function it_rejects_a_suspended_account_resend(): void
+    {
+        // Arrange
+
+        Notification::fake();
+        $user = User::factory()->unverified()->suspended()->create();
+
+        // Act
+
+        $response = $this->actingAs($user)->postJson('/api/auth/email/resend');
+
+        // Assert
+
+        $response->assertForbidden();
+        Notification::assertNothingSentTo($user);
+    }
+
+    /**
      * Record the `Email Verification Sent` audit event through the pipeline.
      */
     #[Test]

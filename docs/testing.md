@@ -122,7 +122,7 @@ try a newer engine:
 ```bash
 export HADOLINT_IMAGE=hadolint/hadolint:v2.15.1-debian@sha256:9a3944b7fddcb947d1ffd90829ac1a6e5c30479223358f249d8b96c7d0019e27
 export SHELLCHECK_IMAGE=koalaman/shellcheck:v0.11.0@sha256:61862eba1fcf09a484ebcc6feea46f1782532571a34ed51fedf90dd25f925a8d
-export ZIZMOR_IMAGE=ghcr.io/zizmorcore/zizmor@sha256:a2eb396d886c053073405c7a980f2139ba2248ec172243cfa3841e57196e8101
+export ZIZMOR_IMAGE=ghcr.io/zizmorcore/zizmor:1.31.1@sha256:42d409dbb851d4c5d35a058cf042b828bea1e3f2884378c526eb0974780e18d9
 export ACTIONLINT_IMAGE=rhysd/actionlint@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667
 ```
 
@@ -318,8 +318,7 @@ tests/
     └── Support/          # Parsers, E.164 phones, input bounds, security headers
 ```
 
-`tests/phpstan/` holds helper bootstrap code for the static-analysis setup, not
-tests.
+
 
 [scripts/pen-test-auth.sh](../scripts/pen-test-auth.sh) drives live HTTP probes
 against a running Sail stack: account enumeration, SQLi-shaped input, rate
@@ -430,28 +429,6 @@ will not show this. Read the coverage run's summary line, not just its exit code
 When auditing coverage that looks wrongly low, check for
 `is not a valid target for code coverage` in the output before suspecting PCOV,
 Xdebug, or the container.
-
-### The Coverage Run Can Exceed Composer's 300-Second Timeout
-
-`composer test:coverage` is a nested Composer script, so Composer's default
-`process-timeout` of 300 seconds applies to it. A suite that takes ~200 seconds
-plain can exceed 300 under coverage, and Composer then kills the child process:
-
-```
-The process "'/usr/bin/php8.5' ... '/usr/bin/composer' test:coverage" exceeded
-the timeout of 300 seconds.
-```
-
-**This looks exactly like a coverage bug and is not one.** The killed run leaves
-a partial `storage/coverage/clover.xml`, and two runs are byte-identical because
-they die at the same point. The tell is the wording: a genuine coverage failure
-reports `Tests: N failed` or a threshold message, whereas a timeout reports
-`exceeded the timeout of N seconds`.
-
-Check the reported duration against the timeout before investigating the driver.
-If the suite has grown past the limit, raise `process-timeout` in
-[composer.json](../composer.json) or cut the runtime, so a slow run does not fail
-for a reason unrelated to what the gate measures.
 
 ## Documentation Sync
 

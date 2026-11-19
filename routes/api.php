@@ -128,7 +128,7 @@ Route::get('/auth/email/verify/{id}/{hash}', \App\Http\Controllers\Auth\Email\Ve
     ->name('email.verification.verify');
 
 Route::post('/auth/email/resend', \App\Http\Controllers\Auth\Email\ResendVerificationController::class)
-    ->middleware(['auth:sanctum', 'throttle:auth-verification'])
+    ->middleware(['auth:sanctum', 'active.account', 'throttle:api', 'throttle:auth-verification'])
     ->name('email.verification.resend');
 
 /*

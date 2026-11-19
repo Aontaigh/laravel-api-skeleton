@@ -9,6 +9,7 @@ use App\Jobs\Webhooks\DeliverWebhookJob;
 use App\Models\WebhookDelivery;
 use App\Models\WebhookEndpoint;
 use App\Services\Webhooks\WebhookSigner;
+use App\Services\Webhooks\WebhookUrlGuard;
 use Database\Seeders\RolesAndPermissionsSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Client\Request;
@@ -16,6 +17,7 @@ use Illuminate\Support\Facades\Http;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
 use ReflectionMethod;
+use Tests\Concerns\FakesWebhookDns;
 use Tests\TestCase;
 
 /**
@@ -31,6 +33,7 @@ final class DeliverWebhookJobTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    use FakesWebhookDns;
     use RefreshDatabase;
 
     /*
@@ -40,7 +43,7 @@ final class DeliverWebhookJobTest extends TestCase
     */
 
     /**
-     * Seed roles for factory-built owners.
+     * Seed roles for factory-built owners and fake the URL guard's DNS.
      *
      * @return void
      */
@@ -49,6 +52,10 @@ final class DeliverWebhookJobTest extends TestCase
         parent::setUp();
 
         $this->seed(RolesAndPermissionsSeeder::class);
+        $this->fakeWebhookDns([
+            'example.com' => ['93.184.216.34'],
+            'public.example' => ['93.184.216.34'],
+        ]);
     }
 
     /*
@@ -75,7 +82,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -110,7 +117,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -151,7 +158,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -184,7 +191,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -214,7 +221,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -243,7 +250,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -266,7 +273,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -300,7 +307,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -396,7 +403,7 @@ final class DeliverWebhookJobTest extends TestCase
 
         // Act
 
-        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class));
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
 
         // Assert
 
@@ -406,5 +413,174 @@ final class DeliverWebhookJobTest extends TestCase
         $this->assertFalse($fresh->is_active);
         $this->assertNotNull($fresh->disabled_at);
         $this->assertSame(1, $fresh->failure_streak);
+    }
+
+    /**
+     * Auto-disable at the configured threshold, not at the increment's row count.
+     *
+     * The default threshold is 10. The previous implementation compared the
+     * affected-row count (`1`) to the threshold, so a dead receiver was never
+     * disabled. This test starts one failure short of the default threshold.
+     */
+    #[Test]
+    public function it_auto_disables_at_the_configured_threshold(): void
+    {
+        // Arrange
+
+        config(['api.webhook_auto_disable_after_failures' => 10]);
+        Http::fake(['*' => Http::response('unavailable', 503)]);
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create(['failure_streak' => 9]);
+
+        /** @var WebhookDelivery $delivery */
+        $delivery = WebhookDelivery::factory()->for($endpoint, 'endpoint')->create();
+
+        // Act
+
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
+
+        // Assert
+
+        $fresh = $endpoint->fresh();
+
+        $this->assertNotNull($fresh);
+        $this->assertSame(10, $fresh->failure_streak);
+        $this->assertFalse($fresh->is_active);
+        $this->assertNotNull($fresh->disabled_at);
+    }
+
+    /**
+     * Keep the endpoint active one failure below the configured threshold.
+     */
+    #[Test]
+    public function it_keeps_the_endpoint_active_below_the_threshold(): void
+    {
+        // Arrange
+
+        config(['api.webhook_auto_disable_after_failures' => 10]);
+        Http::fake(['*' => Http::response('unavailable', 503)]);
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create(['failure_streak' => 8]);
+
+        /** @var WebhookDelivery $delivery */
+        $delivery = WebhookDelivery::factory()->for($endpoint, 'endpoint')->create();
+
+        // Act
+
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
+
+        // Assert
+
+        $fresh = $endpoint->fresh();
+
+        $this->assertNotNull($fresh);
+        $this->assertSame(9, $fresh->failure_streak);
+        $this->assertTrue($fresh->is_active);
+        $this->assertNull($fresh->disabled_at);
+    }
+
+    /**
+     * Refuse delivery when the URL fails the delivery-time SSRF screen.
+     *
+     * The guard runs on create/update, but DNS can change between storage and
+     * delivery. Re-screening at send time closes the rebinding window.
+     */
+    #[Test]
+    public function it_refuses_to_deliver_when_the_url_fails_the_delivery_time_screen(): void
+    {
+        // Arrange
+
+        $this->fakeWebhookDns(['example.com' => ['127.0.0.1']]);
+
+        Http::fake(['*' => Http::response('ok', 200)]);
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        /** @var WebhookDelivery $delivery */
+        $delivery = WebhookDelivery::factory()->for($endpoint, 'endpoint')->create();
+
+        // Act
+
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
+
+        // Assert
+
+        Http::assertNothingSent();
+
+        $fresh = $delivery->fresh();
+
+        $this->assertNotNull($fresh);
+        $this->assertSame(WebhookDeliveryStatus::Failed, $fresh->status);
+        $this->assertSame('Webhook URL Failed Delivery-Time SSRF Screen', $fresh->last_error);
+        $this->assertSame(1, $endpoint->fresh()?->failure_streak);
+    }
+
+    /**
+     * Do not resend a webhook whose row is already delivered.
+     */
+    #[Test]
+    public function it_does_not_resend_an_already_delivered_delivery(): void
+    {
+        // Arrange
+
+        Http::fake(['*' => Http::response('ok', 200)]);
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        /** @var WebhookDelivery $delivery */
+        $delivery = WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'status' => WebhookDeliveryStatus::Delivered,
+            'attempts' => 1,
+            'delivered_at' => now(),
+        ]);
+
+        // Act
+
+        (new DeliverWebhookJob($delivery))->handle(app(WebhookSigner::class), app(WebhookUrlGuard::class));
+
+        // Assert
+
+        Http::assertNothingSent();
+
+        $fresh = $delivery->fresh();
+
+        $this->assertNotNull($fresh);
+        $this->assertSame(WebhookDeliveryStatus::Delivered, $fresh->status);
+        $this->assertSame(1, $fresh->attempts);
+    }
+
+    /**
+     * Leave a delivered row delivered when a duplicate attempt dies.
+     */
+    #[Test]
+    public function it_does_not_exhaust_a_delivered_row_when_a_duplicate_fails(): void
+    {
+        // Arrange
+
+        /** @var WebhookEndpoint $endpoint */
+        $endpoint = WebhookEndpoint::factory()->create();
+
+        /** @var WebhookDelivery $delivery */
+        $delivery = WebhookDelivery::factory()->for($endpoint, 'endpoint')->create([
+            'status' => WebhookDeliveryStatus::Delivered,
+            'attempts' => 1,
+            'delivered_at' => now(),
+        ]);
+
+        // Act
+
+        (new DeliverWebhookJob($delivery))->failed(null);
+
+        // Assert
+
+        $fresh = $delivery->fresh();
+
+        $this->assertNotNull($fresh);
+        $this->assertSame(WebhookDeliveryStatus::Delivered, $fresh->status);
+        $this->assertNotNull($fresh->delivered_at);
     }
 }

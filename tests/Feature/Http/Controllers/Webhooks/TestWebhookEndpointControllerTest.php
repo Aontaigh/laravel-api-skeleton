@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FakesWebhookDns;
 use Tests\TestCase;
 
 /**
@@ -39,6 +40,7 @@ final class TestWebhookEndpointControllerTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    use FakesWebhookDns;
     use RefreshDatabase;
 
     /*
@@ -48,7 +50,7 @@ final class TestWebhookEndpointControllerTest extends TestCase
     */
 
     /**
-     * Seed roles and permissions.
+     * Seed roles and permissions and fake the URL guard's DNS.
      *
      * @return void
      */
@@ -57,6 +59,7 @@ final class TestWebhookEndpointControllerTest extends TestCase
         parent::setUp();
 
         $this->seed(RolesAndPermissionsSeeder::class);
+        $this->fakeWebhookDns(['example.com' => ['93.184.216.34']]);
     }
 
     /*

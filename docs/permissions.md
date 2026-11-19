@@ -168,9 +168,10 @@ ever compared). Receiving is at-least-once, so integrators must treat
 
 #### `GET /api/audit-logs`
 
-Admin-only read-only index of `auth_audit_logs`. The Policy requires the `Admin`
-role and rejects service accounts even when `audit-logs.list` is present on the
-role. Managers, Users, and Service identities cannot list or show audit rows.
+Admin-only read-only index of `auth_audit_logs`. The Policy requires the
+`audit-logs.list` permission and rejects service accounts even when the
+permission is present. Managers, Users, and Service identities cannot list or
+show audit rows.
 
 The log covers authentication (login, logout, registration, 2FA, recovery,
 email verification) and access-control changes: password changes, role changes,

@@ -272,9 +272,9 @@ object with `roles` and `permissions` arrays so SPAs can hide controls the serve
 
 **Rate Limits**
 
-- Login and register share a per-email+IP budget (`API_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**),
-  backed by split per-IP ceilings so account-creation spam cannot eat the login budget:
-  login `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` (default **20**), registration
+- Login and registration carry separate per-email+IP budgets (`API_AUTH_RATE_LIMIT_PER_MINUTE`,
+  default **5**), each backed by its own per-IP ceiling so account-creation spam cannot eat the
+  login budget: login `API_AUTH_LOGIN_IP_CEILING_PER_MINUTE` (default **20**), registration
   `API_AUTH_REGISTER_IP_CEILING_PER_MINUTE` (default **10**). Login also carries an
   address-independent per-account bucket keyed on the e-mail alone
   (`API_AUTH_LOGIN_ACCOUNT_RATE_LIMIT_PER_MINUTE`, default **10**), so rotating addresses cannot
@@ -286,7 +286,8 @@ object with `roles` and `permissions` arrays so SPAs can hide controls the serve
   (`auth-password-change`, `auth-sessions-revoke`).
 - Client-credentials exchange is rate-limited per `client_id`+IP
   (`API_CLIENT_AUTH_RATE_LIMIT_PER_MINUTE`, default **5**) with the same per-IP ceiling pattern.
-- The per-IP ceiling is skipped in `local` so the dev suite never self-throttles.
+- The per-IP ceiling is skipped in `local` only; the test suite runs as `testing` and still
+  exercises the ceiling.
 
 **Demo Client and Admin Management**
 
@@ -382,17 +383,18 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 
 ## 📚 Documentation
 
-| Doc                                            | Purpose                                                                                    |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------ |
-| [README.md](README.md)                         | 📌 Orientation, quick start, architecture summary                                          |
-| [/api/docs](http://localhost/api/docs)         | Scalar interactive reference - try endpoints in the browser                                |
-| [docs/openapi.yaml](docs/openapi.yaml)         | 📄 OpenAPI 3.1 source file (also at `/api/openapi.yaml`)                                   |
-| [docs/api.md](docs/api.md)                     | 🖥️ Scalar setup, preview, import, and sync checklist                                       |
-| [docs/permissions.md](docs/permissions.md)     | 🔐 Permission strings, role matrix, Policy links                                           |
-| [docs/rate-limiting.md](docs/rate-limiting.md) | 🚦 Limits, key shapes, IPv6 aggregation, counter storage, and the one remaining limitation |
-| [docs/performance.md](docs/performance.md)     | ⚡ Pagination and search trade-offs at scale                                               |
-| [docs/releasing.md](docs/releasing.md)         | 🏷️ Cutting a release - changelog, gates, tag, GitHub publish                               |
-| [docs/testing.md](docs/testing.md)             | 🧪 Quality gates, test suites, coverage floor, pen test                                    |
+| Doc                                              | Purpose                                                                                    |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
+| [README.md](README.md)                           | 📌 Orientation, quick start, architecture summary                                          |
+| [/api/docs](http://localhost/api/docs)           | Scalar interactive reference - try endpoints in the browser                                |
+| [docs/openapi.yaml](docs/openapi.yaml)           | 📄 OpenAPI 3.1 source file (also at `/api/openapi.yaml`)                                   |
+| [docs/api.md](docs/api.md)                       | 🖥️ Scalar setup, preview, import, and sync checklist                                       |
+| [docs/permissions.md](docs/permissions.md)       | 🔐 Permission strings, role matrix, Policy links                                           |
+| [docs/rate-limiting.md](docs/rate-limiting.md)   | 🚦 Limits, key shapes, IPv6 aggregation, counter storage, and the one remaining limitation |
+| [docs/performance.md](docs/performance.md)       | ⚡ Pagination and search trade-offs at scale                                               |
+| [docs/releasing.md](docs/releasing.md)           | 🏷️ Cutting a release - changelog, gates, tag, GitHub publish                               |
+| [docs/branch-hygiene.md](docs/branch-hygiene.md) | 🧹 Post-merge branch cleanup and Dependabot handling                                       |
+| [docs/testing.md](docs/testing.md)               | 🧪 Quality gates, test suites, coverage floor, pen test                                    |
 
 <a id="stack"></a>
 
@@ -465,11 +467,11 @@ The resources below share the contract; each group's summary and route table fol
 | ------------------ | ---------------------------------------------------------------- | ----------------------------------------------------------------- |
 | Users and Profile  | `/api/users`, `/api/me`                                          | `users.list`; row-scoped by team; `/api/me` needs no `users.list` |
 | Teams              | `/api/teams`                                                     | `teams.list` (Admin, Manager); writes Admin-only                  |
-| Roles              | `/api/roles`                                                     | `roles.list` (Admin, Manager)                                     |
+| Roles              | `/api/roles`                                                     | `roles.list` (Admin, Manager, Service)                            |
 | Permissions        | `/api/permissions`                                               | `permissions.list` (Admin, Manager, User)                         |
 | API Clients        | `/api/clients`                                                   | Admin only                                                        |
 | Tokens             | `/api/tokens`                                                    | Self-service; Admin issuance for others                           |
-| Web Sessions       | `/api/sessions`                                                  | `sessions.list-own` or `sessions.list-all`                        |
+| Web Sessions       | `/api/sessions`                                                  | `sessions.list-own` (Admin, Manager, User); `sessions.list-all` widens scope (Admin only) |
 | Auth Audit Logs    | `/api/audit-logs`                                                | Admin only                                                        |
 | Webhooks           | `/api/webhook-endpoints`                                         | Admin only                                                        |
 | Health and Status  | `/health`, `/api/status`                                         | Public                                                            |
@@ -484,7 +486,7 @@ GET /api/users?filter[search]=acme&filter[status]=active&filter[role]=User&field
 **Filters:** `filter[status]` accepts `active`, `suspended`, or `deleted` (trashed-only scope for
 restore workflows). `filter[role]` accepts `Admin`, `Manager`, `User`, or `Service`.
 
-**Row Scoping:** Managers and Users see their own team only; Admins see all teams
+**Row Scoping:** Managers see their own team only; Users cannot list users; Admins see all teams
 (`users.list-all`). Details: [docs/permissions.md](docs/permissions.md#userslist-vs-userslist-all).
 
 **Field Visibility:** `email` is omitted unless the viewer holds `users.view-email` -
@@ -546,7 +548,7 @@ GET /api/roles?filter[search]=admin&fields[roles]=id,name&include=permissions&so
 GET /api/roles/{role}?fields[roles]=id,name&include=permissions
 ```
 
-Requires `roles.list` (Admin and Manager). Scoped to the `web` guard Spatie stores on role rows.
+Requires `roles.list` (Admin, Manager, and Service). Scoped to the `web` guard Spatie stores on role rows.
 
 **Source of Truth:** [RoleQueryConstraints](app/Queries/Roles/RoleQueryConstraints.php),
 [RolePolicy](app/Policies/RolePolicy.php).
@@ -658,8 +660,8 @@ DELETE /api/sessions/others             # "sign out other devices"
 DELETE /api/sessions/current            # end this browser only
 ```
 
-Cookie-bound device registry. List and show require `sessions.list-own` (own rows)
-or `sessions.list-all` (every User); show supports `fields[sessions]`,
+Cookie-bound device registry. List and show require `sessions.list-own` (own rows);
+`sessions.list-all` (Admin only) widens the scope to every User; show supports `fields[sessions]`,
 `fields[users]`, and `include=user`, and out-of-scope or revoked rows answer `404`.
 Revoking one session needs `sessions.revoke-own` (own) or `sessions.revoke-any`
 (any User); `others` needs `sessions.revoke-own` and never touches bearer tokens
@@ -873,6 +875,7 @@ docs/
 ├── permissions.md        # Permission matrix
 ├── performance.md        # Scale trade-offs
 ├── releasing.md          # Release runbook
+├── branch-hygiene.md     # Post-merge cleanup and Dependabot handling
 └── testing.md            # Quality gates, suites, coverage floor, pen test
 resources/views/          # Scalar embed and welcome page
 routes/
@@ -934,7 +937,7 @@ python3 scripts/lint/lint-runner-labels.py    # workflow runner labels actionlin
 python3 scripts/lint/check-base-image-refs.py # every FROM / COPY --from is digest-pinned and resolves
 ```
 
-`composer ci` chains `lint:composer`, `lint`, `lint:links`, `analyse`,
+`composer ci` chains `lint:composer`, `lint`, `lint:links`, `lint:npm`, `analyse`,
 `verify:php-version`, `verify:php-cve-floor`, `verify:service-parity`, `semgrep`,
 `test:coverage:check`, `verify:openapi`, `verify:version`, `composer audit --locked`, and
 `audit:npm`.
@@ -948,9 +951,8 @@ that caveat and the workaround:
 ./vendor/bin/sail composer ci
 ```
 
-It does **not** cover Zizmor, `actionlint`, the runner-label lint, hadolint, ShellCheck, the
-base image reference check, the Renovate config, or the live pen test. Those are separate CI
-jobs; the live pen test (step 12) runs locally only. See [docs/testing.md](docs/testing.md) for
+It does **not** cover Zizmor, `actionlint`, the runner-label lint, hadolint, ShellCheck,
+the base image reference check, the Renovate config, or the live pen test. Those are separate CI jobs; the live pen test (step 12) runs locally only. See [docs/testing.md](docs/testing.md) for
 the full step list, which of them run on the host rather than in Sail, and what each one writes.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, an npm lock check, a Markdown link
@@ -968,13 +970,13 @@ Run Semgrep locally on the host (Docker, or a local CLI at the pinned release - 
 bash scripts/semgrep.sh
 ```
 
-Run Zizmor locally the same way (a local CLI - it needs no Sail services). The policy
-lives in [`.github/zizmor.yml`](.github/zizmor.yml): first-party `actions/*` steps accept
-ref-pins, every third-party `uses:` must be a full-commit SHA pin with the tag kept as a
-trailing `# vX` comment for Dependabot:
+Run Zizmor locally the same way (a pinned Docker image - it needs no Sail services but does
+need a running Docker daemon). The policy lives in [`.github/zizmor.yml`](.github/zizmor.yml):
+first-party `actions/*` steps accept ref-pins, every third-party `uses:` must be a full-commit
+SHA pin with the tag kept as a trailing `# vX` comment for Dependabot:
 
 ```bash
-zizmor --config .github/zizmor.yml .github/workflows/
+bash scripts/run-zizmor.sh
 ```
 
 ### Runner Label

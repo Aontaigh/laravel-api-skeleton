@@ -76,12 +76,14 @@ return [
     | Password change and session revokes key on User ID + IP rather than
     | email: these requests carry no email field, so an email-keyed limiter
     | would collapse every caller on an IP into one bucket. The old shared
-    | `auth_ip_ceiling_per_minute` key is removed - every consumer now names
-    | its own ceiling below.
+    | `auth_ip_ceiling_per_minute` key is removed - every consumer names its
+    | own ceiling below.
     |
     */
 
     'auth_password_ip_ceiling_per_minute' => (int) env('API_AUTH_PASSWORD_IP_CEILING_PER_MINUTE', 15),
+
+    'auth_sessions_revoke_ip_ceiling_per_minute' => (int) env('API_AUTH_SESSIONS_REVOKE_IP_CEILING_PER_MINUTE', 15),
 
     'two_factor_send_rate_limit_per_minute' => (int) env('API_TWO_FACTOR_SEND_RATE_LIMIT_PER_MINUTE', 5),
 
@@ -221,7 +223,8 @@ return [
     |
     | Number of days until a newly issued Sanctum token expires. A value of 0
     | or below falls back to `token_max_expiration_days` rather than disabling
-    | expiration. Synced to config/sanctum.php for authentication enforcement.
+    | expiration. Sanctum's own `expiration` is null; the API enforces this
+    | lifetime when minting tokens, so the two settings are not synced.
     |
     */
 
@@ -263,8 +266,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Code lifetime, pending-challenge lifetime, and per-code guess budget.
-    | Pending TTL should be at least as long as the code TTL so stateless
-    | clients can complete send + verify within one window.
+    | Nothing clamps the pair: keep the Pending TTL at least as long as the
+    | code TTL so stateless clients can complete send + verify within one
+    | window. A shorter Pending TTL silently invalidates the challenge.
     |
     */
 
@@ -287,18 +291,6 @@ return [
     */
 
     'auth_timing_normalisation_hash' => env('API_AUTH_TIMING_NORMALISATION_HASH'),
-
-    /*
-    |--------------------------------------------------------------------------
-    | API Documentation
-    |--------------------------------------------------------------------------
-    |
-    | Scalar serves interactive docs at /api/docs in every environment. Leave
-    | both credentials empty for public docs; set both to require HTTP Basic
-    | Auth in production (or any environment). The OpenAPI file path is relative
-    | to the application base path.
-    |
-    */
 
     /*
     |--------------------------------------------------------------------------

@@ -7,11 +7,17 @@ For GitHub release note formatting (emoji section headings, **Full Changelog**
 footer), follow the **create-github-release** skill in your conventions toolkit.
 This runbook is the surrounding procedure - gates, changelog, tag, and publish.
 
-- **Prerequisites:** `gh` authenticated against `Aontaigh/laravel-api-skeleton`
-  (`gh auth status`); push access to `main`; Docker for Sail when host PHP is not 8.5.
-- **Versioning:** semver. New endpoints or conventions are a **minor**; docs, test
-  refactors, and dependency patches are a **patch**; breaking API or convention changes
-  are a **major**.
+- **Prerequisites:** `gh` authenticated against `Aontaigh/laravel-api-skeleton` with the
+  `Aontaigh` account active - check `gh auth status`, and switch with
+  `gh auth switch --user Aontaigh` when another account is active; push access to `main`;
+  Docker for Sail when host PHP is not 8.5.
+- **Start from current trunk:** `git fetch origin` first. If `main` moved while you prepared
+  the release (another release landed, or a merge), rebase onto `origin/main` before running
+  the gates, so the tag lands on top of the current trunk rather than a stale base. Re-run
+  `composer update --lock` after resolving any `composer.json` conflict.
+- **Versioning:** semver. New endpoints or conventions are a **minor**; bug and security
+  fixes, docs, test refactors, and dependency patches are a **patch**; breaking API or
+  convention changes are a **major**.
 
 ## Release Checklist
 
@@ -133,7 +139,10 @@ needs a local Semgrep CLI or a Docker CLI, neither of which exists inside the ap
 container - it exits 1 with `Semgrep Is Not Installed`. The scanner wrappers and the
 base image probe need that same Docker CLI, so all six host commands run there
 ([testing.md](testing.md) steps 7 to 10). OpenAPI verification replays every documented
-example against a served, seeded app, so seed before running the chain.
+example against a served, seeded app, so seed before running the chain. Through Sail it
+targets `http://localhost/api` inside the container; when running the script on the host
+instead, point `OPENAPI_VERIFY_BASE` at the published port (e.g.
+`http://localhost:8090/api`).
 
 See [README Quality Gates](../README.md#quality-gates) for the full command list and
 Sail port notes when Docker ports on your machine are already in use.
@@ -152,18 +161,19 @@ once the tag is pushed: a stale pair passes silently and hides the next release'
 
 Stage the tree rather than a list of paths. When the feature work is already
 committed, the release bump touches these files - the changelog, `composer.json`,
-`composer.lock`, `docs/`, `.env.example`, `.env.ci`, and the link gate's in-flight
-exemption pair:
+`composer.lock`, `docs/`, `.env.example`, `.env.ci`, and the in-flight compare exemptions in
+`scripts/lint-links.sh`:
 
 ```bash
 git add -A
-git status --porcelain
+git status --porcelain        # inspect what the commit will carry
 git commit -m "chore(release): prepare vX.Y.Z"
+git status --porcelain        # must print nothing
 git push origin main
 gh run watch --exit-status
 ```
 
-`git status --porcelain` must print nothing. A hand-written path list is how
+`git status --porcelain` after the commit must print nothing. A hand-written path list is how
 `composer.lock` goes missing: the bump edits `composer.json`, Composer's
 `content-hash` covers that field, so `composer update --lock` rewrites the lock in
 the same step - and a rewritten lock left unstaged still passes
@@ -180,8 +190,8 @@ publisher token needs push on `main` and release creation, so verify
 
 CI must be green on the commit you are about to tag. The **All Quality Gates** summary
 job must pass - Pint (with app version sync), Link Check, Larastan, PHPUnit + coverage,
-Security Audit, OpenAPI Examples, Semgrep, Zizmor, and Lint Workflows (`actionlint` and
-the Renovate config).
+Security Audit, OpenAPI Examples, Semgrep, Zizmor, Lint Workflows (`actionlint` and the
+Renovate config), Frontend Build, Hadolint, Base Image References, and ShellCheck.
 
 ## 4. Tag the CI-Green Commit
 
@@ -189,8 +199,8 @@ the Renovate config).
 git fetch --tags origin
 git rev-parse main            # note this SHA
 git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git rev-parse vX.Y.Z^{}       # must equal the SHA above before anything is pushed
 git push origin vX.Y.Z
-git rev-parse vX.Y.Z^{}       # the tagged commit, must equal the SHA above
 ```
 
 > [!WARNING]
@@ -236,6 +246,7 @@ Omit empty sections. Keep section order: Added, Changed, Fixed, Removed.
 
 End every release **after `v1.0.0`** with a horizontal rule and compare link:
 
+<!-- prettier-ignore -->
 ```markdown
 ---
 
@@ -272,6 +283,15 @@ gh release create vX.Y.Z \
 gh release view vX.Y.Z --web
 ```
 
+To fix an already-published release that used the wrong format:
+
+```bash
+gh release edit vX.Y.Z --notes-file /tmp/release-notes.md
+```
+
+For ticketless repos, bullet lines with commit or PR links match prior skeleton
+releases - see [v1.3.0](https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.3.0).
+
 ## 6. Remove the In-Flight Exemptions
 
 The pair you added in step 3 now resolves, and leaving it would hide the next release's dead
@@ -284,11 +304,14 @@ git commit -m "chore(release): drop the in-flight compare exemptions"
 git push origin main
 ```
 
-To fix an already-published release that used the wrong format:
+## Post-Release
 
-```bash
-gh release edit vX.Y.Z --notes-file /tmp/release-notes.md
-```
+- Confirm the tag points at the CI-green release commit
+- Remove the two in-flight compare exemptions from `scripts/lint-links.sh`, commit
+  (`chore(release): drop the in-flight compare exemptions`), and push - a stale pair passes
+  silently and hides the next release's dead links
+- Delete merged work branches and prune stale remote-tracking refs
+- Do not create a release branch or reset `main`
+- Handle Dependabot branches with Dependabot commands, never with a pushed commit
 
-For ticketless repos, bullet lines with commit or PR links match prior skeleton
-releases - see [v1.3.0](https://github.com/Aontaigh/laravel-api-skeleton/releases/tag/v1.3.0).
+See [Branch Hygiene](branch-hygiene.md).

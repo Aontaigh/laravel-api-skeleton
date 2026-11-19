@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use Tests\Concerns\FakesWebhookDns;
 use Tests\TestCase;
 
 /**
@@ -33,6 +34,7 @@ final class WebhookEmissionTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    use FakesWebhookDns;
     use RefreshDatabase;
 
     /*
@@ -55,6 +57,7 @@ final class WebhookEmissionTest extends TestCase
 
         $this->seed(RolesAndPermissionsSeeder::class);
         Http::fake(['*' => Http::response('ok', 200)]);
+        $this->fakeWebhookDns(['example.com' => ['93.184.216.34']]);
     }
 
     /*

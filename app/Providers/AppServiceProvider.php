@@ -361,7 +361,7 @@ final class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(config()->integer('api.auth_rate_limit_per_minute'))
                     ->by($this->authenticatedUserKey($request)),
-                ...$this->perIpCeiling(config()->integer('api.auth_password_ip_ceiling_per_minute'), $request),
+                ...$this->perIpCeiling(config()->integer('api.auth_sessions_revoke_ip_ceiling_per_minute'), $request),
             ];
         });
 

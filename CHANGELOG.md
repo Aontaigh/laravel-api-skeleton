@@ -7,6 +7,60 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.1] - 2026-11-19
+
+### Added
+
+- **Branch Hygiene Runbook:** `docs/branch-hygiene.md` records the trunk model (`main` only),
+  the branch lifecycle, and the Dependabot comment commands, and the README, releasing, and
+  testing docs link to it. The **All Quality Gates** check it names is the `ci` summary job in
+  the workflow
+- **Dedicated Session-Revoke IP Ceiling:** `API_AUTH_SESSIONS_REVOKE_IP_CEILING_PER_MINUTE`
+  (`api.auth_sessions_revoke_ip_ceiling_per_minute`) gives `auth-sessions-revoke` its own
+  per-IP ceiling instead of sharing the password-change bucket; `config/api.php`,
+  `.env.example`, `.env.ci`, and the rate-limiting table name it
+
+### Changed
+
+- **Default Database Connection Is MySQL:** `config/database.php` falls back to `mysql`
+  rather than `sqlite`, matching every shipped env file, the documented MySQL-only stack, and
+  the CI service. A deployment that relied on the old fallback should set
+  `DB_CONNECTION=sqlite` explicitly. `post-create-project-cmd` no longer creates
+  `database/database.sqlite`
+- **`composer ci` Chains the npm Lock Check:** `@lint:npm` now runs beside `lint`, so the
+  local chain no longer misses a gate CI runs; the README chain list and releasing runbook
+  match
+- **PHPUnit Env Trimmed:** `phpunit.xml` no longer sets `PULSE_ENABLED` or
+  `NIGHTWATCH_ENABLED`; neither package is installed
+- **OpenAPI Corrections:** the client-credentials endpoint documents its RFC 6749 `400`
+  error body (was `422`), the password change requires 12 characters, the reset token caps at
+  64, `/health` is documented as public and per-IP throttled, login and registration carry
+  separate ceilings, `/auth/email/verify` and `/auth/email/resend` document `403`, and the
+  runtime example reports PHP 8.5.12
+- **Rate-Limit and Permission Docs Corrected:** the session-revoke row names its own key,
+  the local-only ceiling wording matches `perIpCeiling()`, the coverage claim covers
+  authenticated `/api` routes, and the roles and sessions rows match the seeder and policies
+- **Testing and Release Docs Updated:** the obsolete coverage-timeout and `tests/phpstan`
+  sections are gone, the releasing gate list is complete, the tag SHA is verified before the
+  push, the OpenAPI verify base override is documented, and Post-Release removes the
+  in-flight compare exemptions
+
+### Fixed
+
+- **Webhook Delivery Correctness:** `increment('failure_streak')` returns the affected-row
+  count, not the new streak, so auto-disable could never trigger at its threshold; the job
+  now reads the attribute. `$tries` and `$timeout` follow `api.webhook_delivery_*`,
+  `failed()` marks `Exhausted` when a worker dies, a redelivered job skips an already
+  `Delivered` row, and a late failure cannot overwrite `Delivered`
+- **Webhook SSRF Screening Hardened:** bracketed IPv6 literals are stripped before the IP
+  check, CGNAT `100.64.0.0/10` and 6to4 `2002::/16` are screened explicitly, and the guard
+  runs again immediately before each delivery so a host that resolves private after
+  registration fails instead of sending
+- **CSP Log Flooding Capped:** one anonymous report POST can carry thousands of tiny reports;
+  the action logs at most 16 per request and records the truncation once
+- **Suspended Accounts Cannot Resend Verification Mail:** `/auth/email/resend` now runs
+  `active.account` and the baseline `throttle:api`, and a regression test covers the `403`
+
 ## [4.0.0] - 2026-11-18
 
 ### Added
@@ -53,6 +107,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `X-XSRF-TOKEN` instead of `*`, so a client sending a header the contract never defined is
   visible rather than silently accepted. `exposed_headers` publishes `Retry-After` and the
   `X-RateLimit-*` family so a cross-origin client can back off before it is refused.
+
 ## [3.6.0] - 2026-11-15
 
 ### Added
@@ -1181,6 +1236,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.0...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.1...HEAD
+[4.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.6.0...v4.0.0
 [3.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.1...v3.6.0

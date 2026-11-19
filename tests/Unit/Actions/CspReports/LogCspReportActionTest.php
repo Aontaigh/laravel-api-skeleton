@@ -109,4 +109,41 @@ final class LogCspReportActionTest extends UnitTestCase
 
         // Mockery expectation above (`never()`) is the assertion.
     }
+
+    /**
+     * Cap the number of warnings one request can write to the channel.
+     *
+     * The 16 KiB body cap still allows thousands of tiny reports; without a
+     * report cap one anonymous request could flood the daily channel. The
+     * excess reports are dropped and the truncation is logged once.
+     */
+    #[Test]
+    public function it_caps_the_number_of_reports_logged_per_batch(): void
+    {
+        // Arrange
+
+        $reports = array_map(
+            static fn (int $index): CspReportData => new CspReportData(documentUri: "https://example.com/{$index}"),
+            range(1, 17),
+        );
+
+        Log::shouldReceive('channel')->times(17)->with('csp-reports')->andReturnSelf();
+        Log::shouldReceive('warning')
+            ->times(16)
+            ->with('CSP Violation Reported', Mockery::type('array'));
+        Log::shouldReceive('warning')
+            ->once()
+            ->with('CSP Reports Truncated', Mockery::on(
+                static fn (array $context): bool => ($context['logged'] ?? null) === 16
+                    && ($context['received'] ?? null) === 17,
+            ));
+
+        // Act
+
+        (new LogCspReportAction)->execute($reports);
+
+        // Assert
+
+        // Mockery expectations above are the assertion.
+    }
 }
