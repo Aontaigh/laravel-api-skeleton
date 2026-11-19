@@ -457,7 +457,7 @@ jobs:
                   github.event.pull_request.head.repo.full_name == github.repository)
               # Code scanning upload needs GHAS on private repos; the scan step below is the merge gate
               continue-on-error: true
-              uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+              uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
               with:
                   sarif_file: semgrep.sarif
                   category: semgrep
@@ -507,7 +507,7 @@ jobs:
               # Code scanning upload needs GHAS on private repos; the Require step below is the merge gate
               continue-on-error: true
               # Pinned third-party action per .github/zizmor.yml policy.
-              uses: github/codeql-action/upload-sarif@24c54180a607b1449ed407dd24f251e4e9147c8d # v4.38.3
+              uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
               with:
                   sarif_file: zizmor.sarif
                   category: zizmor
