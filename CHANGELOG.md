@@ -42,8 +42,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   authenticated `/api` routes, and the roles and sessions rows match the seeder and policies
 - **Testing and Release Docs Updated:** the obsolete coverage-timeout and `tests/phpstan`
   sections are gone, the releasing gate list is complete, the tag SHA is verified before the
-  push, the OpenAPI verify base override is documented, and Post-Release removes the
-  in-flight compare exemptions
+  push, the OpenAPI verify base override is documented, and the runbook removes the
+  in-flight compare exemptions after the tag
 
 ### Fixed
 
