@@ -34,6 +34,7 @@ final class DatabaseHealthCheckTest extends UnitTestCase
     {
         // Arrange
 
+        DB::shouldReceive('getConnections')->andReturn([]);
         DB::shouldReceive('select')->once()->with('select 1')->andReturn(null);
 
         $check = new DatabaseHealthCheck;
@@ -58,6 +59,7 @@ final class DatabaseHealthCheckTest extends UnitTestCase
     {
         // Arrange
 
+        DB::shouldReceive('getConnections')->andReturn([]);
         DB::shouldReceive('select')->once()->with('select 1')->andThrow(new RuntimeException('Connection refused'));
 
         $check = new DatabaseHealthCheck;
@@ -80,6 +82,7 @@ final class DatabaseHealthCheckTest extends UnitTestCase
     {
         // Arrange
 
+        DB::shouldReceive('getConnections')->andReturn([]);
         DB::shouldReceive('select')->once()->andThrow(new RuntimeException(str_repeat('x', 500)));
 
         $check = new DatabaseHealthCheck;
@@ -104,6 +107,7 @@ final class DatabaseHealthCheckTest extends UnitTestCase
     {
         // Arrange
 
+        DB::shouldReceive('getConnections')->andReturn([]);
         DB::shouldReceive('select')->once()->andReturnUsing(function (): null {
             usleep(501_000);
 

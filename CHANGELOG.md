@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [4.0.2] - 2026-11-19
+
+### Changed
+
+- **Composer Dependencies Updated:** `composer update` within the declared constraints
+  bumps Laravel framework 13.42.0 to 13.43.0, Sanctum 4.4.0 to 4.5.0, Tinker 3.1.0 to 3.2.0,
+  Telescope 5.28.0 to 5.29.0, Sail 1.70.0 to 1.71.0, geoip2 3.4.0 to 3.5.0, and the
+  transitive set those releases require; `composer.lock` carries the resolved set
+- **npm Dev Dependencies Updated:** the Dependabot basic-ftp and proxy-agent bump merged as
+  PR #57; the conflicting npm minor-and-patch group PR #56 was closed and the same updates
+  applied with `npm update` so the lock file resolves cleanly. Production audit stays clean
+- **GitHub Actions Upload-Sarif Bumped:** `github/codeql-action/upload-sarif` 4.38.3 to
+  4.39.3, merged as PR #55
+
 ## [4.0.1] - 2026-11-19
 
 ### Added
@@ -1236,7 +1250,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **OpenAPI and Docs:** OpenAPI specification, permissions reference, and performance notes
 - **CI Quality Gates:** CI quality gates: Pint, Larastan level 10, PHPUnit with 90% line-coverage gate, and `composer audit`
 - **Laravel Sail Setup:** Laravel Sail setup with MySQL and Redis for local development
-[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.1...HEAD
+[Unreleased]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.2...HEAD
+[4.0.2]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.1...v4.0.2
 [4.0.1]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v4.0.0...v4.0.1
 [4.0.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.6.0...v4.0.0
 [3.6.0]: https://github.com/Aontaigh/laravel-api-skeleton/compare/v3.5.1...v3.6.0

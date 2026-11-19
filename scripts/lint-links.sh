@@ -123,6 +123,9 @@ EXEMPT_LINK_PATTERNS=(
     # (`vPREV...vX.Y.Z` and `vX.Y.Z...HEAD`) and delete it once the tag resolves:
     # a stale pair passes silently and hides the next release's dead links. See
     # docs/releasing.md.
+    # In-flight v4.0.2 compare URLs: delete both once the tag is published.
+    'compare/v4\.0\.1\.\.\.v4\.0\.2'
+    'compare/v4\.0\.2\.\.\.HEAD'
 )
 
 # ---------------------------------------------------------------------------
