@@ -23,7 +23,7 @@ services:
             # native modules (Rolldown, Tailwind's oxide), so a shared directory means one `npm ci` on
             # the host replaces them, and every JavaScript command in the container then fails with a
             # missing native binding until the tree is rebuilt. The container owns this copy and
-            # installs it with `./vendor/bin/sail npm ci` (see docs/testing.md).
+            # installs it with `./vendor/bin/sail npm ci` (see docs/how-to/testing.md).
             - 'sail-node-modules:/var/www/html/node_modules'
         networks:
             - sail

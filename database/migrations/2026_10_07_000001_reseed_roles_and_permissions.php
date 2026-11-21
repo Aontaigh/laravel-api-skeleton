@@ -8,7 +8,7 @@ use Illuminate\Database\Migrations\Migration;
 /**
  * Re-seeds the roles and permissions matrix on databases that migrated before this release.
  *
- * A migration does not run twice, and the deploy path does not seed: `composer setup` runs
+ * A migration does not run twice, and the deploy path does not seed: it runs
  * `artisan migrate --force` with no `--seed`, so a permission added to
  * `RolesAndPermissionsSeeder::PERMISSIONS` reaches a fresh database and CI but never an existing
  * deployed one. The result is a silent 403 for Admin on the Auth Audit Log surface, with no failing

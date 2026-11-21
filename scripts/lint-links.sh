@@ -113,7 +113,7 @@ EXEMPT_LINK_PATTERNS=(
     # Reserved placeholder domains used in template examples as sample output.
     '^https?://([a-z0-9-]+\.)*example\.(com|org|net)(/|$)'
     # Loopback URLs in the local-development docs. These are instructions, not
-    # citations: README.md and docs/api.md send the reader to the docs page their
+    # citations: README.md and docs/how-to/api-docs.md send the reader to the docs page their
     # own Sail stack serves. The link resolves on a developer machine and is
     # unreachable on a runner, so checking it would fail CI for a page that is
     # correct.
@@ -122,7 +122,7 @@ EXEMPT_LINK_PATTERNS=(
     # exists on the remote. Add the in-flight pair here while cutting a release
     # (`vPREV...vX.Y.Z` and `vX.Y.Z...HEAD`) and delete it once the tag resolves:
     # a stale pair passes silently and hides the next release's dead links. See
-    # docs/releasing.md.
+    # docs/how-to/releasing.md.
 )
 
 # ---------------------------------------------------------------------------

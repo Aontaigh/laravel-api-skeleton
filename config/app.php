@@ -23,7 +23,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | The semantic version of this API. Reported by the `/health` endpoint
-    | and kept in sync with the OpenAPI spec (`docs/openapi.yaml`). Defaults
+    | and kept in sync with the OpenAPI spec (`docs/reference/openapi.yaml`). Defaults
     | to the `version` field in `composer.json` (bump that on each release).
     |
     */

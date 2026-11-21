@@ -15,7 +15,7 @@ if ($argc < 2) {
 $exampleName = $argv[1];
 
 /** @var array<string, mixed> $document */
-$document = Yaml::parseFile(__DIR__.'/../docs/openapi.yaml');
+$document = Yaml::parseFile(__DIR__.'/../docs/reference/openapi.yaml');
 
 /** @var array<string, mixed> $examples */
 $examples = $document['components']['examples'];

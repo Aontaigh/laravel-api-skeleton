@@ -318,6 +318,6 @@ return [
 
     'password_forgot_url' => env('API_PASSWORD_FORGOT_URL'),
 
-    'openapi_spec' => 'docs/openapi.yaml',
+    'openapi_spec' => 'docs/reference/openapi.yaml',
 
 ];

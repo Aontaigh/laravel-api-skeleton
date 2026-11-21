@@ -22,11 +22,11 @@ if (! is_string($version) || $version === '') {
     exit(1);
 }
 
-$openapiPath = $root.'/docs/openapi.yaml';
+$openapiPath = $root.'/docs/reference/openapi.yaml';
 $openapi = (string) file_get_contents($openapiPath);
 
 if (! preg_match('/^info:\R  title:.*\R  version: (\S+)/m', $openapi, $infoMatch)) {
-    fwrite(STDERR, "OpenAPI Version Missing: could not read info.version from docs/openapi.yaml\n");
+    fwrite(STDERR, "OpenAPI Version Missing: could not read info.version from docs/reference/openapi.yaml\n");
 
     exit(1);
 }
@@ -34,7 +34,7 @@ if (! preg_match('/^info:\R  title:.*\R  version: (\S+)/m', $openapi, $infoMatch
 if ($infoMatch[1] !== $version) {
     fwrite(
         STDERR,
-        "OpenAPI Version Mismatch: docs/openapi.yaml info.version is {$infoMatch[1]}; expected {$version} from composer.json\n",
+        "OpenAPI Version Mismatch: docs/reference/openapi.yaml info.version is {$infoMatch[1]}; expected {$version} from composer.json\n",
     );
 
     exit(1);
@@ -48,7 +48,7 @@ $healthExampleCount = preg_match_all(
 if ($healthExampleCount < 2) {
     fwrite(
         STDERR,
-        "OpenAPI Health Version Missing: docs/openapi.yaml must reference {$version} in the HealthSuccess example and HealthData schema\n",
+        "OpenAPI Health Version Missing: docs/reference/openapi.yaml must reference {$version} in the HealthSuccess example and HealthData schema\n",
     );
 
     exit(1);
