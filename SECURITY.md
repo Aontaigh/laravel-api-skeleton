@@ -3,9 +3,9 @@
 How to report a security issue in this repository.
 
 The engineering rules behind the controls are in
-[docs/security-engineering-standards.md](docs/security-engineering-standards.md); the
+[docs/explanation/security-engineering-standards.md](docs/explanation/security-engineering-standards.md); the
 measured evidence, including what is deliberately not shipped, is in
-[docs/platform-assurance.md](docs/platform-assurance.md).
+[docs/explanation/platform-assurance.md](docs/explanation/platform-assurance.md).
 
 Machine-readable contact details follow
 [RFC 9116](https://www.rfc-editor.org/rfc/rfc9116):

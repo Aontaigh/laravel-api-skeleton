@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Documentation Restructured:** `docs/` now follows Diátaxis (`tutorials/`, `how-to/`, `reference/`, `explanation/`); the repository README and cross-links were updated. Flat paths from the previous layout remain as one-line redirect stubs for one release cycle.
+- **Docker Bootstrap Uses the Built App Image:** The Quick Start and local-development guide build the pinned PHP 8.5.12 app image and run `composer install` inside it, replacing the floating PHP 8.4 Sail Composer image. The host-only `composer setup` script is removed because its host npm and Artisan steps conflicted with the Sail-first workflow.
+
 ## [4.0.2] - 2026-11-19
 
 ### Changed
@@ -25,7 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Branch Hygiene Runbook:** `docs/branch-hygiene.md` records the trunk model (`main` only),
+- **Branch Hygiene Runbook:** `docs/how-to/branch-hygiene.md` records the trunk model (`main` only),
   the branch lifecycle, and the Dependabot comment commands, and the README, releasing, and
   testing docs link to it. The **All Quality Gates** check it names is the `ci` summary job in
   the workflow
@@ -162,7 +167,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `actionlint` accepts or cannot statically evaluate. The `workflow-lint` job runs it, so a
   repository that resolves its runner from `${{ vars.GH_RUNNER_NAME || 'ubuntu-26.04' }}`
   cannot quietly ship the moving fallback the variable was meant to remove. README and
-  `docs/testing.md` carry the local command (step 9a)
+  `docs/how-to/testing.md` carry the local command (step 9a)
 - **Environment Parity Covers Duplicates and Shadowed Defaults:** `EnvExampleParityTest` now
   fails when `.env.example` or `.env.ci` declares one key on two lines, because dotenv keeps
   the last declaration and turns an edit to the first into a silent no-op, and when an empty
@@ -283,13 +288,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **The Seeded Guard Is Derived, Not Literal:** the seeder wrote `guard_name` as the literal `web` while the sync below resolves roles through `Guard::getDefaultName()`, so any other configured default guard seeded rows the same run could not find and the reseed died with `RoleDoesNotExist` instead of converging; the guard is now read once and used for the writes and the lookup. The reseed also takes an atomic lock for its write phase, with the meaning `migrate --isolated` gives a deploy - `syncPermissions` detaches a role's grants before re-attaching them, so overlapping runs can duplicate a pivot key or leave a role holding none - and the lock's duration is bounded, so a holder killed before it could release cannot block later runs
-- **The Host Port Comes From Compose:** `docs/testing.md` derived the host port by parsing `APP_PORT` out of `.env`, which misses every spelling Compose accepts (spaces around the `=`, single or double quotes, an inline comment) and misses an exported override entirely; it now asks Compose which port it published
+- **The Host Port Comes From Compose:** `docs/how-to/testing.md` derived the host port by parsing `APP_PORT` out of `.env`, which misses every spelling Compose accepts (spaces around the `=`, single or double quotes, an inline comment) and misses an exported override entirely; it now asks Compose which port it published
 
 ## [3.3.2] - 2026-10-16
 
 ### Fixed
 
-- **Release Runbook Staged a Path List, Not the Tree:** `docs/releasing.md` step 3 staged the bump with `git add CHANGELOG.md composer.json docs/ .env.example .env.ci`, which omits `composer.lock` - the file the same step's `composer update --lock` has just rewritten, because Composer's `content-hash` covers the `version` field the bump edits. Every local gate reads the working tree, so `composer lint:composer` passed with the lock left unstaged and only CI failed, on the pushed commit (`exit 2`, `# Lock file errors`). The step now stages the tree with `git add -A` and requires `git status --porcelain` to print nothing - the same guarantee Composer's lock guidance, `npm ci`, Cargo's `--locked`, and pnpm's CI-default `--frozen-lockfile` assume of a release commit
+- **Release Runbook Staged a Path List, Not the Tree:** `docs/how-to/releasing.md` step 3 staged the bump with `git add CHANGELOG.md composer.json docs/ .env.example .env.ci`, which omits `composer.lock` - the file the same step's `composer update --lock` has just rewritten, because Composer's `content-hash` covers the `version` field the bump edits. Every local gate reads the working tree, so `composer lint:composer` passed with the lock left unstaged and only CI failed, on the pushed commit (`exit 2`, `# Lock file errors`). The step now stages the tree with `git add -A` and requires `git status --porcelain` to print nothing - the same guarantee Composer's lock guidance, `npm ci`, Cargo's `--locked`, and pnpm's CI-default `--frozen-lockfile` assume of a release commit
 
 ## [3.3.1] - 2026-10-15
 
@@ -305,12 +310,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Environment File Sections Renamed, Reordered, and De-duplicated:** `Local Port Overrides` is `Sail Ports` in `.env.example` and `.env.ci`, because the section holds Compose host ports and nothing else - and CI publishes none of them. The `Frontend` section moved ahead of `GeoIP`, so build-time client keys sit with the client surface instead of after the vendor boundary, and `.env.ci` no longer carries that section twice
 - **Env Parity Test Pins Those Conventions:** `EnvExampleParityTest` matched only `SCREAMING_SNAKE_CASE` keys starting in column one, so `_PRIVATE`, `privateKey`, an indented key, or a space before the `=` slipped past the parity check entirely. The matcher now accepts every dotenv recognition shape, a new test asserts one blank line above every section divider in both env files, and the canonical-order test requires `Sail Ports` first, `Frontend` before `GeoIP`, and `Security Headers` last
 - **Dependabot Guards the Two Migration Surfaces:** a `laravel/framework` major is ignored for the Composer ecosystem - a framework major moves the upgrade guide, the toolchain, and every consumer's contract together, so it is taken by hand - and the `mysql` and `redis` images are ignored for Docker because both pin a line (`mysql:8.4`, `redis:alpine`) rather than a version, which makes their bumps migrations rather than updates
-- **Testing and Host-Port Docs:** `docs/testing.md` records that one suite at a time runs against the single `testing` database and that overlapping runs read as flakiness (`1062`, `1213`), that `phpunit.xml` forces that database while `.env.ci` points the app at it too - so step 4 clears the rows step 11 needs unless the app keeps its own - and that step 11 needs a non-`sync` queue, because a webhook ping processed inside the request is no longer pending. `README.md` documents the mirror of the port trap: `APP_URL` naming a port `compose.yaml` no longer publishes points every signed URL and emailed link at a dead port, with a one-line `curl` that proves the pair agrees
+- **Testing and Host-Port Docs:** `docs/how-to/testing.md` records that one suite at a time runs against the single `testing` database and that overlapping runs read as flakiness (`1062`, `1213`), that `phpunit.xml` forces that database while `.env.ci` points the app at it too - so step 4 clears the rows step 11 needs unless the app keeps its own - and that step 11 needs a non-`sync` queue, because a webhook ping processed inside the request is no longer pending. `README.md` documents the mirror of the port trap: `APP_URL` naming a port `compose.yaml` no longer publishes points every signed URL and emailed link at a dead port, with a one-line `curl` that proves the pair agrees
 - **Link-Gate Exemptions Dropped:** the in-flight compare exemptions added for the `v3.2.2` cut came out once the tag resolved, so a stale pair cannot hide the next release's dead links
 
 ### Fixed
 
-- **Release and Setup Commands Run Through Sail:** the version-sync and lock-refresh commands in `docs/releasing.md` and the key-generation command in `README.md` carried no Sail prefix, so on a host whose PHP is older than the `^8.5` this repo requires they failed inside `platform_check.php` before any code loaded
+- **Release and Setup Commands Run Through Sail:** the version-sync and lock-refresh commands in `docs/how-to/releasing.md` and the key-generation command in `README.md` carried no Sail prefix, so on a host whose PHP is older than the `^8.5` this repo requires they failed inside `platform_check.php` before any code loaded
 
 ## [3.2.2] - 2026-10-12
 
@@ -326,7 +331,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **Composer Metadata, Node Runtime, and npm Lock Gated:** `composer lint:composer` compares `composer.json` with its lock in CI, because a bare `composer validate` reports drift as a warning and exits `0`. `.nvmrc` holds the one Node version local tooling and CI both read, `engines.node` now names only the lines CI runs - `^22.12.0 || ^24.0.0 || ^26.0.0`, even majors only - and `engine-strict` makes that range enforceable. `npm run lint:npm` covers the field `npm ci` never compares, the lock's root `engines` range, which had drifted to record none at all. Dependabot and Renovate now own non-overlapping halves of the dependency surface, an unused Composer plugin allowance is gone, and the README and `docs/testing.md` carry the new step
+- **Composer Metadata, Node Runtime, and npm Lock Gated:** `composer lint:composer` compares `composer.json` with its lock in CI, because a bare `composer validate` reports drift as a warning and exits `0`. `.nvmrc` holds the one Node version local tooling and CI both read, `engines.node` now names only the lines CI runs - `^22.12.0 || ^24.0.0 || ^26.0.0`, even majors only - and `engine-strict` makes that range enforceable. `npm run lint:npm` covers the field `npm ci` never compares, the lock's root `engines` range, which had drifted to record none at all. Dependabot and Renovate now own non-overlapping halves of the dependency surface, an unused Composer plugin allowance is gone, and the README and `docs/how-to/testing.md` carry the new step
 - **Dependency Bumps:** `shell-quote` to 1.12.0 and `concurrently` to 9.2.5 ([#26](https://github.com/Aontaigh/laravel-api-skeleton/pull/26))
 - **Link-Gate Exemptions Dropped:** the in-flight compare exemptions added for the `v3.2.0` cut came out once the tag resolved, so a stale pair cannot hide the next release's dead links
 
@@ -352,7 +357,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`401` and `403` Envelope Copy:** the two answers carried `Unauthenticated` and `Forbidden`, which restate the status code and name no remedy for the caller who reads them. They now carry `Authentication Required` and `You Do Not Have Permission To Do That`, both read from `messageForStatusCode()` so the table stays the single source of truth, and the OpenAPI examples, `docs/permissions.md`, and the feature tests follow
+- **`401` and `403` Envelope Copy:** the two answers carried `Unauthenticated` and `Forbidden`, which restate the status code and name no remedy for the caller who reads them. They now carry `Authentication Required` and `You Do Not Have Permission To Do That`, both read from `messageForStatusCode()` so the table stays the single source of truth, and the OpenAPI examples, `docs/reference/permissions.md`, and the feature tests follow
 
 ### Fixed
 
@@ -370,12 +375,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **CI Pin:** CI: bump `github/codeql-action/upload-sarif` from v4.38.1 to v4.38.2, digest-verified against the upstream tag ([#24](https://github.com/Aontaigh/laravel-api-skeleton/pull/24))
 - **source-map-js Bump:** Bump `source-map-js` from 1.2.1 to 1.2.2 (transitive npm dependency); the lockfile also records the nested `@tailwindcss/oxide-wasm32-wasi` entries npm had omitted, and now reproduces from `npm install --package-lock-only` without a diff ([#25](https://github.com/Aontaigh/laravel-api-skeleton/pull/25))
-- **Release Documentation:** `docs/testing.md` records the gitignored-local-file link trap, `docs/releasing.md` carries the link gate's in-flight compare exemptions as a release step, and `scripts/lint-links.sh` drops the resolved v3.0.0 pair so a stale exemption cannot hide the next release's dead links
+- **Release Documentation:** `docs/how-to/testing.md` records the gitignored-local-file link trap, `docs/how-to/releasing.md` carries the link gate's in-flight compare exemptions as a release step, and `scripts/lint-links.sh` drops the resolved v3.0.0 pair so a stale exemption cannot hide the next release's dead links
 
 ### Fixed
 
 - **Environment Docs Prose:** [`.env.example`](.env.example) carried an em dash in its `APP_DEBUG` comment while the rest of the file uses a plain hyphen - the comment now uses a hyphen too
-- **Dead Link to a Gitignored Local File:** [docs/rate-limiting.md](docs/rate-limiting.md) linked `.env.testing.local`, which `.gitignore` excludes, so it resolved on a developer machine and answered `400` on a runner - the **Link Check** job failed on the v3.0.0 release commit while every other gate passed. The file is named in backticks now, [docs/testing.md](docs/testing.md) records the trap, and [docs/releasing.md](docs/releasing.md) carries the link gate's in-flight compare exemptions as a release step
+- **Dead Link to a Gitignored Local File:** [docs/reference/rate-limiting.md](docs/reference/rate-limiting.md) linked `.env.testing.local`, which `.gitignore` excludes, so it resolved on a developer machine and answered `400` on a runner - the **Link Check** job failed on the v3.0.0 release commit while every other gate passed. The file is named in backticks now, [docs/how-to/testing.md](docs/how-to/testing.md) records the trap, and [docs/how-to/releasing.md](docs/how-to/releasing.md) carries the link gate's in-flight compare exemptions as a release step
 
 ## [3.0.0] - 2026-10-09
 
@@ -394,7 +399,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Token Lifetime Ceiling:** every issued token now carries an expiry bounded by `API_TOKEN_MAX_EXPIRATION_DAYS` (default **366**). A configured lifetime at or above the ceiling is capped to it, and a configured `0` falls back to the ceiling rather than disabling expiry. [`CreatePersonalAccessTokenAction`](app/Actions/Tokens/CreatePersonalAccessTokenAction.php) resolves the expiry through [`TokenLifetime`](app/Support/TokenLifetime.php) and the refusal is mapped in [`ApiExceptionRenderer`](app/Support/ApiExceptionRenderer.php). Expired rows are pruned daily by the newly scheduled `sanctum:prune-expired` ([routes/console.php](routes/console.php)). The reference's fine-grained token narrowing and the consuming apps' fixed full-grant model are recorded, with the fixed-grant cost, in [README.md](README.md#tokens)
-- **Documentation Aligned to the `write-readme` Standard:** every page was audited against the toolkit skill. [README.md](README.md) gains a persona router, a Getting Help ladder, and explicit anchors - the emoji headings had broken the `#quick-start` and `#api` slugs other documents link to - plus corrections to the limiter routes, the API client revocation behaviour, and the webhook event list. [docs/rate-limiting.md](docs/rate-limiting.md) is new, and [docs/testing.md](docs/testing.md), [docs/releasing.md](docs/releasing.md), [docs/permissions.md](docs/permissions.md), [docs/performance.md](docs/performance.md), and [docs/api.md](docs/api.md) were recounted against the code
+- **Documentation Aligned to the `write-readme` Standard:** every page was audited against the toolkit skill. [README.md](README.md) gains a persona router, a Getting Help ladder, and explicit anchors - the emoji headings had broken the `#quick-start` and `#api` slugs other documents link to - plus corrections to the limiter routes, the API client revocation behaviour, and the webhook event list. [docs/reference/rate-limiting.md](docs/reference/rate-limiting.md) is new, and [docs/how-to/testing.md](docs/how-to/testing.md), [docs/how-to/releasing.md](docs/how-to/releasing.md), [docs/reference/permissions.md](docs/reference/permissions.md), [docs/explanation/performance.md](docs/explanation/performance.md), and [docs/how-to/api-docs.md](docs/how-to/api-docs.md) were recounted against the code
 
 ### Fixed
 
@@ -405,7 +410,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **Multi-Value Comma-Separated List Filters:** list-capable filters on the User, Session, Auth Audit Log, and Webhook Delivery indexes accept several values on the same singular key - `filter[user_id]=1,2,3`, `filter[status]=active,suspended`, `filter[role]=Admin,Manager`, `filter[event]=...` - the form GitHub, Stripe, and Shopify document, rather than a pluralised sibling key (`filter[user_ids]`) or a nested operator object, both of which are rejected with `422`. Shared plumbing: [`CommaListParser`](app/Support/CommaListParser.php) (trim, dedupe, count cap), [`CommaListRule`](app/Support/CommaListRule.php) (per-part rule plus cap enforcement in one path), and the [`ParsesCommaListQueryParam`](app/Http/Requests/Concerns/ParsesCommaListQueryParam.php) concern (rules, literal dotted-key messages, allow-list hints, typed accessors). Every filter caps its list (3 to 50 depending on the filter's vocabulary), and a list past the cap answers `422` rather than being truncated, because a truncated list returns a partial answer that looks complete. There is deliberately no `max` on the raw string - the count cap is the only size bound, matching industry practice
-- **Testing Guide Seed-State Section:** [docs/testing.md](docs/testing.md) documents what `migrate:fresh --seed` provides (4 Users, 1 API Client, 4 Roles, empty audit/session/webhook tables), that `filter[status]` is derived from `suspended_at`/`deleted_at` rather than a column, and why filter probes must assert their own fixture preconditions before reading a response
+- **Testing Guide Seed-State Section:** [docs/how-to/testing.md](docs/how-to/testing.md) documents what `migrate:fresh --seed` provides (4 Users, 1 API Client, 4 Roles, empty audit/session/webhook tables), that `filter[status]` is derived from `suspended_at`/`deleted_at` rather than a column, and why filter probes must assert their own fixture preconditions before reading a response
 - **List Filter Pen-Test Probes:** section 51 of [scripts/pen-test-auth.sh](scripts/pen-test-auth.sh) probes the comma-separated filters on audit logs, users, and deliveries against a live Sail stack
 
 ### Changed
@@ -519,7 +524,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   hasher boundary) without a creation-time max-length cap that would lock out existing
   passwords
 - **Documentation:** README onboarding table, API group summary, known limitations, and
-  doc cross-links; [`docs/permissions.md`](docs/permissions.md) suspended-login vs OAuth
+  doc cross-links; [`docs/reference/permissions.md`](docs/reference/permissions.md) suspended-login vs OAuth
   wording; OpenAPI login/logout paths and audit `outcome` documentation
 - **Auth Verification Scripts:**
   [`scripts/verify-openapi-examples.sh`](scripts/verify-openapi-examples.sh) and
@@ -642,7 +647,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Index Controller Docblocks:** controllers and FormRequest traits import `Builder` for `@var` phpdoc; rename empty trait
   pipe sections (**Abstract** to **Public** / **Protected**); reorder FormRequest regions to match
   project convention without behaviour changes
-- **Documentation Sync:** OpenAPI, [README](README.md), and [permissions.md](docs/permissions.md) document restore, user index
+- **Documentation Sync:** OpenAPI, [README](README.md), and [permissions.md](docs/reference/permissions.md) document restore, user index
   filters, token expiry semantics, default token sort, app-info `auth.token_expiration_days`, auth
   payload `roles` / `permissions`, webhook `user.restored`, and the full auth-audit `filter[event]` allow-list
 - **Test Section Dividers:** standardised all controller test group comment blocks across 27 test
@@ -758,7 +763,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Telescope Bump:** Bump `laravel/telescope` from 5.22.1 to 5.23.0 (dev dependency) ([#10](https://github.com/Aontaigh/laravel-api-skeleton/pull/10))
-- **Releasing.md:** [`docs/releasing.md`](docs/releasing.md) - document GitHub release note format (emoji section
+- **Releasing.md:** [`docs/how-to/releasing.md`](docs/how-to/releasing.md) - document GitHub release note format (emoji section
   headings, unwrapped bullets, **Full Changelog** footer)
 
 ## [1.14.1] - 2026-09-11
@@ -870,10 +875,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Documentation Sync:** README gains the Webhooks resource, subscribed-events list, controller
   layout, and completed rate-limit row; the Authentication endpoint table's comments are
   re-aligned to one column and its rate-limit / demo-client / two-factor flow notes are
-  grouped under Title Case subheadings instead of one paragraph; `docs/permissions.md` adds `WebhookEndpointPolicy` to
+  grouped under Title Case subheadings instead of one paragraph; `docs/reference/permissions.md` adds `WebhookEndpointPolicy` to
   the policy list; `docs/security-audit.md` refreshed to the current suite state (1120 tests,
-  93.07% coverage, pen-test sections 47-48); `docs/testing.md` / `docs/releasing.md` broken
-  relative links repaired; `docs/api.md` org URL and verify-command alignment.
+  93.07% coverage, pen-test sections 47-48); `docs/how-to/testing.md` / `docs/how-to/releasing.md` broken
+  relative links repaired; `docs/how-to/api-docs.md` org URL and verify-command alignment.
 
 ### Fixed
 
@@ -1004,7 +1009,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Pluggable User-agent Parser (`config/useragent.php`, `basic` and `null` Drivers):** Pluggable user-agent parser (`config/useragent.php`, `basic` and `null` drivers) - web sessions registered without an explicit `device_name` now derive one from the parsed user agent
 - **Fail-closed Session Revocation: `InvalidateStoredSessionAction`:** Fail-closed session revocation: `InvalidateStoredSessionAction` returns the store's destroy result, logs a truncated SHA-256 fingerprint instead of the raw session ID, and `failClosed()` bumps `session_version` so a store failure still recalls every cookie; adopted by the password-change, logout, surgical-revoke, and password-reset flows
 - **Session Activity Tracking: `TouchWebSessionActivityAction`:** Session activity tracking: `TouchWebSessionActivityAction` and the `session.touch` middleware refresh `last_activity_at` on cookie sessions at most every five minutes; `session.version` exposes a shared `SESSION_KEY` constant
-- **Password Recovery Endpoints:** `POST /api/auth/forgot-password` and reset flow added to `scripts/pen-test-auth.sh` (enumeration, rate limit, token binding, replay, credential rotation, audit) plus a session-activity probe, `docs/testing.md`, and the testing-doc link in `README.md`
+- **Password Recovery Endpoints:** `POST /api/auth/forgot-password` and reset flow added to `scripts/pen-test-auth.sh` (enumeration, rate limit, token binding, replay, credential rotation, audit) plus a session-activity probe, `docs/how-to/testing.md`, and the testing-doc link in `README.md`
 - **Config/hashing.php:** `config/hashing.php` - Argon2id as the default password hash driver with env-driven work factors and `HASH_REHASH_ON_LOGIN`
 - **Rehash-on-login in Authenticateuseraction:** Rehash-on-login in `AuthenticateUserAction` - transparently upgrades stale Argon2id hashes after work-factor bumps
 - **RehashOnLoginTest:** `RehashOnLoginTest` - covers stale-hash upgrade, suspended-user guard (no rehash), and unchanged current hashes
@@ -1105,7 +1110,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Register and Login Two-Factor Gate:** `POST /api/auth/register` and MFA-enrolled `POST /api/auth/login` return `two_factor_required` and `two_factor_token` instead of an immediate bearer token - complete send/verify before a session is issued
 - **Email Lowercase Normalisation:** Email addresses are normalised to lowercase on register, login, admin user creation, and API client service-user emails
-- **Two-Factor Documentation:** OpenAPI, README, and `docs/permissions.md` updated for two-factor flow, user creation, and client PATCH
+- **Two-Factor Documentation:** OpenAPI, README, and `docs/reference/permissions.md` updated for two-factor flow, user creation, and client PATCH
 
 ## [1.5.0] - 2026-08-16
 
@@ -1120,7 +1125,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - **Application Version Source:** Application version now derives from the `version` field in `composer.json` via `config('app.version')` (override with `APP_VERSION`); `/health` reports it
-- **CI Version Sync Gate:** CI adds a `composer verify:version` gate - fails when `docs/openapi.yaml` drifts from `composer.json`
+- **CI Version Sync Gate:** CI adds a `composer verify:version` gate - fails when `docs/reference/openapi.yaml` drifts from `composer.json`
 
 ### Fixed
 
@@ -1176,7 +1181,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Release Runbook:** Release runbook in `docs/releasing.md` - changelog, quality gates, tag, and GitHub publish steps
+- **Release Runbook:** Release runbook in `docs/how-to/releasing.md` - changelog, quality gates, tag, and GitHub publish steps
 
 ### Changed
 

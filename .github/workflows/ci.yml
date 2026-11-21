@@ -9,7 +9,7 @@ name: CI
 #   - npm audit (critical advisories in production deps = fail)
 #   - Semgrep SAST (PHP, Laravel security, and GitHub Actions rule packs)
 #   - App version sync (composer.json vs OpenAPI; tag on release builds)
-#   - OpenAPI example verification (live responses vs docs/openapi.yaml)
+#   - OpenAPI example verification (live responses vs docs/reference/openapi.yaml)
 #   - Base image references (every FROM / COPY --from resolves in its registry)
 #
 # Each gate is its own job so a failure in one (e.g. a Pint nit) does not
@@ -331,7 +331,7 @@ jobs:
               run: npm run audit:prod
 
     # ---------------------------------------------------------------------
-    # OpenAPI Examples (Live Envelope Shape vs docs/openapi.yaml)
+    # OpenAPI Examples (Live Envelope Shape vs docs/reference/openapi.yaml)
     # ---------------------------------------------------------------------
     # QUEUE_CONNECTION=redis is set at the job level (env vars override
     # `.env` values; nothing here runs config:cache): the verifier replays

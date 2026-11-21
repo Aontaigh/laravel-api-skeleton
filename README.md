@@ -21,7 +21,7 @@ Ships with fully wired resources - **Users**, **Roles**, **Teams**, **API Tokens
 Clients**, **Web Sessions**, **Auth Audit Logs**, and **Webhooks** - each implementing the same index contract
 (`sort`, `fields`, `include`, `filter`, pagination) where it applies.
 Clone, run Sail, issue a token, open **[http://localhost/api/docs](http://localhost/api/docs)**
-(Scalar try-it UI), or import [docs/openapi.yaml](docs/openapi.yaml) into Postman.
+(Scalar try-it UI), or import [docs/reference/openapi.yaml](docs/reference/openapi.yaml) into Postman.
 
 Patterns align with an internal shared conventions toolkit - invokable controllers,
 FormRequest validation, query classes, API Resources, and server-side Policies. Every
@@ -63,7 +63,7 @@ you can copy into greenfield APIs or port legacy endpoints toward over time.
 - 🖥️ Device **Web Session** registry with per-device revocation, fail-closed store handling, and an append-only **Auth Audit Log**
 - 📡 Outbound **Webhooks** with signed deliveries (HMAC, retry with backoff, auto-disable) and SSRF-screened targets
 - 🛡️ Admin **account suspension** (suspend / unsuspend), a public `/health` probe, and a public `/api/status` uptime page
-- 📖 Hand-written [OpenAPI 3.1](docs/openapi.yaml) spec with authenticated [Scalar](https://scalar.com) docs at `/api/docs` (`local` and `production`)
+- 📖 Hand-written [OpenAPI 3.1](docs/reference/openapi.yaml) spec with authenticated [Scalar](https://scalar.com) docs at `/api/docs` (`local` and `production`)
 - 🐳 Dockerised local dev via [Laravel Sail](https://laravel.com/docs/sail)
 - ✅ 90% line-coverage CI gate with parallel quality jobs
 
@@ -78,62 +78,46 @@ Pick your path by role - every route below lives in this README or the docs it l
 
 | You Are…                                           | Start With                                                                                                                                                    |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| A new developer joining the team                   | [Quick Start](#quick-start), then the [API](#api) summaries                                                                                                   |
+| A new developer joining the team                   | [Local development](docs/tutorials/local-development.md), then the [API](#api) summaries                                                                      |
+| A contributor changing the code                    | [CONTRIBUTING.md](CONTRIBUTING.md), then [Testing](docs/how-to/testing.md)                                                                                    |
 | An architect evaluating the starter                | [Architecture](#architecture), then [Security](#security)                                                                                                     |
 | An integrator building a machine-to-machine client | [API Clients](#api-clients) and the demo client in [Quick Start](#quick-start)                                                                                |
-| An AI agent mapping the codebase                   | [How the Query-Driven API Works](#how-the-query-driven-api-works), then [docs/openapi.yaml](docs/openapi.yaml) and [docs/permissions.md](docs/permissions.md) |
+| An AI agent mapping the codebase                   | [How the Query-Driven API Works](#how-the-query-driven-api-works), then [docs/reference/openapi.yaml](docs/reference/openapi.yaml) and [docs/reference/permissions.md](docs/reference/permissions.md) |
 
 <a id="quick-start"></a>
 
 ## 🚀 Quick Start
 
 > [!IMPORTANT]
-> The project requires **PHP ^8.5.12**. If your host PHP is older, the cold start below
-> bootstraps through Docker and every command after it runs through Sail
-> (`./vendor/bin/sail …`), which is the same PHP the image and CI run. GitHub CI runs native
-> PHP read from [`.php-version`](.php-version) - not Sail containers.
+> The project requires **PHP ^8.5.12**. The Docker path below builds the pinned app image and
+> runs Composer inside it, so the first install uses the same PHP as the application. GitHub CI
+> runs native PHP read from [`.php-version`](.php-version).
 
-`compose.yaml` builds `docker/8.5`, the vendored copy of the Sail runtime: the four files
-(`Dockerfile`, `php.ini`, `supervisord.conf`, `start-container`) are committed with the repo
-rather than read out of `vendor/`, so the image is built from a file this repository owns and
-can pin. **Those four files must be committed.** A clone without them cannot build the image
-at all - `docker compose build` fails on the missing build context, before anything in the
-application is involved.
+The full setup guide - requirements, port remapping, seeded accounts, token flow, and
+troubleshooting - is [docs/tutorials/local-development.md](docs/tutorials/local-development.md).
+The short version:
 
 ```bash
 cp .env.example .env
 
-# `./vendor/bin/sail` is installed by Composer, so the first install needs an image that
-# already carries one. The official Sail Composer image ships PHP 8.4, below the `^8.5.12`
-# floor the lock declares, so the platform check is skipped for this one bootstrap step: the
-# container that serves the app is PHP 8.5.12 (`docker/8.5`), and every gate runs there.
-docker run --rm \
-  -u "$(id -u):$(id -g)" \
-  -v "$(pwd):/var/www/html" \
-  -w /var/www/html \
-  laravelsail/php84-composer:latest \
-  composer install --ignore-platform-reqs
+# Build the pinned app image (PHP 8.5.12) and install Composer dependencies
+# inside it. The bind mount writes vendor/ back to the host.
+WWWGROUP="$(id -g)" WWWUSER="$(id -u)" docker compose build
+WWWGROUP="$(id -g)" WWWUSER="$(id -u)" docker compose run --rm --no-deps \
+  --user "$(id -u):$(id -g)" \
+  --entrypoint composer \
+  -e COMPOSER_HOME=/tmp/composer \
+  laravel.test install
 
-./vendor/bin/sail up -d --build
-
-# `node_modules` is a volume of its own, so it starts empty: install into it once, through
-# Sail, before any npm script. The build writes `public/build/manifest.json`, which Laravel
-# needs or it answers `ViteManifestNotFoundException`.
+./vendor/bin/sail up -d
 ./vendor/bin/sail npm ci
-./vendor/bin/sail npm run build   # or: ./vendor/bin/sail npm run dev, for the Vite dev server
-
+./vendor/bin/sail npm run build
 ./vendor/bin/sail artisan key:generate
 ./vendor/bin/sail artisan migrate:fresh --seed
 ```
 
-Every step runs in the container, npm included, so the toolchain is the one the image pins: Node
-24.22.1 from [`.nvmrc`](.nvmrc). A host `npm ci` installs macOS native modules into the bind
-mount, and the container never reads that tree - it mounts its own `node_modules` volume, which
-is why the empty volume is populated by `./vendor/bin/sail npm ci` rather than by an npm run on
-the host.
-
-Seeding creates one team ("Acme Corp") and one user per role. The full permission matrix
-lives in [docs/permissions.md](docs/permissions.md).
+Seed creates one team, three human demo users, and one service account for the
+demo client. The human accounts use the local-only password `password`:
 
 | Email                 | Role    |
 | --------------------- | ------- |
@@ -141,10 +125,7 @@ lives in [docs/permissions.md](docs/permissions.md).
 | `manager@example.com` | Manager |
 | `test@example.com`    | User    |
 
-All seeded accounts use the dev-only password `password`. Never seed accounts with this
-password outside `local`.
-
-Issue a bearer token via login, registration, or Tinker:
+Issue a token:
 
 ```bash
 curl -s -X POST http://localhost/api/auth/login \
@@ -152,101 +133,12 @@ curl -s -X POST http://localhost/api/auth/login \
   -d '{"email":"test@example.com","password":"password"}' | jq -r '.data.plain_text_token'
 ```
 
-Or with Tinker:
-
-```bash
-./vendor/bin/sail artisan tinker --execute="echo App\Models\User::where('email', 'admin@example.com')->first()->createToken('local')->plainTextToken;"
-```
-
-> [!TIP]
-> Open [http://localhost/api/docs](http://localhost/api/docs), click **Authentication** in
-> Scalar, and paste `Bearer {token}` - the fastest way to explore sort, fields, include,
-> and filter on a live API. Details: [docs/api.md](docs/api.md#interactive-docs-scalar).
-
-**Try it (curl)** - list users with team and role includes:
-
-```bash
-curl -s -H "Authorization: Bearer YOUR_TOKEN" \
-  "http://localhost/api/users?fields[users]=id,name&include=team,role&per_page=5" | jq
-```
+Open [http://localhost/api/docs](http://localhost/api/docs), paste the token into Scalar's
+**Authentication** panel, and try an endpoint. The [local development
+guide](docs/tutorials/local-development.md) covers port remapping, the two network
+namespaces, and the common startup failures.
 
 All routes below require `Authorization: Bearer {token}` unless noted.
-
-<details>
-<summary>If Something Goes Wrong: The Three Usual Causes</summary>
-
-**1. `composer install` fails on the PHP platform check**
-
-```
-Your requirements could not be resolved to an installable set of packages.
-  - laravel/framework v13.x requires php ^8.5.12 -> your php version does not satisfy that requirement
-```
-
-This project needs **PHP ^8.5.12** - the patch [`.php-version`](.php-version) pins,
-`composer.json` declares through `require.php` and `config.platform.php`, and `docker/8.5`
-builds. The fix is not to relax the constraint. Do what [Quick Start](#quick-start) does:
-bootstrap the dependencies through the Sail Composer image, then run every command through
-Sail, which ships a matching PHP image.
-
-```bash
-docker run --rm -u "$(id -u):$(id -g)" -v "$(pwd):/var/www/html" -w /var/www/html \
-  laravelsail/php84-composer:latest composer install --ignore-platform-reqs
-
-./vendor/bin/sail up -d
-./vendor/bin/sail artisan migrate:fresh --seed
-```
-
-**2. Sail cannot start, or `http://localhost` shows a different app**
-
-`compose.yaml` publishes the app on host port **80** (`${APP_PORT:-80}:80`). Anything
-already holding that port - another Sail project, a local nginx, Docker Desktop - either
-blocks the bind or answers first, so you end up looking at someone else's app and
-concluding the starter is broken.
-
-Pick free ports in `.env` and point `APP_URL` at whichever you chose:
-
-```dotenv
-APP_PORT=8090
-VITE_PORT=5175
-APP_URL=http://localhost:8090
-```
-
-Then `docker compose down && ./vendor/bin/sail up -d`. Every `http://localhost` URL in
-this README assumes the default port 80; substitute yours if you remap it.
-
-**Remapping the host port does not change anything inside the container.** Port 80 is
-nginx _inside_ the image, and `APP_PORT` only decides which host port forwards to it.
-The mirror-image trap: `APP_URL` naming a port nothing publishes - a remap was removed,
-Compose fell back to `80`, but `APP_URL` still says the old port - points every emailed
-link, signed URL, and `url()` call at a dead port while the app answers elsewhere. Prove
-the pair agrees after any change: `curl -sf "$(grep -E '^APP_URL=' .env | cut -d= -f2-)/up"`.
-That matters when a command runs in the wrong place:
-
-```bash
-# From your shell - use whatever host port you mapped.
-HP="$(grep -E '^APP_PORT=' .env | cut -d= -f2)"; HP="${HP:-80}"
-curl -s -o /dev/null -w '%{http_code}\n' "http://localhost:${HP}/api/users"      # 401
-
-# From inside Sail - always port 80, whatever APP_PORT says.
-./vendor/bin/sail exec laravel.test curl -s -o /dev/null -w '%{http_code}\n' \
-  http://localhost/api/users                                                    # 401
-```
-
-`scripts/pen-test-auth.sh` probes from inside Sail, so its default
-`PEN_TEST_BASE=http://localhost/api` needs no port. A `000` from curl means you
-reached the wrong namespace, not that the API is down.
-
-**3. The first request throws `MissingAppKeyException`**
-
-[`.env.example`](.env.example) ships `APP_KEY=` empty on purpose - the key is
-machine-specific and never committed. If `php artisan key:generate` was skipped, or you
-edited `.env` by hand after booting, the encrypter has nothing to use:
-
-```bash
-./vendor/bin/sail artisan key:generate
-```
-
-</details>
 
 ### Authentication (Public and Authenticated)
 
@@ -318,7 +210,7 @@ issuance and revocation, and API client lifecycle are recorded to `auth_audit_lo
 **queued listener** ([RecordAuthAuditLog](app/Listeners/RecordAuthAuditLog.php)) off the
 request hot path, so a queue worker must be running in non-`sync` environments. Plain
 resource administration (user create/rename, team CRUD) stays out by design -
-see [docs/permissions.md](docs/permissions.md#get-apiaudit-logs).
+see [docs/reference/permissions.md](docs/reference/permissions.md#get-apiaudit-logs).
 
 Every row carries an `outcome` following the Microsoft Entra result model:
 `succeeded` when the activity worked, `failed` when an attempt failed (bad
@@ -377,7 +269,7 @@ flowchart LR
 **Source of Truth:** allow-lists in [`app/Queries/*/*QueryConstraints.php`](app/Queries/),
 parse grammar in [`app/Support/`](app/Support/) (`IndexSortParser`, `SearchTermParser`,
 `CommaSeparatedList`, `AllowList`), authorisation in [`app/Policies/`](app/Policies/),
-machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
+machine-readable contract in [docs/reference/openapi.yaml](docs/reference/openapi.yaml).
 
 <a id="documentation"></a>
 
@@ -385,18 +277,23 @@ machine-readable contract in [docs/openapi.yaml](docs/openapi.yaml).
 
 | Doc                                              | Purpose                                                                                    |
 | ------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| [README.md](README.md)                           | 📌 Orientation, quick start, architecture summary                                          |
-| [/api/docs](http://localhost/api/docs)           | Scalar interactive reference (authenticated) - try endpoints in the browser               |
-| [docs/openapi.yaml](docs/openapi.yaml)           | 📄 OpenAPI 3.1 source file (also at `/api/openapi.yaml`)                                   |
-| [docs/api.md](docs/api.md)                       | 🖥️ Scalar setup, preview, import, and sync checklist                                       |
-| [docs/permissions.md](docs/permissions.md)       | 🔐 Permission strings, role matrix, Policy links                                           |
-| [docs/rate-limiting.md](docs/rate-limiting.md)   | 🚦 Limits, key shapes, IPv6 aggregation, counter storage, and the one remaining limitation |
-| [docs/performance.md](docs/performance.md)       | ⚡ Pagination and search trade-offs at scale                                               |
-| [docs/releasing.md](docs/releasing.md)           | 🏷️ Cutting a release - changelog, gates, tag, GitHub publish                               |
-| [docs/branch-hygiene.md](docs/branch-hygiene.md) | 🧹 Post-merge branch cleanup and Dependabot handling                                       |
-| [docs/testing.md](docs/testing.md)               | 🧪 Quality gates, test suites, coverage floor, pen test                                    |
-| [docs/security-engineering-standards.md](docs/security-engineering-standards.md) | 🔐 Engineering contract - threat model, access control, auth, audit, and gates |
-| [docs/platform-assurance.md](docs/platform-assurance.md) | 📋 Measured assurance - what ships, what does not, and how every change is verified |
+| [docs/README.md](docs/README.md)                 | Documentation index - grouped by purpose                                                   |
+| [README.md](README.md)                           | Orientation, quick start, architecture summary                                             |
+| [/api/docs](http://localhost/api/docs)           | Scalar interactive reference (authenticated) - try endpoints in the browser                |
+| [docs/tutorials/local-development.md](docs/tutorials/local-development.md) | Clone to a seeded, authenticated stack                                    |
+| [docs/how-to/api-docs.md](docs/how-to/api-docs.md)         | Scalar setup, preview, import, and sync checklist                                          |
+| [docs/how-to/testing.md](docs/how-to/testing.md) | Quality gates, test suites, coverage floor, pen test                                       |
+| [docs/how-to/releasing.md](docs/how-to/releasing.md) | Cutting a release - changelog, gates, tag, GitHub publish                              |
+| [docs/how-to/branch-hygiene.md](docs/how-to/branch-hygiene.md) | Post-merge branch cleanup and Dependabot handling                              |
+| [docs/reference/openapi.yaml](docs/reference/openapi.yaml) | OpenAPI 3.1 source file (also at `/api/openapi.yaml`)                            |
+| [docs/reference/permissions.md](docs/reference/permissions.md) | Permission strings, role matrix, Policy links                                  |
+| [docs/reference/rate-limiting.md](docs/reference/rate-limiting.md) | Limits, key shapes, IPv6 aggregation, counter storage                       |
+| [docs/explanation/performance.md](docs/explanation/performance.md) | Pagination and search trade-offs at scale                                    |
+| [docs/explanation/security-engineering-standards.md](docs/explanation/security-engineering-standards.md) | Engineering contract - threat model, access control, auth, audit, and gates |
+| [docs/explanation/platform-assurance.md](docs/explanation/platform-assurance.md) | Measured assurance - what ships, what does not, and how every change is verified |
+| [CONTRIBUTING.md](CONTRIBUTING.md)               | Contribution workflow, standards, and PR checklist                                         |
+| [SECURITY.md](SECURITY.md)                       | Vulnerability disclosure                                                                   |
+| [CHANGELOG.md](CHANGELOG.md)                     | Released changes                                                                           |
 
 <a id="stack"></a>
 
@@ -461,7 +358,7 @@ Every list endpoint shares this query contract:
 > `per_page` is capped at **100**. Larger values return `422`.
 
 Unknown sort columns, filter keys, field names, or include relations return `422`.
-Full allow-lists: [docs/openapi.yaml](docs/openapi.yaml) and `*QueryConstraints` classes.
+Full allow-lists: [docs/reference/openapi.yaml](docs/reference/openapi.yaml) and `*QueryConstraints` classes.
 
 The resources below share the contract; each group's summary and route table follows.
 
@@ -489,7 +386,7 @@ GET /api/users?filter[search]=acme&filter[status]=active&filter[role]=User&field
 restore workflows). `filter[role]` accepts `Admin`, `Manager`, `User`, or `Service`.
 
 **Row Scoping:** Managers see their own team only; Users cannot list users; Admins see all teams
-(`users.list-all`). Details: [docs/permissions.md](docs/permissions.md#userslist-vs-userslist-all).
+(`users.list-all`). Details: [docs/reference/permissions.md](docs/reference/permissions.md#userslist-vs-userslist-all).
 
 **Field Visibility:** `email` is omitted unless the viewer holds `users.view-email` -
 enforced in [UserResource](app/Http/Resources/UserResource.php), not only the query.
@@ -766,9 +663,9 @@ endpoints in the browser. Paste a Sanctum bearer token via **Authentication** in
 Scalar UI; `persistAuth` keeps it across reloads. Works in `production` at
 `{APP_URL}/api/docs`.
 
-OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
+OpenAPI 3.1 spec: [docs/reference/openapi.yaml](docs/reference/openapi.yaml) (also served at
 `/api/openapi.yaml`). Import into Postman or preview offline - see
-[docs/api.md](docs/api.md).
+[docs/how-to/api-docs.md](docs/how-to/api-docs.md).
 
 <p align="center">
   <img src="docs/images/scalar-docs.png" alt="Scalar interactive API reference showing the Laravel API Starter specification with endpoint navigation" width="960">
@@ -781,7 +678,7 @@ OpenAPI 3.1 spec: [docs/openapi.yaml](docs/openapi.yaml) (also served at
 | Area                      | Implementation                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Where                                                                                                                                                                                                                                                                 |
 | ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Authentication            | Sanctum bearer tokens (90-day default expiry)                                                                                                                                                                                                                                                                                                                                                                                                                                             | [routes/api.php](routes/api.php) (`auth:sanctum`), `config/api.php`                                                                                                                                                                                                   |
-| Authorisation             | Spatie permissions + Policies                                                                                                                                                                                                                                                                                                                                                                                                                                                             | [docs/permissions.md](docs/permissions.md), [app/Policies/](app/Policies/)                                                                                                                                                                                            |
+| Authorisation             | Spatie permissions + Policies                                                                                                                                                                                                                                                                                                                                                                                                                                                             | [docs/reference/permissions.md](docs/reference/permissions.md), [app/Policies/](app/Policies/)                                                                                                                                                                                            |
 | Rate limiting             | 500 req/min API; 5 req/min auth (email+IP, plus a 10/min per-account login budget; split per-IP ceilings - 20 login, 10 register); 5 req/min two-factor send/verify (IP ceiling 20) and 60 req/min two-factor status polling; 3 req/min verification resend; dedicated User+IP buckets for password change and session revokes; 10 req/min token and API client creation (per Admin); 10 req/min webhook writes (per Admin); 30 req/min public status page and 60 req/min health (per IP) | `config/api.php`, [AppServiceProvider](app/Providers/AppServiceProvider.php)                                                                                                                                                                                          |
 | Account recovery          | Broker-based reset link with enumeration-neutral responses; reset rotates every credential                                                                                                                                                                                                                                                                                                                                                                                                | [ForgotPasswordController](app/Http/Controllers/Auth/ForgotPasswordController.php), [ResetUserPasswordAction](app/Actions/Auth/ResetUserPasswordAction.php)                                                                                                           |
 | Two-factor authentication | Email OTP with pending challenges, stateless `two_factor_token` support, and per-route throttles                                                                                                                                                                                                                                                                                                                                                                                          | [SendTwoFactorController](app/Http/Controllers/Auth/SendTwoFactorController.php), [VerifyTwoFactorCodeAction](app/Actions/Auth/VerifyTwoFactorCodeAction.php)                                                                                                         |
@@ -798,8 +695,8 @@ Report vulnerabilities privately before opening a public issue - see
 [`/.well-known/security.txt`](public/.well-known/security.txt) (RFC 9116).
 
 The engineering rules behind this table are in
-[docs/security-engineering-standards.md](docs/security-engineering-standards.md); the
-measured evidence is in [docs/platform-assurance.md](docs/platform-assurance.md).
+[docs/explanation/security-engineering-standards.md](docs/explanation/security-engineering-standards.md); the
+measured evidence is in [docs/explanation/platform-assurance.md](docs/explanation/platform-assurance.md).
 
 <a id="architecture"></a>
 
@@ -828,8 +725,8 @@ Shared helpers: [app/Support/](app/Support/) (`ApiResponse`, `ApiDateTime`, `Ind
 3. Create an `Applies{Resource}Filters` request concern
 4. Wire an invokable controller: build DTOs → apply queries → paginate → Resource collection
 5. Register the route in [routes/api.php](routes/api.php)
-6. Extend [docs/openapi.yaml](docs/openapi.yaml) and verify at [http://localhost/api/docs](http://localhost/api/docs)
-7. Update [docs/permissions.md](docs/permissions.md) when a new permission is introduced
+6. Extend [docs/reference/openapi.yaml](docs/reference/openapi.yaml) and verify at [http://localhost/api/docs](http://localhost/api/docs)
+7. Update [docs/reference/permissions.md](docs/reference/permissions.md) when a new permission is introduced
 8. Cover with unit tests (query builder state, Support parsers) and feature tests (HTTP + database)
 
 Copy [UserIndexController](app/Http/Controllers/Users/UserIndexController.php) as a
@@ -876,15 +773,23 @@ database/
 ├── migrations/           # Users, Sessions, Audit Logs, Health Checks, …
 └── seeders/              # RolesAndPermissionsSeeder, ApiClientsSeeder
 docs/
-├── openapi.yaml          # OpenAPI 3.1 - source of truth (served at /api/openapi.yaml)
-├── api.md                # Scalar, preview, import, and sync guide
-├── permissions.md        # Permission matrix
-├── performance.md        # Scale trade-offs
-├── releasing.md          # Release runbook
-├── branch-hygiene.md     # Post-merge cleanup and Dependabot handling
-├── security-engineering-standards.md # Engineering contract
-├── platform-assurance.md # Measured assurance story
-└── testing.md            # Quality gates, suites, coverage floor, pen test
+├── README.md             # Documentation index
+├── tutorials/            # Learning-oriented walkthroughs
+│   └── local-development.md
+├── how-to/               # Task-oriented guides
+│   ├── api-docs.md       # OpenAPI, Scalar, preview, import, and sync
+│   ├── branch-hygiene.md
+│   ├── releasing.md
+│   └── testing.md
+├── reference/            # Facts and contracts
+│   ├── openapi.yaml      # OpenAPI 3.1 - source of truth (served at /api/openapi.yaml)
+│   ├── permissions.md
+│   └── rate-limiting.md
+├── explanation/          # Design rationale and trade-offs
+│   ├── performance.md
+│   ├── platform-assurance.md
+│   └── security-engineering-standards.md
+└── images/               # Documentation screenshots
 resources/views/          # Scalar embed and welcome page
 routes/
 ├── api.php               # JSON API routes (Sanctum)
@@ -919,7 +824,7 @@ Run locally (Sail - it is the pinned PHP 8.5.12, whatever the host runs):
 ./vendor/bin/sail composer verify:service-parity # CI matches compose.yaml's DB and cache, ext-* included
 ./vendor/bin/sail composer test          # PHPUnit
 ./vendor/bin/sail composer test:coverage:check   # 90% line-coverage gate
-./vendor/bin/sail composer verify:version        # composer.json / docs/openapi.yaml / git tag agree
+./vendor/bin/sail composer verify:version        # composer.json / docs/reference/openapi.yaml / git tag agree
 ./vendor/bin/sail composer ci            # the chain below
 ```
 
@@ -951,7 +856,7 @@ python3 scripts/lint/check-base-image-refs.py # every FROM / COPY --from is dige
 `audit:npm`.
 It needs a seeded database and a served app, because `verify:openapi` replays every
 documented example against a live instance. It also needs the app on its own database
-whenever the suite shares one - see [Quality Gates](docs/testing.md#quality-gates) for
+whenever the suite shares one - see [Quality Gates](docs/how-to/testing.md#quality-gates) for
 that caveat and the workaround:
 
 ```bash
@@ -960,7 +865,7 @@ that caveat and the workaround:
 ```
 
 It does **not** cover Zizmor, `actionlint`, the runner-label lint, hadolint, ShellCheck,
-the base image reference check, the Renovate config, or the live pen test. Those are separate CI jobs; the live pen test (step 12) runs locally only. See [docs/testing.md](docs/testing.md) for
+the base image reference check, the Renovate config, or the live pen test. Those are separate CI jobs; the live pen test (step 12) runs locally only. See [docs/how-to/testing.md](docs/how-to/testing.md) for
 the full step list, which of them run on the host rather than in Sail, and what each one writes.
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) runs Pint, an npm lock check, a Markdown link
@@ -1016,7 +921,7 @@ Two consequences worth knowing:
 ## 🧪 Testing
 
 **Run It:** `./vendor/bin/sail composer test` for the suite, or step 4 in
-[docs/testing.md](docs/testing.md) for the full gate list with the coverage floor. Use Sail,
+[docs/how-to/testing.md](docs/how-to/testing.md) for the full gate list with the coverage floor. Use Sail,
 not a host `php` - the project requires `^8.5.12`.
 
 **Unit tests** ([tests/Unit/](tests/Unit/)) pin logic without a database:
@@ -1051,7 +956,7 @@ stubs.
 
 The full run order, which steps run on the host rather than in Sail, what each gate
 writes to disk or the database, the coverage-floor mechanics, and the 51-section
-adversarial pen test are documented in [docs/testing.md](docs/testing.md).
+adversarial pen test are documented in [docs/how-to/testing.md](docs/how-to/testing.md).
 
 <a id="whats-not-included"></a>
 
@@ -1071,7 +976,7 @@ This starter deliberately omits features you would add per product:
 ### Known Limitations
 
 Beyond the deliberate omissions above, a few current ceilings are documented rather
-than fixed; the scale paths are in [docs/performance.md](docs/performance.md):
+than fixed; the scale paths are in [docs/explanation/performance.md](docs/explanation/performance.md):
 
 - `per_page` is capped at **100**; larger values return `422`
 - `filter[search]` builds `LIKE '%term%'` predicates that cannot use a B-tree index, so search scans the current scope
@@ -1084,8 +989,8 @@ than fixed; the scale paths are in [docs/performance.md](docs/performance.md):
 Work down the list; each step clears the common cases before you open a ticket.
 
 1. **Docs First:** read the doc the error points at - [Quick Start](#quick-start) for setup,
-   [docs/testing.md](docs/testing.md) for a failing gate, [docs/releasing.md](docs/releasing.md)
-   for a release, and [docs/permissions.md](docs/permissions.md) for an unexpected `403`.
+   [docs/how-to/testing.md](docs/how-to/testing.md) for a failing gate, [docs/how-to/releasing.md](docs/how-to/releasing.md)
+   for a release, and [docs/reference/permissions.md](docs/reference/permissions.md) for an unexpected `403`.
 2. **Known Limitations:** the `per_page` cap, search cost, and admin index count are documented
    above, not bugs.
 3. **Existing Issues:** search the exact error text at

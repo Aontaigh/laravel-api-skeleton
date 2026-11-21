@@ -19,7 +19,7 @@ use Spatie\Permission\PermissionRegistrar;
  * defines. `ROLE_PERMISSIONS` maps each {@see RoleName} to the subset it receives.
  *
  * Full reference (what each permission gates, where it is enforced, role matrix):
- * `docs/permissions.md`.
+ * `docs/reference/permissions.md`.
  */
 final class RolesAndPermissionsSeeder extends Seeder
 {
@@ -54,7 +54,7 @@ final class RolesAndPermissionsSeeder extends Seeder
      * Every permission string this application defines.
      *
      * Each entry is the exact ability string checked by `Gate` or Sanctum; the inline comments map a
-     * string to the endpoint that enforces it, and `docs/permissions.md` carries the longer reference.
+     * string to the endpoint that enforces it, and `docs/reference/permissions.md` carries the longer reference.
      *
      * @var list<string>
      */
@@ -181,7 +181,7 @@ final class RolesAndPermissionsSeeder extends Seeder
      * Idempotent by design, so this is safe to call from a dated reseed migration as well as from
      * `db:seed`: the upserts converge on the declared matrix whether or not the rows already
      * exist. That is what lets a repair migration reach databases that migrated before a
-     * permission was added, which the deploy path cannot do because `composer setup` runs
+     * permission was added, which the deploy path cannot do because it runs
      * `migrate --force` without `--seed`.
      *
      * The writes are single atomic `upsert` statements rather than `findOrCreate`'s
